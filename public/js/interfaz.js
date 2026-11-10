@@ -110,6 +110,118 @@
     document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
   }
 
+  /* ---------- Enlaces de sala y avisos ---------- */
+
+  function toast(msg, kind) {
+    const box = $("toasts");
+    if (!box) return;
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    while (box.children.length >= 2) box.firstChild.remove();
+    box.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "err" ? 5000 : 2800);
+  }
+
+  function extraerCodigo(texto) {
+    const raw = String(texto || "").trim().toUpperCase();
+    const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
+    if (fromPath) return fromPath[1].slice(0, 5);
+    const letras = raw.replace(/[^A-Z0-9]/g, "");
+    if (letras.length >= 5) return letras.slice(0, 5);
+    return letras;
+  }
+
+  function codigoDesdeUbicacion() {
+    try {
+      const path = location.pathname || "";
+      const m = path.match(/\/m\/([A-Za-z0-9]{4,12})\/?$/i);
+      if (m) return m[1].toUpperCase().slice(0, 5);
+      const q = new URLSearchParams(location.search || "");
+      const c = q.get("sala") || q.get("m") || q.get("codigo");
+      if (c) return extraerCodigo(c);
+    } catch (e) { /* archivo local u origen nulo */ }
+    return "";
+  }
+
+  function enlaceInvitacion(codigo) {
+    if (!codigo) return "";
+    try {
+      if (location.protocol !== "file:" && location.origin && location.origin !== "null") {
+        return location.origin + "/m/" + codigo;
+      }
+    } catch (e) { /* */ }
+    const base = (location.href || "").split("?")[0].split("#")[0];
+    return base + "?sala=" + codigo;
+  }
+
+  function actualizarUrlSala(codigo) {
+    if (location.protocol === "file:") return;
+    try {
+      const dest = codigo ? ("/m/" + codigo) : "/";
+      if (location.pathname !== dest) history.replaceState({}, "", dest);
+    } catch (e) { /* */ }
+  }
+
+  function copiarEnlaceSala(codigo) {
+    const link = enlaceInvitacion(codigo || ui.codigo);
+    if (!link) { toast("Todavía no hay una sala para compartir.", "err"); return; }
+    const done = function () { toast("Enlace copiado. Compártelo con tus amigos.", "ok"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(done).catch(function () { fallbackCopy(link, done); });
+    } else {
+      fallbackCopy(link, done);
+    }
+  }
+
+  function fallbackCopy(text, done) {
+    try {
+      const inp = document.createElement("input");
+      inp.value = text;
+      document.body.appendChild(inp);
+      inp.select();
+      document.execCommand("copy");
+      document.body.removeChild(inp);
+      if (done) done();
+    } catch (e) {
+      toast("No se pudo copiar. El enlace es: " + text, "err");
+    }
+  }
+
+  function compartirOCopiar(codigo) {
+    const link = enlaceInvitacion(codigo || ui.codigo);
+    if (!link) return copiarEnlaceSala(codigo);
+    if (navigator.share) {
+      navigator.share({
+        title: "Royal Flush",
+        text: "Sumate a mi mesa de Royal Flush",
+        url: link
+      }).catch(function () { copiarEnlaceSala(codigo); });
+    } else {
+      copiarEnlaceSala(codigo);
+    }
+  }
+
+  function mostrarInvitacionPendiente() {
+    const codigo = codigoDesdeUbicacion();
+    const aviso = $("aviso-invitacion");
+    const caja = $("caja-entrar-invitacion");
+    const texto = $("texto-codigo-invitacion");
+    const normal = $("acciones-menu-normal");
+    if (codigo) {
+      if (aviso) aviso.hidden = false;
+      if (caja) caja.hidden = false;
+      if (texto) texto.textContent = "Mesa " + codigo;
+      if ($("input-codigo")) $("input-codigo").value = codigo;
+      if (normal) normal.hidden = true;
+      return codigo;
+    }
+    if (aviso) aviso.hidden = true;
+    if (caja) caja.hidden = true;
+    if (normal) normal.hidden = false;
+    return "";
+  }
+
   /* ---------- Navegación del menú ---------- */
 
   function irMenu() {
@@ -117,6 +229,7 @@
     cerrarWS();
     ui.modo = "menu";
     mostrar("pantalla-menu");
+    mostrarInvitacionPendiente();
   }
 
   function irSolo() {
@@ -129,7 +242,16 @@
       $("aviso-online").textContent =
         "Para jugar online tienes que arrancar el servidor (npm start) y abrir http://localhost:3000 en el navegador. El modo solo sí funciona abriendo este archivo.";
     }
+    const codigo = codigoDesdeUbicacion();
+    if (codigo && $("input-codigo")) $("input-codigo").value = codigo;
     mostrar("pantalla-online");
+  }
+
+  function entrarInvitacion() {
+    const codigo = codigoDesdeUbicacion() || extraerCodigo(($("input-codigo") && $("input-codigo").value) || "");
+    if (!codigo) { irOnline(); return; }
+    if ($("input-codigo")) $("input-codigo").value = codigo;
+    unirseCodigo();
   }
 
   /* ---------- Modo solo ---------- */
@@ -159,7 +281,8 @@
     }
 
     mesa.on(alEventoLocal);
-    $("info-sala").textContent = "Modo solo · " + n + " asientos";
+    $("info-sala").textContent = "Solo · " + n + " asientos";
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = true;
     $("info-ciegas").textContent = "Ciegas " + mesa.ciegaPequena + " / " + mesa.ciegaGrande;
     mostrar("pantalla-mesa");
     renderMesa(mesa.estadoPublico(ui.tuId));
@@ -1424,18 +1547,24 @@
 
   function entrarEnMesaOnline(msg) {
     ui.modo = "online";
-    $("info-sala").textContent = (ui.publica ? "Sala pública" : "Sala privada") +
-      (ui.codigo ? " · " + ui.codigo : "");
+    $("info-sala").textContent = (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = !ui.codigo;
+    if (ui.codigo) actualizarUrlSala(ui.codigo);
     $("info-ciegas").textContent = "Ciegas 5 / 10";
     mostrar("pantalla-mesa");
     if (msg.estado) renderMesa(msg.estado);
   }
 
   function pintarSalaEspera(msg) {
-    $("codigo-sala").textContent = msg.codigo || ui.codigo || "";
+    const codigo = msg.codigo || ui.codigo || "";
+    $("codigo-sala").textContent = codigo;
+    actualizarUrlSala(codigo);
+    const link = enlaceInvitacion(codigo);
+    if ($("input-enlace-sala")) $("input-enlace-sala").value = link;
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = !navigator.share;
     $("tipo-sala").textContent = msg.publica
-      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre."
-      : "Sala privada. Comparte este código de 5 letras con tus amigos.";
+      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre. También podés compartir el enlace."
+      : "Sala privada. Compartí el enlace o el código de 5 letras con tus amigos.";
     const lista = $("lista-jugadores-sala");
     const jugadores = (msg.estado && msg.estado.jugadores) || msg.jugadores || [];
     lista.innerHTML = "";
@@ -1463,7 +1592,8 @@
         : "";
     }
 
-    const anfitrion = !!msg.esAnfitrion || ui.esAnfitrion;
+    const anfitrion = !!(msg.esAnfitrion || ui.esAnfitrion || (msg.anfitrionId && msg.anfitrionId === ui.tuId));
+    if (anfitrion) ui.esAnfitrion = true;
     $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
     $("btn-iniciar-online").hidden = !anfitrion;
     $("aviso-sala").textContent = anfitrion
@@ -1488,9 +1618,9 @@
 
   async function unirseCodigo() {
     $("aviso-online").textContent = "";
-    const codigo = ($("input-codigo").value || "").trim().toUpperCase();
+    const codigo = extraerCodigo($("input-codigo").value);
     if (codigo.length !== 5) {
-      $("aviso-online").textContent = "El código tiene que tener 5 letras.";
+      $("aviso-online").textContent = "El código tiene que tener 5 letras, o pegá el enlace de la mesa.";
       return;
     }
     try {
@@ -1522,6 +1652,11 @@
     iniciarSelectoresFichas();
     $("btn-solo").addEventListener("click", irSolo);
     $("btn-online").addEventListener("click", irOnline);
+    if ($("btn-entrar-invitacion")) $("btn-entrar-invitacion").addEventListener("click", entrarInvitacion);
+    if ($("btn-copiar-enlace")) $("btn-copiar-enlace").addEventListener("click", function () { copiarEnlaceSala(ui.codigo); });
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("input-enlace-sala")) $("input-enlace-sala").addEventListener("focus", function () { this.select(); });
     $("btn-volver-solo").addEventListener("click", irMenu);
     $("btn-volver-online").addEventListener("click", irMenu);
     $("btn-empezar-solo").addEventListener("click", empezarSolo);
@@ -1552,6 +1687,7 @@
     $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
     });
+    mostrarInvitacionPendiente();
 
     let timerResize = null;
     window.addEventListener("resize", function () {

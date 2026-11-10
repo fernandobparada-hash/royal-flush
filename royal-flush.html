@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
-  <meta name="theme-color" content="#052616">
+  <meta name="theme-color" content="#0b1410">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,30 +22,38 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --verde-fondo: #04180e;
-  --verde-mesa: #0c6b3c;
-  --oro: #f4d35e;
+  --verde-fondo: #0b1410;
+  --verde-mesa: #1b7a46;
+  --felt: #1b7a46;
+  --felt-oscuro: #0f5530;
+  --oro: #f2c14e;
   --oro-oscuro: #c9a227;
-  --crema: #f7f1e1;
-  --rojo: #c41e3a;
-  --texto: #f4f0e4;
+  --crema: #eef5f1;
+  --rojo: #e0524a;
+  --verde-btn: #2e9e5b;
+  --azul-btn: #3b82c4;
+  --texto: #eef5f1;
+  --muted: #9fb5aa;
+  --panel: #16251f;
+  --panel2: #1d3029;
+  --linea: #2b4339;
   --cuero: #0c0c0d;
-  --madera: #5a2418;
+  --madera: #5a3519;
   --alto-pantalla: 100vh;
   --alto-pantalla: 100dvh;
   --seguro-arriba: env(safe-area-inset-top, 0px);
   --seguro-abajo: env(safe-area-inset-bottom, 0px);
   --seguro-izq: env(safe-area-inset-left, 0px);
   --seguro-der: env(safe-area-inset-right, 0px);
-  --fuente-titulo: "Cinzel", Palatino, "Palatino Linotype", Georgia, serif;
-  --fuente-cuerpo: "Source Sans 3", "Segoe UI", "Trebuchet MS", sans-serif;
-  --fuente-numeros: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fuente-titulo: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+  --fuente-cuerpo: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+  --fuente-numeros: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 12px;
 }
 
 html, body {
   min-height: 100%;
-  background:
-    radial-gradient(ellipse at 50% 0%, #0b3a20 0%, var(--verde-fondo) 62%);
+  background: var(--verde-fondo);
   color: var(--texto);
   font-family: var(--fuente-cuerpo);
 }
@@ -76,14 +84,100 @@ input, select, textarea { font-size: 16px; }
   padding: max(20px, var(--seguro-arriba)) max(14px, var(--seguro-der)) max(20px, var(--seguro-abajo)) max(14px, var(--seguro-izq));
 }
 
+/* --------- interfaz limpia, inspirada en una mesa de amigos --------- */
+.muted { color: var(--muted); }
+.hint { font-weight: 400; font-size: 0.85rem; color: var(--muted); margin-top: 0.25em; }
+.hint.centro { text-align: center; }
+.disclaimer { font-size: 0.8rem; color: var(--muted); text-align: center; margin-top: 1.1em; line-height: 1.4; }
+.spacer { flex: 1; }
+.auth-wrap { min-height: var(--alto-pantalla); width: 100%; display: grid; place-items: center; padding: 1.5em 1em; }
+.auth-box { width: 100%; max-width: 420px; }
+.auth-hero { text-align: center; margin-bottom: 1.2em; }
+.auth-hero .suits { font-size: 2rem; letter-spacing: 0.3em; }
+.auth-hero .suits .r { color: var(--rojo); }
+.auth-hero h1, .pantalla h1 {
+  font-family: var(--fuente-titulo);
+  font-weight: 800;
+  font-size: clamp(2rem, 8vw, 2.6rem);
+  letter-spacing: -0.02em;
+  text-transform: none;
+  text-shadow: none;
+  color: var(--texto);
+  margin: 0.15em 0 0.25em;
+}
+.auth-hero h1 span, .brand-mini span { color: var(--oro); }
+.card-panel {
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radius);
+  padding: 1.2em;
+}
+.form-ok {
+  background: #173b28;
+  border: 1px solid var(--verde-btn);
+  padding: 0.7em 0.9em;
+  border-radius: 10px;
+  margin: 0 0 1em;
+  text-align: center;
+  color: #d6f5e3;
+}
+.stack-btns { display: grid; gap: 0.6em; margin-top: 1em; }
+.btn, button.principal, button.secundario, button.peligro, #panel-acciones button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
+  min-height: 44px; padding: 0.55em 1.1em; border-radius: 10px;
+  border: 1px solid var(--linea);
+  background: var(--panel2); color: var(--texto); cursor: pointer; font-weight: 700;
+  text-decoration: none; touch-action: manipulation; user-select: none;
+  font-family: inherit; font-size: 1rem; margin: 0;
+  box-shadow: none;
+}
+.btn:hover, button.principal:hover, button.secundario:hover { filter: brightness(1.1); }
+.btn.primary, button.principal { background: var(--oro); color: #1f1600; border-color: transparent; }
+.btn.block { width: 100%; }
+.btn.ghost, button.secundario { background: transparent; color: var(--texto); border-color: var(--linea); }
+.btn.green { background: var(--verde-btn); color: #fff; border-color: transparent; }
+.btn.red, button.peligro { background: var(--rojo); color: #fff; border-color: transparent; }
+.icon-btn {
+  background: transparent; border: 0; color: var(--texto); min-width: 40px; min-height: 40px;
+  border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+}
+.icon-btn:hover { background: var(--panel2); }
+.code-pill {
+  background: var(--panel2); border: 1px solid var(--linea);
+  padding: 0.15em 0.55em; border-radius: 999px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+.brand-mini { font-weight: 800; white-space: nowrap; }
+.copy-row { display: flex; gap: 0.5em; flex-wrap: nowrap; align-items: center; margin: 0.8em 0 1em; }
+.copy-row input[type=text] {
+  flex: 1 1 auto; min-width: 0; width: 100%; min-height: 44px; padding: 0.5em 0.75em;
+  border-radius: 10px; border: 1px solid var(--linea);
+  background: #111d18; color: var(--texto); font-size: 0.9rem;
+}
+@media (max-width: 800px) {
+  .copy-row { flex-direction: column; align-items: stretch; }
+  .copy-row .btn { width: 100%; }
+}
+#toasts {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 80; display: grid; gap: 8px; width: min(420px, calc(100% - 24px)); pointer-events: none;
+}
+.toast {
+  background: var(--panel2); border: 1px solid var(--linea); color: var(--texto);
+  border-radius: 10px; padding: 0.6em 0.9em; text-align: center; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.toast.ok { border-color: var(--verde-btn); }
+.toast.err { border-color: var(--rojo); background: #4a1d1b; }
+
 .marco-menu {
-  width: min(740px, 100%);
-  background:
-    linear-gradient(180deg, rgba(16, 80, 42, 0.96), rgba(6, 40, 22, 0.96));
-  border: 3px solid var(--oro-oscuro);
-  border-radius: 24px;
-  box-shadow: 0 18px 44px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.25);
-  padding: 32px 36px 26px;
+  width: min(540px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--linea);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+  padding: 28px 24px 22px;
   text-align: center;
 }
 .marco-menu.estrecho { width: min(540px, 100%); }
@@ -95,58 +189,56 @@ input, select, textarea { font-size: 16px; }
   letter-spacing: 0.32em;
   text-transform: uppercase;
   font-size: 0.72rem;
-  color: #d7ecc8;
+  color: var(--muted);
   margin-bottom: 4px;
 }
 
 h1, h2 {
   font-family: var(--fuente-titulo);
-  color: var(--oro);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  text-shadow: 0 2px 0 #5a4308, 0 6px 16px rgba(0,0,0,0.45);
+  color: var(--texto);
+  text-transform: none;
+  letter-spacing: -0.02em;
+  text-shadow: none;
+  font-weight: 800;
 }
-h1 { font-size: clamp(2.1rem, 6.5vw, 3.5rem); letter-spacing: 0.14em; }
-h2 { font-size: 1.7rem; margin-bottom: 10px; }
+h2 { font-size: 1.45rem; margin-bottom: 10px; }
+h2 .codigo, h2 .code-pill { color: var(--oro); }
 
-.subtitulo {
-  margin: 4px 0 22px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  font-size: 0.82rem;
-  color: #d7ecc8;
-}
+.subtitulo { margin: 4px 0 22px; font-size: 0.95rem; color: var(--muted); }
 
 .campo-nombre {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #d7ecc8;
-  margin-bottom: 20px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--texto);
+  margin-bottom: 4px;
+  text-align: left;
 }
 
 .campo-nombre input,
 #input-codigo,
 .input-fichas {
   font-family: inherit;
-  font-size: 1.15rem;
-  text-align: center;
+  font-size: 1rem;
+  text-align: left;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 2px solid var(--oro-oscuro);
-  background: #f7f1e1;
-  color: #1c2a16;
-  letter-spacing: 0.04em;
+  border: 1px solid var(--linea);
+  background: #111d18;
+  color: var(--texto);
+  letter-spacing: 0.02em;
   min-height: 44px;
 }
 #input-codigo {
-  width: 130px;
+  width: min(100%, 280px);
   text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 0.2em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
 }
 
 .opciones-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -179,19 +271,20 @@ h2 { font-size: 1.7rem; margin-bottom: 10px; }
   color: var(--oro);
   margin-bottom: 6px;
 }
-.desc-btn { display: block; font-size: 0.88rem; color: #d7ecc8; line-height: 1.35; }
+.desc-btn { display: block; font-size: 0.88rem; color: var(--muted); line-height: 1.35; }
 .pie-menu { margin-top: 20px; color: #cfe8c4; font-size: 0.9rem; }
 
-.texto, .ayuda-opcion { color: #d7ecc8; line-height: 1.45; margin: 8px 0 12px; }
+.texto, .ayuda-opcion { color: var(--muted); line-height: 1.45; margin: 8px 0 12px; }
 .ayuda-opcion { font-size: 0.85rem; }
 .texto.destacada { color: var(--oro); font-weight: 700; }
 
 .selector-asientos, .selector-fichas {
-  border: 1px solid rgba(244,211,94,0.35);
+  border: 1px solid var(--linea);
+  background: #111d18;
   border-radius: 12px;
   padding: 12px;
   margin: 14px 0;
-  color: #d7ecc8;
+  color: var(--muted);
   text-align: center;
 }
 .selector-asientos legend, .selector-fichas legend { padding: 0 8px; color: var(--oro); font-family: var(--fuente-titulo); letter-spacing: 0.06em; }
@@ -209,7 +302,7 @@ h2 { font-size: 1.7rem; margin-bottom: 10px; }
 .fichas-numero-fila { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .input-fichas { width: 140px; }
 .fichas-formato { color: var(--oro); font-weight: 700; min-width: 8em; }
-.ciegas-preview { margin: 6px 0 4px; color: #d7ecc8; font-size: 0.92rem; }
+.ciegas-preview { margin: 6px 0 4px; color: var(--muted); font-size: 0.92rem; }
 .presets-fichas { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
 .presets-fichas button {
   font-family: inherit;
@@ -230,20 +323,11 @@ h2 { font-size: 1.7rem; margin-bottom: 10px; }
 
 .fila-codigo { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
 
-button.principal, button.secundario, button.peligro, #panel-acciones button {
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 1rem;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 18px;
-  min-height: 44px;
-  cursor: pointer;
-  margin: 6px 4px;
-}
-button.principal { background: linear-gradient(180deg, #ffe28a, var(--oro)); color: #3b2d00; box-shadow: 0 3px 0 #8a7d55; }
-button.secundario { background: #e8e0c8; color: #1c2a16; box-shadow: 0 3px 0 #8a7d55; }
-button.peligro { background: linear-gradient(180deg, #e0455c, #c41e3a); color: #fff; box-shadow: 0 3px 0 #7a1020; }
+#btn-retirarse, #btn-allin { background: var(--rojo); color: #fff; border-color: transparent; }
+#btn-igualar { background: var(--verde-btn); color: #fff; border-color: transparent; }
+#btn-pasar { background: transparent; }
+#btn-subir { background: var(--oro); color: #1f1600; border-color: transparent; }
+#panel-acciones button { margin: 0; }
 button.compacto { padding: 8px 12px; font-size: 0.92rem; }
 button:hover:not(:disabled) { filter: brightness(1.07); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
@@ -276,8 +360,12 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   padding: max(4px, var(--seguro-arriba)) max(6px, var(--seguro-der)) max(4px, var(--seguro-abajo)) max(6px, var(--seguro-izq));
 }
 .barra-mesa {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 8px; padding: 2px 8px; color: #d7ecc8; font-size: 0.88rem; flex-shrink: 0;
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 8px; padding: 6px 10px;
+  color: var(--texto); font-size: 0.88rem; flex-shrink: 0;
+  background: rgba(11, 20, 16, 0.95);
+  border-bottom: 1px solid var(--linea);
+  position: sticky; top: 0; z-index: 20;
 }
 .barra-mesa span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -410,7 +498,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: clamp(0.58rem, 1.2vw, 0.75rem);
-  color: #d7ecc8;
+  color: var(--muted);
   min-height: 1em;
   font-family: var(--fuente-titulo);
 }
@@ -437,10 +525,10 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 .pieza-apuesta { z-index: 6; }
 
 .info-jugador {
-  background: rgba(8, 16, 10, 0.82);
+  background: rgba(10, 18, 14, 0.92);
   border-radius: 12px;
   padding: 5px 8px 6px;
-  border: 1px solid rgba(244,211,94,0.4);
+  border: 2px solid var(--linea);
   position: relative;
   backdrop-filter: blur(2px);
 }
@@ -761,9 +849,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   position: relative;
 }
 #panel-acciones[hidden] { display: none !important; }
-#panel-acciones button { background: #e8e0c8; color: #1c2a16; box-shadow: 0 3px 0 #8a7d55; }
-#btn-retirarse { background: #8a3040; color: #fff; box-shadow: 0 3px 0 #4a1520; }
-#btn-subir, #btn-pasar, #btn-igualar { background: linear-gradient(180deg, #ffe28a, var(--oro)); color: #3b2d00; }
+#panel-acciones button { background: var(--panel2); color: var(--texto); box-shadow: none; }
+#btn-retirarse, #btn-allin { background: var(--rojo); color: #fff; border-color: transparent; }
+#btn-subir { background: var(--oro); color: #1f1600; } #btn-igualar { background: var(--verde-btn); color: #fff; } #btn-pasar { background: transparent; color: var(--texto); }
 .grupo-subida {
   display: flex; align-items: center; gap: 8px;
   background: rgba(255,255,255,0.06); border-radius: 10px; padding: 4px 8px;
@@ -938,48 +1026,30 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
     <!-- ========== MENÚ PRINCIPAL ========== -->
     <section id="pantalla-menu" class="pantalla">
-      <div class="marco-menu">
-        <p class="etiqueta-casa">Casa de cartas</p>
-        <div class="logo-royal" aria-hidden="true">
-          <svg viewBox="0 0 160 92" role="img" aria-label="Royal Flush">
-            <defs>
-              <linearGradient id="oroLogo" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#ffe9a0"/>
-                <stop offset="50%" stop-color="#f4d35e"/>
-                <stop offset="100%" stop-color="#c9a227"/>
-              </linearGradient>
-            </defs>
-            <g transform="translate(80,50)">
-              <g transform="rotate(-28) translate(-38,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="11" fill="#c41e3a" font-weight="700">10</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
-              <g transform="rotate(-14) translate(-20,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">J</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♠</text></g>
-              <g transform="rotate(0) translate(-2,-34)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">Q</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♦</text></g>
-              <g transform="rotate(14) translate(16,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">K</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♣</text></g>
-              <g transform="rotate(28) translate(34,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">A</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
-            </g>
-            <path d="M62 14 L68 6 L74 12 L80 4 L86 12 L92 6 L98 14 L80 18 Z" fill="url(#oroLogo)" stroke="#8a7d55" stroke-width="0.6"/>
-          </svg>
+      <div class="auth-wrap">
+        <div class="auth-box">
+          <div class="auth-hero">
+            <div class="suits" aria-hidden="true">♠<span class="r">♥</span>♣<span class="r">♦</span></div>
+            <h1>Royal <span>Flush</span></h1>
+            <p class="muted">Texas Hold'em No Limit, solo o con amigos.</p>
+          </div>
+          <p id="aviso-invitacion" class="form-ok" hidden>Te invitaron a una mesa. Escribí tu nombre y te llevamos directo.</p>
+          <div class="card-panel">
+            <label class="campo-nombre" for="nombre-jugador">¿Cómo te llamás?
+              <input id="nombre-jugador" type="text" value="Fernando" maxlength="20" autocomplete="nickname" placeholder="Tu nombre en la mesa">
+            </label>
+            <p class="hint">Así te van a ver en la mesa. No hace falta contraseña.</p>
+            <div id="caja-entrar-invitacion" class="stack-btns" hidden>
+              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar a la mesa</button>
+              <p class="hint centro" id="texto-codigo-invitacion"></p>
+            </div>
+            <div id="acciones-menu-normal" class="stack-btns">
+              <button type="button" id="btn-solo" class="btn primary block">Jugar solo</button>
+              <button type="button" id="btn-online" class="btn block">Jugar online</button>
+            </div>
+          </div>
+          <p class="disclaimer">Elegí las fichas al empezar, de 10 a 50.000. No se usa dinero real.</p>
         </div>
-        <h1>Royal Flush</h1>
-        <p class="subtitulo">Texas Hold'em · No Limit</p>
-
-        <label class="campo-nombre">
-          Tu nombre
-          <input id="nombre-jugador" type="text" value="Fernando" maxlength="16" autocomplete="nickname">
-        </label>
-
-        <div class="opciones-menu">
-          <button type="button" id="btn-solo" class="btn-grande">
-            <span class="icono-btn" aria-hidden="true">♠</span>
-            <span class="titulo-btn">Jugar solo</span>
-            <span class="desc-btn">Una mesa llena de bots. Tú ocupas un asiento.</span>
-          </button>
-          <button type="button" id="btn-online" class="btn-grande">
-            <span class="icono-btn" aria-hidden="true">♥</span>
-            <span class="titulo-btn">Jugar online</span>
-            <span class="desc-btn">Con amigos en una sala privada, o en una mesa pública.</span>
-          </button>
-        </div>
-        <p class="pie-menu">Elige con cuántas fichas jugar al empezar · de 10 a 50.000</p>
       </div>
     </section>
 
@@ -1052,8 +1122,8 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
 
         <div class="fila-codigo">
-          <input id="input-codigo" type="text" maxlength="5" placeholder="CÓDIGO" spellcheck="false" autocomplete="off">
-          <button type="button" id="btn-unirse-codigo" class="principal">Unirse con código</button>
+          <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
+          <button type="button" id="btn-unirse-codigo" class="principal">Unirse</button>
         </div>
 
         <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
@@ -1067,8 +1137,13 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     <!-- ========== SALA DE ESPERA ========== -->
     <section id="pantalla-sala" class="pantalla" hidden>
       <div class="marco-menu estrecho">
-        <h2>Sala <span id="codigo-sala" class="codigo"></span></h2>
+        <h2>Sala <span id="codigo-sala" class="codigo code-pill"></span></h2>
         <p id="tipo-sala" class="texto"></p>
+        <div class="copy-row" id="caja-enlace-sala">
+          <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación">
+          <button type="button" id="btn-copiar-enlace" class="btn">Copiar enlace</button>
+          <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
+        </div>
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
         <p id="info-fichas-sala" class="texto destacada"></p>
@@ -1084,8 +1159,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     <!-- ========== MESA DE JUEGO ========== -->
     <section id="pantalla-mesa" hidden>
       <header class="barra-mesa">
-        <button type="button" id="btn-salir-mesa" class="secundario compacto">Salir</button>
-        <span id="info-sala"></span>
+        <button type="button" id="btn-salir-mesa" class="btn ghost compacto">Salir</button>
+        <span class="brand-mini">Royal <span>Flush</span></span>
+        <span id="info-sala" class="code-pill"></span>
+        <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
+        <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
       </header>
 
@@ -1099,10 +1177,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
     </pattern>
     <radialGradient id="feltLuzh" cx="50%" cy="46%" r="58%">
-      <stop offset="0%" stop-color="#22c45e"/>
-      <stop offset="38%" stop-color="#14a04a"/>
-      <stop offset="78%" stop-color="#0b7a36"/>
-      <stop offset="100%" stop-color="#055a26"/>
+      <stop offset="0%" stop-color="#239157"/>
+      <stop offset="45%" stop-color="#1b7a46"/>
+      <stop offset="100%" stop-color="#0f5530"/>
     </radialGradient>
     <linearGradient id="cueroh" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2a2a2c"/>
@@ -1154,10 +1231,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
     </pattern>
     <radialGradient id="feltLuzv" cx="50%" cy="46%" r="58%">
-      <stop offset="0%" stop-color="#22c45e"/>
-      <stop offset="38%" stop-color="#14a04a"/>
-      <stop offset="78%" stop-color="#0b7a36"/>
-      <stop offset="100%" stop-color="#055a26"/>
+      <stop offset="0%" stop-color="#239157"/>
+      <stop offset="45%" stop-color="#1b7a46"/>
+      <stop offset="100%" stop-color="#0f5530"/>
     </radialGradient>
     <linearGradient id="cuerov" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2a2a2c"/>
@@ -1274,6 +1350,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     </section>
   </div>
 
+  <div id="toasts" role="status" aria-live="assertive"></div>
   <script>
 /* =========================================================
    EVALUADOR DE MANOS — Texas Hold'em
@@ -2851,6 +2928,118 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
   }
 
+  /* ---------- Enlaces de sala y avisos ---------- */
+
+  function toast(msg, kind) {
+    const box = $("toasts");
+    if (!box) return;
+    const el = document.createElement("div");
+    el.className = "toast" + (kind ? " " + kind : "");
+    el.textContent = msg;
+    while (box.children.length >= 2) box.firstChild.remove();
+    box.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "err" ? 5000 : 2800);
+  }
+
+  function extraerCodigo(texto) {
+    const raw = String(texto || "").trim().toUpperCase();
+    const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
+    if (fromPath) return fromPath[1].slice(0, 5);
+    const letras = raw.replace(/[^A-Z0-9]/g, "");
+    if (letras.length >= 5) return letras.slice(0, 5);
+    return letras;
+  }
+
+  function codigoDesdeUbicacion() {
+    try {
+      const path = location.pathname || "";
+      const m = path.match(/\/m\/([A-Za-z0-9]{4,12})\/?$/i);
+      if (m) return m[1].toUpperCase().slice(0, 5);
+      const q = new URLSearchParams(location.search || "");
+      const c = q.get("sala") || q.get("m") || q.get("codigo");
+      if (c) return extraerCodigo(c);
+    } catch (e) { /* archivo local u origen nulo */ }
+    return "";
+  }
+
+  function enlaceInvitacion(codigo) {
+    if (!codigo) return "";
+    try {
+      if (location.protocol !== "file:" && location.origin && location.origin !== "null") {
+        return location.origin + "/m/" + codigo;
+      }
+    } catch (e) { /* */ }
+    const base = (location.href || "").split("?")[0].split("#")[0];
+    return base + "?sala=" + codigo;
+  }
+
+  function actualizarUrlSala(codigo) {
+    if (location.protocol === "file:") return;
+    try {
+      const dest = codigo ? ("/m/" + codigo) : "/";
+      if (location.pathname !== dest) history.replaceState({}, "", dest);
+    } catch (e) { /* */ }
+  }
+
+  function copiarEnlaceSala(codigo) {
+    const link = enlaceInvitacion(codigo || ui.codigo);
+    if (!link) { toast("Todavía no hay una sala para compartir.", "err"); return; }
+    const done = function () { toast("Enlace copiado. Compártelo con tus amigos.", "ok"); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(done).catch(function () { fallbackCopy(link, done); });
+    } else {
+      fallbackCopy(link, done);
+    }
+  }
+
+  function fallbackCopy(text, done) {
+    try {
+      const inp = document.createElement("input");
+      inp.value = text;
+      document.body.appendChild(inp);
+      inp.select();
+      document.execCommand("copy");
+      document.body.removeChild(inp);
+      if (done) done();
+    } catch (e) {
+      toast("No se pudo copiar. El enlace es: " + text, "err");
+    }
+  }
+
+  function compartirOCopiar(codigo) {
+    const link = enlaceInvitacion(codigo || ui.codigo);
+    if (!link) return copiarEnlaceSala(codigo);
+    if (navigator.share) {
+      navigator.share({
+        title: "Royal Flush",
+        text: "Sumate a mi mesa de Royal Flush",
+        url: link
+      }).catch(function () { copiarEnlaceSala(codigo); });
+    } else {
+      copiarEnlaceSala(codigo);
+    }
+  }
+
+  function mostrarInvitacionPendiente() {
+    const codigo = codigoDesdeUbicacion();
+    const aviso = $("aviso-invitacion");
+    const caja = $("caja-entrar-invitacion");
+    const texto = $("texto-codigo-invitacion");
+    const normal = $("acciones-menu-normal");
+    if (codigo) {
+      if (aviso) aviso.hidden = false;
+      if (caja) caja.hidden = false;
+      if (texto) texto.textContent = "Mesa " + codigo;
+      if ($("input-codigo")) $("input-codigo").value = codigo;
+      if (normal) normal.hidden = true;
+      return codigo;
+    }
+    if (aviso) aviso.hidden = true;
+    if (caja) caja.hidden = true;
+    if (normal) normal.hidden = false;
+    return "";
+  }
+
   /* ---------- Navegación del menú ---------- */
 
   function irMenu() {
@@ -2858,6 +3047,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     cerrarWS();
     ui.modo = "menu";
     mostrar("pantalla-menu");
+    mostrarInvitacionPendiente();
   }
 
   function irSolo() {
@@ -2870,7 +3060,16 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       $("aviso-online").textContent =
         "Para jugar online tienes que arrancar el servidor (npm start) y abrir http://localhost:3000 en el navegador. El modo solo sí funciona abriendo este archivo.";
     }
+    const codigo = codigoDesdeUbicacion();
+    if (codigo && $("input-codigo")) $("input-codigo").value = codigo;
     mostrar("pantalla-online");
+  }
+
+  function entrarInvitacion() {
+    const codigo = codigoDesdeUbicacion() || extraerCodigo(($("input-codigo") && $("input-codigo").value) || "");
+    if (!codigo) { irOnline(); return; }
+    if ($("input-codigo")) $("input-codigo").value = codigo;
+    unirseCodigo();
   }
 
   /* ---------- Modo solo ---------- */
@@ -2900,7 +3099,8 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     }
 
     mesa.on(alEventoLocal);
-    $("info-sala").textContent = "Modo solo · " + n + " asientos";
+    $("info-sala").textContent = "Solo · " + n + " asientos";
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = true;
     $("info-ciegas").textContent = "Ciegas " + mesa.ciegaPequena + " / " + mesa.ciegaGrande;
     mostrar("pantalla-mesa");
     renderMesa(mesa.estadoPublico(ui.tuId));
@@ -4165,18 +4365,24 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
   function entrarEnMesaOnline(msg) {
     ui.modo = "online";
-    $("info-sala").textContent = (ui.publica ? "Sala pública" : "Sala privada") +
-      (ui.codigo ? " · " + ui.codigo : "");
+    $("info-sala").textContent = (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = !ui.codigo;
+    if (ui.codigo) actualizarUrlSala(ui.codigo);
     $("info-ciegas").textContent = "Ciegas 5 / 10";
     mostrar("pantalla-mesa");
     if (msg.estado) renderMesa(msg.estado);
   }
 
   function pintarSalaEspera(msg) {
-    $("codigo-sala").textContent = msg.codigo || ui.codigo || "";
+    const codigo = msg.codigo || ui.codigo || "";
+    $("codigo-sala").textContent = codigo;
+    actualizarUrlSala(codigo);
+    const link = enlaceInvitacion(codigo);
+    if ($("input-enlace-sala")) $("input-enlace-sala").value = link;
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = !navigator.share;
     $("tipo-sala").textContent = msg.publica
-      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre."
-      : "Sala privada. Comparte este código de 5 letras con tus amigos.";
+      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre. También podés compartir el enlace."
+      : "Sala privada. Compartí el enlace o el código de 5 letras con tus amigos.";
     const lista = $("lista-jugadores-sala");
     const jugadores = (msg.estado && msg.estado.jugadores) || msg.jugadores || [];
     lista.innerHTML = "";
@@ -4204,7 +4410,8 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         : "";
     }
 
-    const anfitrion = !!msg.esAnfitrion || ui.esAnfitrion;
+    const anfitrion = !!(msg.esAnfitrion || ui.esAnfitrion || (msg.anfitrionId && msg.anfitrionId === ui.tuId));
+    if (anfitrion) ui.esAnfitrion = true;
     $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
     $("btn-iniciar-online").hidden = !anfitrion;
     $("aviso-sala").textContent = anfitrion
@@ -4229,9 +4436,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
   async function unirseCodigo() {
     $("aviso-online").textContent = "";
-    const codigo = ($("input-codigo").value || "").trim().toUpperCase();
+    const codigo = extraerCodigo($("input-codigo").value);
     if (codigo.length !== 5) {
-      $("aviso-online").textContent = "El código tiene que tener 5 letras.";
+      $("aviso-online").textContent = "El código tiene que tener 5 letras, o pegá el enlace de la mesa.";
       return;
     }
     try {
@@ -4263,6 +4470,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     iniciarSelectoresFichas();
     $("btn-solo").addEventListener("click", irSolo);
     $("btn-online").addEventListener("click", irOnline);
+    if ($("btn-entrar-invitacion")) $("btn-entrar-invitacion").addEventListener("click", entrarInvitacion);
+    if ($("btn-copiar-enlace")) $("btn-copiar-enlace").addEventListener("click", function () { copiarEnlaceSala(ui.codigo); });
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("input-enlace-sala")) $("input-enlace-sala").addEventListener("focus", function () { this.select(); });
     $("btn-volver-solo").addEventListener("click", irMenu);
     $("btn-volver-online").addEventListener("click", irMenu);
     $("btn-empezar-solo").addEventListener("click", empezarSolo);
@@ -4293,6 +4505,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
     });
+    mostrarInvitacionPendiente();
 
     let timerResize = null;
     window.addEventListener("resize", function () {

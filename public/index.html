@@ -3,66 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
-  <meta name="theme-color" content="#052616">
+  <meta name="theme-color" content="#0b1410">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Royal Flush">
   <title>Royal Flush — Texas Hold'em</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="estilo.css">
+  <link rel="stylesheet" href="/estilo.css">
 </head>
 <body>
   <div id="app">
 
     <!-- ========== MENÚ PRINCIPAL ========== -->
     <section id="pantalla-menu" class="pantalla">
-      <div class="marco-menu">
-        <p class="etiqueta-casa">Casa de cartas</p>
-        <div class="logo-royal" aria-hidden="true">
-          <svg viewBox="0 0 160 92" role="img" aria-label="Royal Flush">
-            <defs>
-              <linearGradient id="oroLogo" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#ffe9a0"/>
-                <stop offset="50%" stop-color="#f4d35e"/>
-                <stop offset="100%" stop-color="#c9a227"/>
-              </linearGradient>
-            </defs>
-            <g transform="translate(80,50)">
-              <g transform="rotate(-28) translate(-38,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="11" fill="#c41e3a" font-weight="700">10</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
-              <g transform="rotate(-14) translate(-20,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">J</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♠</text></g>
-              <g transform="rotate(0) translate(-2,-34)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">Q</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♦</text></g>
-              <g transform="rotate(14) translate(16,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">K</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♣</text></g>
-              <g transform="rotate(28) translate(34,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">A</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
-            </g>
-            <path d="M62 14 L68 6 L74 12 L80 4 L86 12 L92 6 L98 14 L80 18 Z" fill="url(#oroLogo)" stroke="#8a7d55" stroke-width="0.6"/>
-          </svg>
+      <div class="auth-wrap">
+        <div class="auth-box">
+          <div class="auth-hero">
+            <div class="suits" aria-hidden="true">♠<span class="r">♥</span>♣<span class="r">♦</span></div>
+            <h1>Royal <span>Flush</span></h1>
+            <p class="muted">Texas Hold'em No Limit, solo o con amigos.</p>
+          </div>
+          <p id="aviso-invitacion" class="form-ok" hidden>Te invitaron a una mesa. Escribí tu nombre y te llevamos directo.</p>
+          <div class="card-panel">
+            <label class="campo-nombre" for="nombre-jugador">¿Cómo te llamás?
+              <input id="nombre-jugador" type="text" value="Fernando" maxlength="20" autocomplete="nickname" placeholder="Tu nombre en la mesa">
+            </label>
+            <p class="hint">Así te van a ver en la mesa. No hace falta contraseña.</p>
+            <div id="caja-entrar-invitacion" class="stack-btns" hidden>
+              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar a la mesa</button>
+              <p class="hint centro" id="texto-codigo-invitacion"></p>
+            </div>
+            <div id="acciones-menu-normal" class="stack-btns">
+              <button type="button" id="btn-solo" class="btn primary block">Jugar solo</button>
+              <button type="button" id="btn-online" class="btn block">Jugar online</button>
+            </div>
+          </div>
+          <p class="disclaimer">Elegí las fichas al empezar, de 10 a 50.000. No se usa dinero real.</p>
         </div>
-        <h1>Royal Flush</h1>
-        <p class="subtitulo">Texas Hold'em · No Limit</p>
-
-        <label class="campo-nombre">
-          Tu nombre
-          <input id="nombre-jugador" type="text" value="Fernando" maxlength="16" autocomplete="nickname">
-        </label>
-
-        <div class="opciones-menu">
-          <button type="button" id="btn-solo" class="btn-grande">
-            <span class="icono-btn" aria-hidden="true">♠</span>
-            <span class="titulo-btn">Jugar solo</span>
-            <span class="desc-btn">Una mesa llena de bots. Tú ocupas un asiento.</span>
-          </button>
-          <button type="button" id="btn-online" class="btn-grande">
-            <span class="icono-btn" aria-hidden="true">♥</span>
-            <span class="titulo-btn">Jugar online</span>
-            <span class="desc-btn">Con amigos en una sala privada, o en una mesa pública.</span>
-          </button>
-        </div>
-        <p class="pie-menu">Elige con cuántas fichas jugar al empezar · de 10 a 50.000</p>
       </div>
     </section>
 
@@ -135,8 +117,8 @@
         <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
 
         <div class="fila-codigo">
-          <input id="input-codigo" type="text" maxlength="5" placeholder="CÓDIGO" spellcheck="false" autocomplete="off">
-          <button type="button" id="btn-unirse-codigo" class="principal">Unirse con código</button>
+          <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
+          <button type="button" id="btn-unirse-codigo" class="principal">Unirse</button>
         </div>
 
         <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
@@ -150,8 +132,13 @@
     <!-- ========== SALA DE ESPERA ========== -->
     <section id="pantalla-sala" class="pantalla" hidden>
       <div class="marco-menu estrecho">
-        <h2>Sala <span id="codigo-sala" class="codigo"></span></h2>
+        <h2>Sala <span id="codigo-sala" class="codigo code-pill"></span></h2>
         <p id="tipo-sala" class="texto"></p>
+        <div class="copy-row" id="caja-enlace-sala">
+          <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación">
+          <button type="button" id="btn-copiar-enlace" class="btn">Copiar enlace</button>
+          <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
+        </div>
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
         <p id="info-fichas-sala" class="texto destacada"></p>
@@ -167,8 +154,11 @@
     <!-- ========== MESA DE JUEGO ========== -->
     <section id="pantalla-mesa" hidden>
       <header class="barra-mesa">
-        <button type="button" id="btn-salir-mesa" class="secundario compacto">Salir</button>
-        <span id="info-sala"></span>
+        <button type="button" id="btn-salir-mesa" class="btn ghost compacto">Salir</button>
+        <span class="brand-mini">Royal <span>Flush</span></span>
+        <span id="info-sala" class="code-pill"></span>
+        <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
+        <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
       </header>
 
@@ -182,10 +172,9 @@
       <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
     </pattern>
     <radialGradient id="feltLuzh" cx="50%" cy="46%" r="58%">
-      <stop offset="0%" stop-color="#22c45e"/>
-      <stop offset="38%" stop-color="#14a04a"/>
-      <stop offset="78%" stop-color="#0b7a36"/>
-      <stop offset="100%" stop-color="#055a26"/>
+      <stop offset="0%" stop-color="#239157"/>
+      <stop offset="45%" stop-color="#1b7a46"/>
+      <stop offset="100%" stop-color="#0f5530"/>
     </radialGradient>
     <linearGradient id="cueroh" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2a2a2c"/>
@@ -237,10 +226,9 @@
       <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
     </pattern>
     <radialGradient id="feltLuzv" cx="50%" cy="46%" r="58%">
-      <stop offset="0%" stop-color="#22c45e"/>
-      <stop offset="38%" stop-color="#14a04a"/>
-      <stop offset="78%" stop-color="#0b7a36"/>
-      <stop offset="100%" stop-color="#055a26"/>
+      <stop offset="0%" stop-color="#239157"/>
+      <stop offset="45%" stop-color="#1b7a46"/>
+      <stop offset="100%" stop-color="#0f5530"/>
     </radialGradient>
     <linearGradient id="cuerov" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#2a2a2c"/>
@@ -357,9 +345,10 @@
     </section>
   </div>
 
-  <script src="js/evaluador.js"></script>
-  <script src="js/motor.js"></script>
-  <script src="js/bots.js"></script>
-  <script src="js/interfaz.js"></script>
+  <div id="toasts" role="status" aria-live="assertive"></div>
+  <script src="/js/evaluador.js"></script>
+  <script src="/js/motor.js"></script>
+  <script src="/js/bots.js"></script>
+  <script src="/js/interfaz.js"></script>
 </body>
 </html>

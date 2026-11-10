@@ -33,6 +33,9 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/salud", function (req, res) {
   res.json({ ok: true, salas: salas.size });
 });
+app.get("/m/:codigo", function (req, res) {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server: server, path: "/ws" });
@@ -213,12 +216,14 @@ function buscarSalaPublica() {
 }
 
 function payloadSala(sala, ws) {
-  return Object.assign({
+  const payload = Object.assign({
     tipo: "en-sala",
     tuId: ws.jugadorId,
-    estado: sala.mesa.estadoPublico(ws.jugadorId),
-    esAnfitrion: sala.anfitrionId === ws.jugadorId
+    estado: sala.mesa.estadoPublico(ws.jugadorId)
   }, meta(sala));
+  payload.tuId = ws.jugadorId;
+  payload.esAnfitrion = sala.anfitrionId === ws.jugadorId;
+  return payload;
 }
 
 function manejar(ws, msg) {

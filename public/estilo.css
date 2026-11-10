@@ -233,13 +233,20 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .botones-sala { display: flex; flex-direction: column; align-items: stretch; }
 
 /* ========== MESA ========== */
+html.en-mesa, html.en-mesa body, html.en-mesa #app {
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
 #pantalla-mesa {
-  min-height: var(--alto-pantalla);
-  height: var(--alto-pantalla);
+  min-height: 0;
+  height: 100dvh;
+  max-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: max(6px, var(--seguro-arriba)) max(6px, var(--seguro-der)) max(6px, var(--seguro-abajo)) max(6px, var(--seguro-izq));
+  padding: max(4px, var(--seguro-arriba)) max(6px, var(--seguro-der)) max(4px, var(--seguro-abajo)) max(6px, var(--seguro-izq));
 }
 .barra-mesa {
   display: flex; justify-content: space-between; align-items: center;
@@ -248,29 +255,37 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .barra-mesa span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #escenario {
-  width: min(1240px, 100%);
+  width: 100%;
   margin: 0 auto;
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  container-type: size;
 }
 
 #mesa-oval {
+  --ar-w: 1200;
+  --ar-h: 720;
   position: relative;
-  height: 100%;
-  width: auto;
+  box-sizing: border-box;
+  width: min(100cqw, calc(100cqh * var(--ar-w) / var(--ar-h)));
+  height: auto;
   max-width: 100%;
   max-height: 100%;
-  aspect-ratio: 1200 / 720;
+  aspect-ratio: var(--ar-w) / var(--ar-h);
   min-height: 0;
+  min-width: 0;
   background: transparent;
   border: none;
   outline: none;
   box-shadow: none;
+  container-type: size;
 }
-#mesa-oval.vertical { aspect-ratio: 720 / 1200; }
+#mesa-oval.vertical { --ar-w: 720; --ar-h: 1200; }
 #mesa-oval.vertical .mesa-svg-h { display: none !important; }
 #mesa-oval.vertical .mesa-svg-v { display: block !important; }
 #mesa-oval:not(.vertical) .mesa-svg-v { display: none !important; }
@@ -302,10 +317,10 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 #crupier {
   position: absolute;
-  top: 1%;
+  top: 8%;
   left: 50%;
-  transform: translate(-50%, -12%);
-  width: clamp(72px, 12vw, 130px);
+  transform: translate(-50%, -50%);
+  width: clamp(44px, 10cqw, 110px);
   z-index: 6;
   text-align: center;
   pointer-events: none;
@@ -324,29 +339,33 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 #centro-mesa {
   position: absolute;
-  top: 48%;
+  top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 3;
   width: max-content;
-  max-width: min(70%, 460px);
+  max-width: 90%;
   min-width: 0;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 
 #bote {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   background: rgba(0,0,0,0.45);
   border: 1px solid var(--oro-oscuro);
   border-radius: 999px;
-  padding: 4px 14px;
+  padding: 3px 12px;
   color: var(--oro);
-  font-size: clamp(0.75rem, 1.6vw, 1.05rem);
-  margin-bottom: 6px;
+  font-size: clamp(0.68rem, 3.2cqh, 1.05rem);
+  margin: 2px 0 0;
   font-weight: 700;
 }
 
@@ -448,11 +467,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 
 .insignias {
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   gap: 3px;
-  margin-bottom: 2px;
+  margin: 0;
   min-height: 0;
+  z-index: 2;
 }
 .insignia {
   min-width: 18px;
@@ -484,21 +508,18 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   height: var(--carta-p-h, 90px);
   margin: 0 -6px;
 }
-.pieza-info.propio { width: var(--ancho-propio, 150px); z-index: 7; }
-.pieza-info.propio .nombre-jugador { font-size: clamp(0.75rem, 1.6vw, 0.98rem); }
+.pieza-info.propio { width: var(--ancho-info, 132px); z-index: 7; }
+.pieza-info.propio .nombre-jugador { font-size: inherit; }
 .pieza-cartas.propio { z-index: 7; }
 
 .pieza-propio-grupo {
   z-index: 7;
   width: var(--ancho-propio, 150px);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
-  left: 50% !important;
-  top: auto !important;
-  bottom: 6.5%;
-  transform: translate(-50%, 0);
+  gap: 6px;
+  transform: translate(-50%, -50%);
 }
 .pieza-propio-grupo .cartas-asiento .carta,
 .pieza-propio-grupo .cartas-asiento .carta-dorso {
@@ -510,8 +531,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .pieza-propio-grupo .info-jugador { width: 100%; }
 
 #mesa-oval.asientos-10 {
-  --carta-j: 44px; --carta-j-h: 62px;
-  --ancho-info: 118px;
+  /* tamaños los fija el motor de layout en JS */
 }
 @media (max-width: 800px) {
   #mesa-oval.asientos-10 {
@@ -689,7 +709,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   margin: 0 auto;
   width: min(920px, 100%);
   flex-shrink: 0;
-  z-index: 8;
+  z-index: 30;
+  position: relative;
 }
 #panel-acciones[hidden] { display: none !important; }
 #panel-acciones button { background: #e8e0c8; color: #1c2a16; box-shadow: 0 3px 0 #8a7d55; }
@@ -826,6 +847,33 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   .grupo-subida { flex: 1 1 auto; padding: 2px 6px; }
   #rango-subida { width: 120px; height: 36px; flex: 1; }
   .info-jugador { padding: 2px 4px 3px; }
+}
+
+@media (max-height: 800px) {
+  .estado-jugador { display: none !important; }
+  .info-jugador { padding: 3px 6px 4px; }
+  .nombre-jugador { font-size: 0.7rem; }
+  .fichas-jugador { font-size: 0.66rem; }
+}
+@media (max-height: 700px) {
+  .barra-mesa { padding: 0 6px; font-size: 0.78rem; }
+  #mensaje-mesa { padding: 2px 8px; min-height: 1.2em; font-size: 0.88rem; }
+  #panel-acciones { padding: 4px 6px; gap: 6px; }
+  #panel-acciones button { min-height: 40px; padding: 6px 12px; font-size: 0.9rem; }
+}
+@media (max-height: 560px) {
+  #panel-acciones { padding: 3px 4px; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+  .info-jugador { padding: 2px 5px 3px; border-radius: 8px; }
+  .nombre-jugador { font-size: 0.65rem; }
+  .fichas-jugador { font-size: 0.62rem; }
+  .insignias { transform: translateX(-50%) scale(0.85); }
+  #panel-acciones button { min-height: 36px; min-width: 56px; padding: 4px 10px; font-size: 0.82rem; }
+  .grupo-subida { padding: 1px 6px; }
+  #rango-subida { height: 28px; }
+  #mensaje-mesa { font-size: 0.8rem; padding: 1px 8px; }
+  .barra-mesa button.compacto { min-height: 32px; padding: 4px 8px; }
+  .estado-jugador { display: none; }
+  .pieza-info.propio .estado-jugador, .pieza-propio-grupo .estado-jugador { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

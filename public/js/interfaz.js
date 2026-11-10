@@ -107,6 +107,7 @@
       if (ids[i] === idPantalla) el.hidden = false;
       else el.hidden = true;
     }
+    document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
   }
 
   /* ---------- Navegación del menú ---------- */
@@ -298,24 +299,10 @@
     return window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
   }
 
-  function geometriaMesa() {
-    if (esVerticalEstrecho()) {
-      return { gap: 1.05, info: [37, 38.2], cartas: [28, 30.6], apuesta: [22.2, 24], vaso: [42.6, 43.2], cy: 50.5 };
-    }
-    if (esHorizontalBajo()) {
-      return { gap: 0.88, info: [41.5, 34.5], cartas: [36, 28.5], apuesta: [30.5, 22.5], vaso: [45, 38], cy: 50 };
-    }
-    return { gap: 0.8, info: [41.5, 36], cartas: [34.2, 29], apuesta: [28.5, 23], vaso: [45.2, 40.5], cy: 50 };
-  }
-
   function actualizarOrientacionMesa() {
     const mesa = $("mesa-oval");
     if (!mesa) return;
     mesa.classList.toggle("vertical", esVerticalEstrecho());
-  }
-
-  function indiceCercanoAlJugador(i, total) {
-    return i === 1 || i === total - 1;
   }
 
   function anguloAsiento(indice, total, gap) {
@@ -323,10 +310,6 @@
     const u = (indice / total) * available;
     const mid = Math.PI - gap / 2;
     return u <= mid ? u : u + gap;
-  }
-
-  function puntoEn(ang, rx, ry, cy) {
-    return { x: 50 + Math.sin(ang) * rx, y: cy + Math.cos(ang) * ry };
   }
 
   function zonaDeAngulo(ang, indice) {
@@ -376,8 +359,8 @@
     return d;
   }
 
-  function estiloPunto(p) {
-    return "left:" + p.x.toFixed(2) + "%;top:" + p.y.toFixed(2) + "%;";
+  function estiloPx(x, y) {
+    return "left:" + Math.round(x) + "px;top:" + Math.round(y) + "px;";
   }
 
   function rectsSeSolapan(a, b, holgura) {
@@ -385,57 +368,209 @@
     return !(a.right + holgura <= b.left || b.right + holgura <= a.left || a.bottom + holgura <= b.top || b.bottom + holgura <= a.top);
   }
 
-  function separarSolapes() {
-    const mesa = $("mesa-oval");
-    if (!mesa) return;
-    const mr = mesa.getBoundingClientRect();
-    if (mr.width < 10 || mr.height < 10) return;
-    const grupos = [];
-    function add(sel, prio, fijo) {
-      const els = document.querySelectorAll(sel);
-      for (let i = 0; i < els.length; i++) {
-        const r = els[i].getBoundingClientRect();
-        if (r.width < 1 || r.height < 1) continue;
-        grupos.push({ el: els[i], prio: prio, fijo: !!fijo });
-      }
-    }
-    add("#centro-mesa", 0, true);
-    add("#crupier", 1, true);
-    add(".pieza-info", 3, false);
-    add(".pieza-cartas", 4, false);
-    add(".pieza-propio-grupo", 3, false);
-    add(".pieza-apuesta", 5, false);
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
 
-    for (let iter = 0; iter < 10; iter++) {
+  function caja(x, y, w, h) {
+    return { x: x, y: y, w: w, h: h, left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 };
+  }
+
+  function sePisan(a, b, g) {
+    g = g == null ? 3 : g;
+    return !(a.right + g <= b.left || b.right + g <= a.left || a.bottom + g <= b.top || b.bottom + g <= a.top);
+  }
+
+  function instalarObservadorMesa() {
+    if (ui._ro || !window.ResizeObserver) return;
+    const esc = $("escenario");
+    if (!esc) return;
+    ui._ro = new ResizeObserver(function () {
+      if (ui.estado && $("pantalla-mesa") && !$("pantalla-mesa").hidden) {
+        aplicarLayout(ui.estado);
+      }
+    });
+    ui._ro.observe(esc);
+  }
+
+  function medidasFicha(mesa, total) {
+    const W = mesa.clientWidth;
+    const H = mesa.clientHeight;
+    const vertical = esVerticalEstrecho();
+    const s = vertical ? Math.min(W / 720, H / 1200) : Math.min(W / 1200, H / 720);
+    const compacto = s < 0.52 || H < 400 || W < 760;
+    const nFactor = (total >= 10 ? 0.88 : 1) * (compacto ? 0.82 : 1) * (H < 340 || W < 640 ? 0.86 : 1);
+    const cardW = clamp(Math.round(s * 56 * nFactor), 12, 52);
+    const cardH = Math.round(cardW * 1.38);
+    const ownW = clamp(Math.round(cardW * 1.18), 14, 62);
+    const ownH = Math.round(ownW * 1.38);
+    const commW = clamp(Math.round(s * 62 * (compacto ? 0.9 : 1)), 14, 68);
+    const commH = Math.round(commW * 1.4);
+    const infoW = clamp(Math.round(s * (total >= 10 ? 112 : 126) * nFactor), 46, 138);
+    const infoH = clamp(Math.round(s * (compacto ? 44 : 52)), 22, 54);
+    const betW = clamp(Math.round(s * 52), 28, 72);
+    const betH = clamp(Math.round(s * 20), 12, 24);
+    const dealerW = clamp(Math.round(s * 108 * (compacto ? 0.85 : 1)), 32, 112);
+    const dealerH = Math.round(dealerW * 1.0);
+    const vaso = clamp(Math.round(s * 22), 6, 22);
+    return {
+      W: W, H: H, s: s, vertical: vertical,
+      cardW: cardW, cardH: cardH, ownW: ownW, ownH: ownH,
+      commW: commW, commH: commH, infoW: infoW, infoH: infoH,
+      betW: betW, betH: betH, dealerW: dealerW, dealerH: dealerH, vaso: vaso
+    };
+  }
+
+  function aplicarVariablesCarta(mesa, m) {
+    mesa.style.setProperty("--carta-c", m.commW + "px");
+    mesa.style.setProperty("--carta-c-h", m.commH + "px");
+    mesa.style.setProperty("--carta-j", m.cardW + "px");
+    mesa.style.setProperty("--carta-j-h", m.cardH + "px");
+    mesa.style.setProperty("--carta-p", m.ownW + "px");
+    mesa.style.setProperty("--carta-p-h", m.ownH + "px");
+    mesa.style.setProperty("--ancho-info", m.infoW + "px");
+    mesa.style.setProperty("--ancho-propio", m.infoW + "px");
+  }
+
+  function calcularLayout(estado, mesa) {
+    const total = estado.asientosTotales;
+    const m = medidasFicha(mesa, total);
+    const W = m.W, H = m.H;
+    const cx = W / 2, cy = H / 2;
+    const vertical = m.vertical;
+    const pad = 3;
+
+    aplicarVariablesCarta(mesa, m);
+
+    const insetX = vertical ? 0.115 : 0.07;
+    const insetY = vertical ? 0.07 : 0.115;
+    const feltRx = W * (0.5 - insetX);
+    const feltRy = H * (0.5 - insetY);
+
+    const infoRx = Math.min(feltRx + m.infoW * 0.08, W / 2 - m.infoW / 2 - pad);
+    const infoRy = Math.min(feltRy + m.infoH * 0.02, H / 2 - m.infoH / 2 - pad);
+
+    const dealer = caja(cx, m.dealerH / 2 + 4, m.dealerW, m.dealerH);
+
+    let commAncho = 5 * m.commW + 4 * Math.max(3, Math.round(m.s * 8));
+    if (commAncho > W * 0.42) {
+      const fit = Math.floor((W * 0.42 - 16) / 5);
+      m.commW = clamp(fit, 12, m.commW);
+      m.commH = Math.round(m.commW * 1.4);
+      commAncho = 5 * m.commW + 16;
+      mesa.style.setProperty("--carta-c", m.commW + "px");
+      mesa.style.setProperty("--carta-c-h", m.commH + "px");
+    }
+    const centroH = m.commH + 16 + m.betH;
+    const centro = caja(cx, cy + H * 0.04, commAncho + 8, centroH);
+
+    const gap = vertical ? 1.05 : (total >= 10 ? 0.92 : 0.82);
+
+    const seats = [];
+    for (let i = 0; i < total; i++) {
+      const ang = anguloAsiento(i, total, gap);
+      const ux = Math.sin(ang);
+      const uy = Math.cos(ang);
+      const zona = zonaDeAngulo(ang, i);
+      let ix = cx + ux * infoRx;
+      let iy = cy + uy * infoRy;
+      ix = clamp(ix, m.infoW / 2 + pad, W - m.infoW / 2 - pad);
+      iy = clamp(iy, m.infoH / 2 + pad, H - m.infoH / 2 - pad);
+      const info = caja(ix, iy, m.infoW, m.infoH);
+      const rSeat = Math.hypot(ix - cx, iy - cy);
+
+      const cW = (i === 0 ? m.ownW * 1.7 : m.cardW * 1.7);
+      const cH = (i === 0 ? m.ownH : m.cardH);
+      const dAng = (m.infoW / 2 + 10 + cW / 2) / Math.max(36, rSeat);
+
+      function cardsEn(angC) {
+        const rx = infoRx;
+        const ry = infoRy;
+        let x = clamp(cx + Math.sin(angC) * rx, cW / 2 + pad, W - cW / 2 - pad);
+        let y = clamp(cy + Math.cos(angC) * ry, cH / 2 + pad, H - cH / 2 - pad);
+        return caja(x, y, cW, cH);
+      }
+      function pena(c, angC) {
+        let p = 0;
+        if (sePisan(c, info, 3)) p += 90;
+        if (sePisan(c, centro, 3)) p += 120;
+        if (sePisan(c, dealer, 3)) p += 100;
+        const out = Math.max(0, pad - c.left) + Math.max(0, c.right - (W - pad)) +
+          Math.max(0, pad - c.top) + Math.max(0, c.bottom - (H - pad));
+        p += out * 8;
+        for (let k = 0; k < seats.length; k++) {
+          if (sePisan(c, seats[k].info, 3)) p += 70;
+          if (sePisan(c, seats[k].cards, 3)) p += 70;
+        }
+        return p;
+      }
+      let cards, angCards;
+      const huecoAbajo = (H - iy - m.infoH / 2);
+      const anchoLibre = W - m.infoW - pad * 2;
+      if (i === 0 && (vertical || anchoLibre < cW + m.infoW + 16 || huecoAbajo < 8)) {
+        const cyC = clamp(iy - (m.infoH / 2 + 5 + cH / 2), cH / 2 + pad, H - cH / 2 - pad);
+        const cxC = clamp(ix, cW / 2 + pad, W - cW / 2 - pad);
+        cards = caja(cxC, cyC, cW, cH);
+        angCards = ang;
+        if (sePisan(cards, info, 2) || sePisan(cards, centro, 2)) {
+          cards = caja(clamp(ix - (m.infoW / 2 + 6 + cW / 2), cW / 2 + pad, W - cW / 2 - pad), iy, cW, cH);
+        }
+      } else {
+        const cand = [];
+        const offs = [dAng, -dAng, dAng * 1.2, -dAng * 1.2, dAng * 1.45, -dAng * 1.45];
+        for (let o = 0; o < offs.length; o++) {
+          const a = ang + offs[o];
+          const c = cardsEn(a);
+          cand.push({ c: c, p: pena(c, a), a: a });
+        }
+        cand.sort(function (a, b) { return a.p - b.p; });
+        cards = cand[0].c;
+        angCards = cand[0].a;
+      }
+
+      const rNameInner = Math.max(24, rSeat - Math.max(m.infoW, m.infoH) / 2 - 6);
+      const rCent = Math.max(
+        16,
+        Math.min(
+          (centro.w / 2 + m.betH / 2 + 6) / Math.max(0.15, Math.abs(ux)),
+          (centro.h / 2 + m.betH / 2 + 6) / Math.max(0.15, Math.abs(uy))
+        )
+      );
+      const rInner = rCent;
+      const rOuter = rNameInner;
+      const rBet = rOuter >= rInner ? rOuter - 2 : (rInner + rOuter) / 2;
+
+      seats.push({
+        i: i, ang: ang, ux: ux, uy: uy, zona: zona, rSeat: rSeat, angCards: angCards,
+        info: info, cards: cards,
+        rLo: rOuter, rHi: rInner, rBet: rBet,
+        bet: caja(cx + ux * rBet, cy + uy * rBet, m.betW, m.betH)
+      });
+    }
+
+    return { m: m, cx: cx, cy: cy, dealer: dealer, centro: centro, seats: seats, pad: pad, W: W, H: H, infoRx: infoRx, infoRy: infoRy };
+  }
+
+  function resolverNombres(L) {
+    const pad = L.pad;
+    for (let iter = 0; iter < 20; iter++) {
       let movio = false;
-      for (let i = 0; i < grupos.length; i++) {
-        for (let j = i + 1; j < grupos.length; j++) {
-          const A = grupos[i], B = grupos[j];
-          const ra = A.el.getBoundingClientRect();
-          const rb = B.el.getBoundingClientRect();
-          if (!rectsSeSolapan(ra, rb, 3)) continue;
-          const movible = A.fijo ? B : (B.fijo ? A : (A.prio >= B.prio ? A : B));
-          const otro = movible === A ? B : A;
-          if (movible.fijo) continue;
-          const rm = movible.el.getBoundingClientRect();
-          const ro = otro.el.getBoundingClientRect();
-          const cxm = (rm.left + rm.right) / 2;
-          const cym = (rm.top + rm.bottom) / 2;
-          const cxo = (ro.left + ro.right) / 2;
-          const cyo = (ro.top + ro.bottom) / 2;
-          let dx = cxm - cxo;
-          let dy = cym - cyo;
-          if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) { dx = 0.6; dy = 0.3; }
-          const len = Math.sqrt(dx * dx + dy * dy) || 1;
-          const step = 5;
-          const nx = cxm + (dx / len) * step;
-          const ny = cym + (dy / len) * step;
-          let px = ((nx - mr.left) / mr.width) * 100;
-          let py = ((ny - mr.top) / mr.height) * 100;
-          px = Math.max(7, Math.min(93, px));
-          py = Math.max(8, Math.min(93, py));
-          movible.el.style.left = px.toFixed(2) + "%";
-          movible.el.style.top = py.toFixed(2) + "%";
+      for (let i = 0; i < L.seats.length; i++) {
+        const A = L.seats[i];
+        const fijos = [L.dealer, L.centro];
+        for (let j = 0; j < L.seats.length; j++) {
+          if (j !== i) fijos.push(L.seats[j].info);
+        }
+        for (let k = 0; k < fijos.length; k++) {
+          const o = fijos[k];
+          if (!o || !sePisan(A.info, o, 3)) continue;
+          let dx = A.info.x - o.x;
+          let dy = A.info.y - o.y;
+          if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) { dx = A.ux; dy = A.uy; }
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = clamp(A.info.x + (dx / len) * 4, A.info.w / 2 + pad, L.W - A.info.w / 2 - pad);
+          const ny = clamp(A.info.y + (dy / len) * 4, A.info.h / 2 + pad, L.H - A.info.h / 2 - pad);
+          A.info = caja(nx, ny, A.info.w, A.info.h);
           movio = true;
         }
       }
@@ -443,16 +578,394 @@
     }
   }
 
-  function pintarPortaVasos(total, geo) {
-    const caja = $("porta-vasos");
-    if (!caja) return;
+  function posBetXY(s, L, x, y) {
+    const bw = s.mBetW || L.m.betW;
+    const bh = s.mBetH || L.m.betH;
+    x = clamp(x, bw / 2 + 2, L.W - bw / 2 - 2);
+    y = clamp(y, bh / 2 + 2, L.H - bh / 2 - 2);
+    s.bet = caja(x, y, bw, bh);
+    s.rBet = Math.hypot(x - L.cx, y - L.cy);
+  }
+
+  function posBet(s, L, r, tOff) {
+    tOff = tOff || 0;
+    const x = L.cx + s.ux * r + (-s.uy) * tOff;
+    const y = L.cy + s.uy * r + (s.ux) * tOff;
+    s.tOff = tOff;
+    posBetXY(s, L, x, y);
+  }
+
+  function betChoca(s, L, extraSeats) {
+    if (sePisan(s.bet, L.centro, 3) || sePisan(s.bet, L.dealer, 3)) return true;
+    if (sePisan(s.bet, s.info, 3) || sePisan(s.bet, s.cards, 3)) return true;
+    const lista = extraSeats || L.seats;
+    for (let i = 0; i < lista.length; i++) {
+      const o = lista[i];
+      if (o.i === s.i) continue;
+      if (o.info && sePisan(s.bet, o.info, 3)) return true;
+      if (o.cards && sePisan(s.bet, o.cards, 3)) return true;
+      if (o.tieneApuesta && o.bet && sePisan(s.bet, o.bet, 4)) return true;
+    }
+    return false;
+  }
+
+  function colocarApuesta(s, L, conBet) {
+    const rMin = Math.min(s.rHi, s.rLo);
+    const rMax = Math.max(s.rHi, s.rLo);
+    const rPref = s.rLo >= s.rHi ? s.rLo - 2 : (s.rHi + s.rLo) / 2;
+    const radios = [];
+    for (let r = rPref; r >= rMin; r -= 3) radios.push(r);
+    for (let r = rPref + 3; r <= rMax + 12; r += 3) radios.push(r);
+    const offs = [0, 8, -8, 16, -16, 24, -24, 32, -32, 42, -42, 54, -54];
+    for (let oi = 0; oi < offs.length; oi++) {
+      for (let ri = 0; ri < radios.length; ri++) {
+        posBet(s, L, radios[ri], offs[oi]);
+        if (!betChoca(s, L, conBet)) return;
+      }
+    }
+  }
+
+  function resolverApuestas(L, estado) {
+    const conBet = [];
+    for (let i = 0; i < L.seats.length; i++) {
+      const j = (estado.jugadores || []).find(function (p) { return p.asiento === L.seats[i].i; });
+      if (j && j.apuestaRonda > 0) {
+        L.seats[i].tieneApuesta = true;
+        conBet.push(L.seats[i]);
+      } else {
+        L.seats[i].tieneApuesta = false;
+      }
+    }
+    for (let i = 0; i < conBet.length; i++) colocarApuesta(conBet[i], L, conBet);
+    for (let iter = 0; iter < 12; iter++) {
+      let movio = false;
+      for (let a = 0; a < conBet.length; a++) {
+        for (let b = a + 1; b < conBet.length; b++) {
+          if (!sePisan(conBet[a].bet, conBet[b].bet, 4)) continue;
+          conBet[b].tOff = (conBet[b].tOff || 0) + 8;
+          posBet(conBet[b], L, conBet[b].rBet, conBet[b].tOff);
+          if (betChoca(conBet[b], L, conBet)) colocarApuesta(conBet[b], L, conBet);
+          movio = true;
+        }
+      }
+      if (!movio) break;
+    }
+  }
+
+  function resolverPiezas(L) {
+    const m = L.m, pad = L.pad;
+    function cardsEn(S, angC) {
+      const cW = S.cards.w, cH = S.cards.h;
+      const x = clamp(L.cx + Math.sin(angC) * L.infoRx, cW / 2 + pad, L.W - cW / 2 - pad);
+      const y = clamp(L.cy + Math.cos(angC) * L.infoRy, cH / 2 + pad, L.H - cH / 2 - pad);
+      return caja(x, y, cW, cH);
+    }
+    for (let iter = 0; iter < 20; iter++) {
+      let movio = false;
+      for (let i = 0; i < L.seats.length; i++) {
+        const S = L.seats[i];
+        const others = [L.centro, L.dealer, S.info];
+        for (let j = 0; j < L.seats.length; j++) {
+          if (j === i) continue;
+          others.push(L.seats[j].info);
+          others.push(L.seats[j].cards);
+        }
+        let choca = false;
+        for (let k = 0; k < others.length; k++) {
+          if (others[k] && sePisan(S.cards, others[k], 3)) { choca = true; break; }
+        }
+        if (!choca) continue;
+        const base = S.angCards != null ? S.angCards : S.ang;
+        const tryA = [base + 0.06, base - 0.06, base + 0.12, base - 0.12, base + 0.18, base - 0.18, base + 0.25, base - 0.25];
+        let best = null, bestP = 1e9;
+        for (let t = 0; t < tryA.length; t++) {
+          const c = cardsEn(S, tryA[t]);
+          let p = 0;
+          for (let k = 0; k < others.length; k++) {
+            if (others[k] && sePisan(c, others[k], 3)) p += 10;
+          }
+          const out = Math.max(0, pad - c.left) + Math.max(0, c.right - (L.W - pad)) +
+            Math.max(0, pad - c.top) + Math.max(0, c.bottom - (L.H - pad));
+          p += out * 5;
+          if (p < bestP) { bestP = p; best = { c: c, a: tryA[t] }; }
+        }
+        if (best) {
+          S.cards = best.c;
+          S.angCards = best.a;
+          movio = true;
+        }
+      }
+      if (!movio) break;
+    }
+  }
+
+  function separarTodo(L) {
+    const pad = L.pad;
+    function apply(obj, sx, sy) {
+      if (!obj || !obj.b || obj.fixed) return 0;
+      const w = obj.b.w, h = obj.b.h;
+      const nx = clamp(obj.b.x + sx, w / 2 + pad, L.W - w / 2 - pad);
+      const ny = clamp(obj.b.y + sy, h / 2 + pad, L.H - h / 2 - pad);
+      const moved = Math.abs(nx - obj.b.x) + Math.abs(ny - obj.b.y);
+      obj.b = caja(nx, ny, w, h);
+      if (obj.k === "info") obj.s.info = obj.b;
+      if (obj.k === "cards") obj.s.cards = obj.b;
+      if (obj.k === "bet") obj.s.bet = obj.b;
+      return moved;
+    }
+    for (let iter = 0; iter < 120; iter++) {
+      const arr = [{ k: "centro", b: L.centro, fixed: true }, { k: "dealer", b: L.dealer, fixed: true }];
+      for (let i = 0; i < L.seats.length; i++) {
+        const s = L.seats[i];
+        arr.push({ k: "info", s: s, b: s.info, fixed: false });
+        arr.push({ k: "cards", s: s, b: s.cards, fixed: false });
+        if (s.tieneApuesta && s.bet) arr.push({ k: "bet", s: s, b: s.bet, fixed: false });
+      }
+      let hits = 0;
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          const A = arr[i], B = arr[j];
+          if (!A.b || !B.b || !sePisan(A.b, B.b, 4)) continue;
+          hits++;
+          const ox = Math.min(A.b.right, B.b.right) - Math.max(A.b.left, B.b.left) + 5;
+          const oy = Math.min(A.b.bottom, B.b.bottom) - Math.max(A.b.top, B.b.top) + 5;
+          let px = 0, py = 0;
+          const step = 10;
+          if (ox < oy) px = (A.b.x >= B.b.x ? 1 : -1) * Math.min(ox, step) / 2;
+          else py = (A.b.y >= B.b.y ? 1 : -1) * Math.min(oy, step) / 2;
+          if (A.fixed && !B.fixed) apply(B, -px * 2, -py * 2);
+          else if (B.fixed && !A.fixed) apply(A, px * 2, py * 2);
+          else if (!A.fixed && !B.fixed) {
+            const ma = apply(A, px, py);
+            const mb = apply(B, -px, -py);
+            if (ma + mb < 0.5) {
+              apply(A, px * 2, py * 2);
+              apply(B, -px * 2, -py * 2);
+            }
+          }
+        }
+      }
+      if (!hits) break;
+    }
+  }
+
+  function aplicarLayout(estado) {
+
+    const mesa = $("mesa-oval");
+    if (!mesa || !estado) return;
+    actualizarOrientacionMesa();
+    if (mesa.clientWidth < 40 || mesa.clientHeight < 40) return;
+    const L = calcularLayout(estado, mesa);
+    resolverNombres(L);
+    resolverApuestas(L, estado);
+    resolverPiezas(L);
+
+    const cr = $("crupier");
+    if (cr) {
+      cr.style.left = Math.round(L.dealer.x) + "px";
+      cr.style.top = Math.round(L.dealer.y) + "px";
+      cr.style.width = Math.round(L.m.dealerW) + "px";
+      cr.style.transform = "translate(-50%, -50%)";
+    }
+    const centro = $("centro-mesa");
+    if (centro) {
+      centro.style.left = Math.round(L.centro.x) + "px";
+      centro.style.top = Math.round(L.centro.y) + "px";
+    }
+
+    for (let i = 0; i < L.seats.length; i++) {
+      const S = L.seats[i];
+      const info = document.querySelector('.pieza-info[data-asiento="' + S.i + '"]');
+      const cartas = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"]');
+      const ap = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"]');
+      if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
+      if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
+      if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+    }
+
+    const vasos = $("porta-vasos");
+    if (vasos) {
+      const insetX = L.m.vertical ? 0.10 : 0.055;
+      const insetY = L.m.vertical ? 0.055 : 0.10;
+      const vRx = L.W * (0.5 - insetX);
+      const vRy = L.H * (0.5 - insetY);
+      const els = vasos.querySelectorAll(".porta-vaso");
+      for (let i = 0; i < els.length && i < L.seats.length; i++) {
+        const S = L.seats[i];
+        els[i].style.left = Math.round(L.cx + S.ux * vRx) + "px";
+        els[i].style.top = Math.round(L.cy + S.uy * vRy) + "px";
+        els[i].style.width = L.m.vaso + "px";
+        els[i].style.height = L.m.vaso + "px";
+      }
+    }
+    ajustarDesdeMedidas(L, estado);
+    ui._layout = L;
+  }
+
+  function cajaDesdeEl(el, mesaRect) {
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left - mesaRect.left + r.width / 2,
+      y: r.top - mesaRect.top + r.height / 2,
+      w: r.width,
+      h: r.height,
+      left: r.left - mesaRect.left,
+      right: r.right - mesaRect.left,
+      top: r.top - mesaRect.top,
+      bottom: r.bottom - mesaRect.top
+    };
+  }
+
+  function ajustarDesdeMedidas(L, estado) {
+    const mesa = $("mesa-oval");
+    if (!mesa) return;
+    const mr = mesa.getBoundingClientRect();
+    const cr = $("crupier");
+    const ce = $("centro-mesa");
+    if (cr) {
+      L.dealer = cajaDesdeEl(cr, mr);
+      const minY = L.dealer.h / 2 + 2;
+      if (L.dealer.y < minY || L.dealer.top < 0) {
+        L.dealer = caja(L.dealer.x, minY, L.dealer.w, L.dealer.h);
+        cr.style.top = Math.round(L.dealer.y) + "px";
+      }
+    }
+    if (ce) L.centro = cajaDesdeEl(ce, mr);
+    for (let i = 0; i < L.seats.length; i++) {
+      const S = L.seats[i];
+      const info = document.querySelector('.pieza-info[data-asiento="' + S.i + '"] .info-jugador') ||
+        document.querySelector('.pieza-info[data-asiento="' + S.i + '"]');
+      const cartasInner = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"] .cartas-asiento');
+      const cartas = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"]');
+      const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
+      const ap = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"]');
+      if (info) S.info = cajaDesdeEl(info, mr);
+      if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
+      else if (cartas && cartas.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartas, mr);
+      if (apInner || ap) {
+        const box = cajaDesdeEl(apInner || ap, mr);
+        S.bet = box;
+        S.mBetW = box.w;
+        S.mBetH = box.h;
+      }
+      const rSeat = Math.hypot(S.info.x - L.cx, S.info.y - L.cy);
+      S.rLo = Math.max(24, rSeat - Math.max(S.info.w, S.info.h) / 2 - S.mBetH / 2 - 6);
+      S.rHi = Math.max(
+        16,
+        Math.min(
+          (L.centro.w / 2 + (S.mBetW || L.m.betW) / 2 + 6) / Math.max(0.15, Math.abs(S.ux)),
+          (L.centro.h / 2 + (S.mBetH || L.m.betH) / 2 + 6) / Math.max(0.15, Math.abs(S.uy))
+        )
+      );
+    }
+    resolverApuestas(L, estado);
+    separarTodo(L);
+
+    function escribirL() {
+      if (cr) {
+        cr.style.left = Math.round(L.dealer.x) + "px";
+        cr.style.top = Math.round(L.dealer.y) + "px";
+      }
+      if (ce) {
+        ce.style.left = Math.round(L.centro.x) + "px";
+        ce.style.top = Math.round(L.centro.y) + "px";
+      }
+      for (let i = 0; i < L.seats.length; i++) {
+        const S = L.seats[i];
+        const info = document.querySelector('.pieza-info[data-asiento="' + S.i + '"]');
+        const cartas = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"]');
+        const ap = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"]');
+        if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
+        if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
+        if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+      }
+    }
+    escribirL();
+    // Segunda pasada: medir de nuevo lo que el navegador pintó y separar restos.
+    (function segunda() {
+      if (cr) L.dealer = cajaDesdeEl(cr, mr);
+      if (ce) L.centro = cajaDesdeEl(ce, mr);
+      for (let i = 0; i < L.seats.length; i++) {
+        const S = L.seats[i];
+        const info = document.querySelector('.pieza-info[data-asiento="' + S.i + '"] .info-jugador') ||
+          document.querySelector('.pieza-info[data-asiento="' + S.i + '"]');
+        const cartasInner = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"] .cartas-asiento');
+        const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
+        if (info) S.info = cajaDesdeEl(info, mr);
+        if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
+        if (apInner) { S.bet = cajaDesdeEl(apInner, mr); S.mBetW = S.bet.w; S.mBetH = S.bet.h; }
+      }
+      separarTodo(L);
+      escribirL();
+    })();
+  }
+
+  function pintarPortaVasos(total) {
+    const cajaV = $("porta-vasos");
+    if (!cajaV) return;
     let html = "";
     for (let i = 0; i < total; i++) {
-      const ang = anguloAsiento(i, total, geo.gap);
-      const p = puntoEn(ang, geo.vaso[0], geo.vaso[1], geo.cy);
-      html += '<div class="porta-vaso" style="' + estiloPunto(p) + '"></div>';
+      html += '<div class="porta-vaso" data-asiento="' + i + '"></div>';
     }
-    caja.innerHTML = html;
+    cajaV.innerHTML = html;
+  }
+
+  function medirSolapes() {
+    const items = [];
+    function push(el, name) {
+      if (!el || el.hidden || el.closest("[hidden]")) return;
+      const r = el.getBoundingClientRect();
+      const st = getComputedStyle(el);
+      if (st.display === "none" || r.width < 1 || r.height < 1) return;
+      const asiento = (el.dataset && el.dataset.asiento != null) ? el.dataset.asiento : (el.closest && el.closest("[data-asiento]") && el.closest("[data-asiento]").dataset.asiento);
+      items.push({
+        name: name,
+        id: asiento != null ? name + "-" + asiento : (el.id || name),
+        left: r.left, top: r.top, right: r.right, bottom: r.bottom, w: r.width, h: r.height
+      });
+    }
+    push($("crupier"), "crupier");
+    push($("centro-mesa"), "centro");
+    document.querySelectorAll(".pieza-info").forEach(function (el) {
+      push(el.querySelector(".info-jugador") || el, "info");
+    });
+    document.querySelectorAll(".pieza-cartas").forEach(function (el) {
+      if (el.querySelector(".carta, .carta-dorso")) push(el.querySelector(".cartas-asiento") || el, "cartas");
+    });
+    document.querySelectorAll(".pieza-apuesta").forEach(function (el) {
+      push(el.querySelector(".apuesta-frente") || el, "apuesta");
+    });
+    const panel = $("panel-acciones");
+    if (panel && !panel.hidden) {
+      panel.querySelectorAll("button").forEach(function (el) {
+        if (!el.hidden) push(el, "boton");
+      });
+    }
+    const iw = window.innerWidth, ih = window.innerHeight;
+    const sw = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    const sh = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    const pares = [];
+    const holgura = 0.5;
+    function hit(a, b) {
+      return (Math.min(a.right, b.right) - Math.max(a.left, b.left) > holgura) &&
+        (Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > holgura);
+    }
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        if (hit(items[i], items[j])) pares.push(items[i].id + " ∩ " + items[j].id);
+      }
+    }
+    const fuera = items.filter(function (b) {
+      return b.bottom > ih + 1 || b.top < -1 || b.right > iw + 1 || b.left < -1;
+    }).map(function (b) { return b.id; });
+    return {
+      iw: iw, ih: ih, sw: sw, sh: sh,
+      overflowX: sw > iw + 1,
+      overflowY: sh > ih + 1,
+      overlaps: pares,
+      fuera: fuera,
+      nItems: items.length
+    };
   }
 
   function renderMesa(estado, opciones) {
@@ -464,6 +977,7 @@
     const total = estado.asientosTotales;
     const oval = $("mesa-oval");
     if (oval) oval.classList.toggle("asientos-10", total === 10);
+    document.documentElement.classList.add("en-mesa");
     const ganadores = (estado.resultadoShowdown && estado.resultadoShowdown.ganadores)
       ? estado.resultadoShowdown.ganadores.map(function (g) { return g.id; })
       : [];
@@ -472,29 +986,11 @@
       $("info-ciegas").textContent = "Ciegas " + estado.ciegaPequena + " / " + estado.ciegaGrande;
     }
 
-    const geo = geometriaMesa();
-    pintarPortaVasos(total, geo);
+    pintarPortaVasos(total);
 
-    const caja = $("asientos");
+    const cajaAs = $("asientos");
     let html = "";
     for (let i = 0; i < total; i++) {
-      const ang = anguloAsiento(i, total, geo.gap);
-      let ri = geo.info.slice();
-      let rc = geo.cartas.slice();
-      let ra = geo.apuesta.slice();
-      if (indiceCercanoAlJugador(i, total)) {
-        ri = [Math.min(46, ri[0] + 3.2), ri[1] - 2.2];
-        rc = [rc[0] + 2.4, rc[1] - 1.6];
-        ra = [ra[0] + 1.6, ra[1] - 1.2];
-      }
-      if (i === 0) {
-        ri = [ri[0], Math.min(45.5, ri[1] + 2.6)];
-        rc = [rc[0], rc[1] + 0.4];
-      }
-      const pInfo = puntoEn(ang, ri[0], ri[1], geo.cy);
-      const pCartas = puntoEn(ang, rc[0], rc[1], geo.cy);
-      const pAp = puntoEn(ang, ra[0], ra[1], geo.cy);
-      const zona = zonaDeAngulo(ang, i);
       const j = (estado.jugadores || []).find(function (p) { return p.asiento === i; });
       const esPropio = !!(j && j.id === ui.tuId);
       const esGanador = !!(j && ganadores.indexOf(j.id) !== -1);
@@ -526,22 +1022,17 @@
       }
       htmlInfo += "</div>";
 
-      if (i === 0) {
-        html += '<div class="pieza pieza-propio-grupo ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pInfo) + '">';
-        html += htmlCartas + htmlInfo + "</div>";
-      } else {
-        html += '<div class="pieza pieza-cartas ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pCartas) + '">';
-        html += htmlCartas + "</div>";
-        html += '<div class="pieza pieza-info ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pInfo) + '">';
-        html += htmlInfo + "</div>";
-      }
+      html += '<div class="pieza pieza-cartas ' + clasesExtra + '" data-asiento="' + i + '">';
+      html += htmlCartas + "</div>";
+      html += '<div class="pieza pieza-info ' + clasesExtra + '" data-asiento="' + i + '">';
+      html += htmlInfo + "</div>";
 
       if (j && j.apuestaRonda > 0) {
-        html += '<div class="pieza pieza-apuesta ' + zona + '" data-asiento="' + i + '" style="' + estiloPunto(pAp) + '">';
+        html += '<div class="pieza pieza-apuesta" data-asiento="' + i + '">';
         html += '<div class="apuesta-frente">' + htmlPilaFichas(j.apuestaRonda, true) + "</div></div>";
       }
     }
-    caja.innerHTML = html;
+    cajaAs.innerHTML = html;
 
     const com = $("comunitarias");
     let hcom = "";
@@ -561,9 +1052,10 @@
     }
 
     actualizarPanelAcciones(estado);
+    instalarObservadorMesa();
     requestAnimationFrame(function () {
-      separarSolapes();
-      requestAnimationFrame(separarSolapes);
+      aplicarLayout(estado);
+      requestAnimationFrame(function () { aplicarLayout(estado); });
     });
   }
 
@@ -600,6 +1092,7 @@
       }
       $("texto-subida").textContent = formatearFichas(rango.value);
     }
+    requestAnimationFrame(function () { aplicarLayout(estado); });
   }
 
   function infoFichasPropias(estado) {
@@ -1056,20 +1549,46 @@
     mesa.empezarApuestas();
     const objetivo = opt.fase || "flop";
     let guard = 0;
-    while (guard++ < 220) {
-      if (objetivo === "preflop" && mesa.fase === "preflop") break;
-      if (objetivo === "flop" && mesa.fase === "flop") break;
-      if (objetivo === "turn" && mesa.fase === "turn") break;
-      if (objetivo === "river" && mesa.fase === "river") break;
-      if (objetivo === "showdown" && (mesa.fase === "entre-manos" || mesa.fase === "showdown" || mesa.resultadoShowdown)) break;
-      if (mesa.fase === "entre-manos" && objetivo !== "showdown") break;
-      const id = mesa.turnoId;
-      if (!id) break;
-      const legales = mesa.accionesLegales(id);
-      if (legales.puedePasar) mesa.accion(id, "pasar");
-      else if (legales.puedeIgualar) mesa.accion(id, "igualar");
-      else if (legales.puedeAllIn) mesa.accion(id, "all-in");
-      else mesa.accion(id, "retirarse");
+    if (opt.todasApuestas) {
+      let hechoRaise = false;
+      while (guard++ < 80) {
+        if (mesa.fase !== "preflop") break;
+        const id = mesa.turnoId;
+        if (!id) break;
+        const legales = mesa.accionesLegales(id);
+        if (!hechoRaise && (legales.puedeSubir || legales.puedeApostar)) {
+          const tipo = legales.puedeSubir ? "subir" : "apostar";
+          const cant = Math.min(legales.maxSubida, Math.max(legales.minSubida, (mesa.ciegaGrande || 10) * 4));
+          mesa.accion(id, tipo, cant);
+          hechoRaise = true;
+          continue;
+        }
+        const enMano = mesa.jugadores().filter(function (p) { return p.enMano; });
+        const maxAp = Math.max.apply(null, enMano.map(function (p) { return p.apuestaRonda || 0; }).concat([0]));
+        const falta = enMano.filter(function (p) {
+          return !p.allIn && p.apuestaRonda < maxAp && p.id !== id;
+        });
+        if (hechoRaise && falta.length === 0) break;
+        if (legales.puedeIgualar) mesa.accion(id, "igualar");
+        else if (legales.puedePasar) mesa.accion(id, "pasar");
+        else break;
+      }
+    } else {
+      while (guard++ < 220) {
+        if (objetivo === "preflop" && mesa.fase === "preflop") break;
+        if (objetivo === "flop" && mesa.fase === "flop") break;
+        if (objetivo === "turn" && mesa.fase === "turn") break;
+        if (objetivo === "river" && mesa.fase === "river") break;
+        if (objetivo === "showdown" && (mesa.fase === "entre-manos" || mesa.fase === "showdown" || mesa.resultadoShowdown)) break;
+        if (mesa.fase === "entre-manos" && objetivo !== "showdown") break;
+        const id = mesa.turnoId;
+        if (!id) break;
+        const legales = mesa.accionesLegales(id);
+        if (legales.puedePasar) mesa.accion(id, "pasar");
+        else if (legales.puedeIgualar) mesa.accion(id, "igualar");
+        else if (legales.puedeAllIn) mesa.accion(id, "all-in");
+        else mesa.accion(id, "retirarse");
+      }
     }
     $("info-sala").textContent = "Modo solo · " + n + " asientos";
     $("info-ciegas").textContent = "Ciegas " + mesa.ciegaPequena + " / " + mesa.ciegaGrande;
@@ -1077,6 +1596,10 @@
     $("mensaje-mesa").textContent = mesa.mensaje || (objetivo === "flop" ? "Flop" : "");
     mostrar("pantalla-mesa");
     renderMesa(mesa.estadoPublico(ui.tuId));
+    if (opt.forzarAcciones && $("panel-acciones")) {
+      $("panel-acciones").hidden = false;
+      requestAnimationFrame(function () { aplicarLayout(mesa.estadoPublico(ui.tuId)); });
+    }
     if (objetivo === "showdown") celebrar(mesa.estadoPublico(ui.tuId));
     return mesa;
   }
@@ -1084,7 +1607,9 @@
   window.__RF = {
     montarDemo: montarDemo,
     renderMesa: renderMesa,
-    separarSolapes: separarSolapes,
+    aplicarLayout: aplicarLayout,
+    medirSolapes: medirSolapes,
+    separarSolapes: function () { if (ui.estado) aplicarLayout(ui.estado); },
     formatearFichas: formatearFichas,
     ui: ui
   };

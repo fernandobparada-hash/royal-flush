@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Royal Flush — Texas Hold'em</title>
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ========== MENÚ PRINCIPAL ========== -->
+    <section id="pantalla-menu" class="pantalla">
+      <div class="marco-menu">
+        <p class="etiqueta-casa">Casa de cartas</p>
+        <h1>Royal Flush</h1>
+        <p class="subtitulo">Texas Hold'em · No Limit</p>
+
+        <label class="campo-nombre">
+          Tu nombre
+          <input id="nombre-jugador" type="text" value="Fernando" maxlength="16" autocomplete="nickname">
+        </label>
+
+        <div class="opciones-menu">
+          <button type="button" id="btn-solo" class="btn-grande">
+            <span class="icono-btn" aria-hidden="true">♠</span>
+            <span class="titulo-btn">Jugar solo</span>
+            <span class="desc-btn">Una mesa llena de bots. Tú ocupas un asiento.</span>
+          </button>
+          <button type="button" id="btn-online" class="btn-grande">
+            <span class="icono-btn" aria-hidden="true">♥</span>
+            <span class="titulo-btn">Jugar online</span>
+            <span class="desc-btn">Con amigos en una sala privada, o en una mesa pública.</span>
+          </button>
+        </div>
+        <p class="pie-menu">Ciegas 5 / 10 · 1000 fichas iniciales</p>
+      </div>
+    </section>
+
+    <!-- ========== SUBMENÚ SOLO ========== -->
+    <section id="pantalla-solo" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Jugar solo</h2>
+        <p class="texto">El resto de asientos los ocupan bots con nombre propio. No hacen trampas: no ven tus cartas ni las que todavía no han salido.</p>
+        <fieldset class="selector-asientos">
+          <legend>Tamaño de la mesa</legend>
+          <label><input type="radio" name="asientos-solo" value="9" checked> 9 asientos</label>
+          <label><input type="radio" name="asientos-solo" value="10"> 10 asientos</label>
+        </fieldset>
+        <button type="button" id="btn-empezar-solo" class="principal">Sentarme a la mesa</button>
+        <button type="button" id="btn-volver-solo" class="secundario">Volver</button>
+      </div>
+    </section>
+
+    <!-- ========== SUBMENÚ ONLINE ========== -->
+    <section id="pantalla-online" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Jugar online</h2>
+        <p class="texto">Elige cómo quieres sentarte a una mesa con otras personas.</p>
+
+        <fieldset class="selector-asientos">
+          <legend>Tamaño de la mesa (al crear una sala)</legend>
+          <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
+          <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+        </fieldset>
+
+        <button type="button" id="btn-crear-privada" class="principal">Crear sala privada</button>
+        <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
+
+        <div class="fila-codigo">
+          <input id="input-codigo" type="text" maxlength="5" placeholder="CÓDIGO" spellcheck="false" autocomplete="off">
+          <button type="button" id="btn-unirse-codigo" class="principal">Unirse con código</button>
+        </div>
+
+        <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
+        <p class="ayuda-opcion">Te une a una mesa pública con sitio, o abre una nueva.</p>
+
+        <p id="aviso-online" class="aviso" role="status"></p>
+        <button type="button" id="btn-volver-online" class="secundario">Volver</button>
+      </div>
+    </section>
+
+    <!-- ========== SALA DE ESPERA ========== -->
+    <section id="pantalla-sala" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Sala <span id="codigo-sala" class="codigo"></span></h2>
+        <p id="tipo-sala" class="texto"></p>
+        <ul id="lista-jugadores-sala" class="lista-sala"></ul>
+        <p id="asientos-libres" class="texto"></p>
+        <div class="botones-sala">
+          <button type="button" id="btn-llenar-bots" class="principal" hidden>Llenar asientos vacíos con bots</button>
+          <button type="button" id="btn-iniciar-online" class="principal" hidden>Iniciar partida</button>
+          <button type="button" id="btn-salir-sala" class="secundario">Salir de la sala</button>
+        </div>
+        <p id="aviso-sala" class="aviso" role="status"></p>
+      </div>
+    </section>
+
+    <!-- ========== MESA DE JUEGO ========== -->
+    <section id="pantalla-mesa" hidden>
+      <header class="barra-mesa">
+        <button type="button" id="btn-salir-mesa" class="secundario compacto">Salir</button>
+        <span id="info-sala"></span>
+        <span id="info-ciegas">Ciegas 5 / 10</span>
+      </header>
+
+      <div id="escenario">
+        <div id="mesa-oval">
+          <div id="crupier">
+            <div class="crupier-figura" aria-hidden="true">
+              <svg viewBox="0 0 160 150" role="img" aria-label="El crupier, Don Luis">
+                <!-- hombros y chaqueta -->
+                <ellipse cx="80" cy="148" rx="70" ry="28" fill="#111"/>
+                <path d="M18 150 Q20 110 50 108 L80 118 L110 108 Q140 110 142 150 Z" fill="#1a1a1a"/>
+                <path d="M58 112 L80 150 L102 112 L80 122 Z" fill="#0c0c0c"/>
+                <!-- camisa -->
+                <path d="M70 112 L80 128 L90 112 Z" fill="#f4f0e6"/>
+                <!-- pajarita -->
+                <path d="M68 116 L80 121 L92 116 L80 119 Z" fill="#8b1e2d"/>
+                <circle cx="80" cy="119" r="3" fill="#6b1522"/>
+                <!-- cuello -->
+                <rect x="72" y="98" width="16" height="16" rx="4" fill="#e8c4a0"/>
+                <!-- cabeza -->
+                <ellipse cx="80" cy="72" rx="28" ry="32" fill="#e8c4a0"/>
+                <!-- pelo -->
+                <path d="M52 72 Q50 36 80 34 Q110 36 108 72 Q100 48 80 48 Q60 48 52 72 Z" fill="#2b1b12"/>
+                <!-- orejas -->
+                <ellipse cx="50" cy="76" rx="6" ry="8" fill="#e0b894"/>
+                <ellipse cx="110" cy="76" rx="6" ry="8" fill="#e0b894"/>
+                <!-- cejas -->
+                <path d="M64 66 Q70 62 76 66" fill="none" stroke="#2b1b12" stroke-width="2" stroke-linecap="round"/>
+                <path d="M84 66 Q90 62 96 66" fill="none" stroke="#2b1b12" stroke-width="2" stroke-linecap="round"/>
+                <!-- ojos -->
+                <ellipse cx="70" cy="74" rx="4" ry="4.5" fill="#fff"/>
+                <ellipse cx="90" cy="74" rx="4" ry="4.5" fill="#fff"/>
+                <circle cx="71" cy="75" r="2.2" fill="#2a1c12"/>
+                <circle cx="91" cy="75" r="2.2" fill="#2a1c12"/>
+                <!-- sonrisa -->
+                <path d="M68 88 Q80 96 92 88" fill="none" stroke="#b07058" stroke-width="2" stroke-linecap="round"/>
+                <!-- mazo en la mano -->
+                <g transform="translate(118,108) rotate(18)">
+                  <rect x="0" y="0" width="26" height="36" rx="3" fill="#1b4e89" stroke="#f4d35e" stroke-width="1.5"/>
+                  <rect x="3" y="-3" width="26" height="36" rx="3" fill="#163e6d" stroke="#f4d35e" stroke-width="1"/>
+                </g>
+              </svg>
+            </div>
+            <p class="crupier-nombre">Don Luis</p>
+          </div>
+
+          <div id="centro-mesa">
+            <div id="bote">Bote <strong>0</strong></div>
+            <div id="comunitarias" aria-label="Cartas comunitarias"></div>
+            <p id="etiqueta-calle"></p>
+          </div>
+
+          <div id="asientos"></div>
+          <div id="cartas-volando" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <p id="mensaje-mesa" role="status"></p>
+
+      <div id="panel-acciones" hidden>
+        <button type="button" id="btn-retirarse">Retirarse</button>
+        <button type="button" id="btn-pasar">Pasar</button>
+        <button type="button" id="btn-igualar">Igualar</button>
+        <div class="grupo-subida">
+          <input type="range" id="rango-subida" min="10" max="1000" step="5" value="40">
+          <span id="texto-subida">40</span>
+          <button type="button" id="btn-subir" class="principal compacto">Subir</button>
+          <button type="button" id="btn-allin" class="peligro compacto">All-in</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/evaluador.js"></script>
+  <script src="js/motor.js"></script>
+  <script src="js/bots.js"></script>
+  <script src="js/interfaz.js"></script>
+</body>
+</html>

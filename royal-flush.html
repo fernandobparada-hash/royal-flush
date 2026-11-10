@@ -1,0 +1,2864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Royal Flush — Texas Hold'em</title>
+  <!-- Versión de un solo archivo: se puede abrir con un doble clic. El modo solo funciona sin servidor. -->
+  <style>
+/* =========================================================
+   Estilos de la mesa de Texas Hold'em.
+   Colores de casino: paño verde, madera y detalles dorados.
+   ========================================================= */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --verde-fondo: #052616;
+  --verde-mesa: #0c6b3c;
+  --verde-oscuro: #084e2c;
+  --madera: #6b3e16;
+  --madera-clara: #8a5424;
+  --oro: #f4d35e;
+  --oro-oscuro: #c9a227;
+  --crema: #f7f1e1;
+  --rojo: #c41e3a;
+  --texto: #f4f0e4;
+}
+
+html, body {
+  min-height: 100%;
+  background:
+    radial-gradient(ellipse at top, #0a3d24 0%, var(--verde-fondo) 70%);
+  color: var(--texto);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+body { min-height: 100vh; }
+
+/* El atributo hidden debe ganar a display:flex de las pantallas */
+[hidden] { display: none !important; }
+
+.pantalla {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.marco-menu {
+  width: min(720px, 100%);
+  background: linear-gradient(180deg, #0d5a32, #083f23);
+  border: 4px solid var(--oro-oscuro);
+  border-radius: 24px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.45), inset 0 0 80px rgba(0,0,0,0.2);
+  padding: 36px 40px 28px;
+  text-align: center;
+}
+
+.marco-menu.estrecho { width: min(520px, 100%); }
+
+.etiqueta-casa {
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #d7ecc8;
+  margin-bottom: 6px;
+}
+
+h1, h2 {
+  color: var(--oro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 0 #5a4308, 0 4px 12px rgba(0,0,0,0.4);
+}
+
+h1 { font-size: clamp(2.2rem, 6.5vw, 3.4rem); letter-spacing: 0.12em; }
+h2 { font-size: 1.8rem; margin-bottom: 12px; }
+
+.subtitulo {
+  margin: 6px 0 28px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: #d7ecc8;
+}
+
+.campo-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d7ecc8;
+  margin-bottom: 24px;
+}
+
+.campo-nombre input,
+#input-codigo {
+  font-family: inherit;
+  font-size: 1.15rem;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--oro-oscuro);
+  background: #f7f1e1;
+  color: #1c2a16;
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+
+#input-codigo {
+  width: 130px;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+}
+
+.opciones-menu {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.btn-grande {
+  font-family: inherit;
+  background: rgba(0,0,0,0.25);
+  border: 2px solid var(--oro-oscuro);
+  border-radius: 16px;
+  color: var(--crema);
+  padding: 22px 16px 18px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn-grande:hover {
+  background: rgba(244, 211, 94, 0.14);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.3);
+}
+
+.icono-btn {
+  display: block;
+  font-size: 2rem;
+  color: var(--oro);
+  margin-bottom: 6px;
+}
+
+.titulo-btn {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--oro);
+  margin-bottom: 6px;
+}
+
+.desc-btn {
+  display: block;
+  font-size: 0.88rem;
+  color: #d7ecc8;
+  line-height: 1.35;
+}
+
+.pie-menu { margin-top: 22px; color: #cfe8c4; font-size: 0.9rem; }
+
+.texto, .ayuda-opcion { color: #d7ecc8; line-height: 1.45; margin: 8px 0 14px; }
+.ayuda-opcion { font-size: 0.85rem; }
+
+.selector-asientos {
+  border: 1px solid rgba(244,211,94,0.35);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 16px 0;
+  color: #d7ecc8;
+}
+
+.selector-asientos legend { padding: 0 8px; color: var(--oro); }
+.selector-asientos label { margin: 0 12px; cursor: pointer; }
+
+.fila-codigo {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 18px;
+}
+
+button.principal, button.secundario, button.peligro,
+#panel-acciones button {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  cursor: pointer;
+  margin: 6px 4px;
+}
+
+button.principal {
+  background: var(--oro);
+  color: #3b2d00;
+  box-shadow: 0 3px 0 #8a7d55;
+}
+
+button.secundario {
+  background: #e8e0c8;
+  color: #1c2a16;
+  box-shadow: 0 3px 0 #8a7d55;
+}
+
+button.peligro { background: #c41e3a; color: #fff; box-shadow: 0 3px 0 #7a1020; }
+
+button.compacto { padding: 8px 12px; font-size: 0.92rem; }
+
+button:hover:not(:disabled) { filter: brightness(1.07); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.aviso {
+  min-height: 1.4em;
+  color: #ffd0d0;
+  margin: 10px 0;
+}
+
+.codigo {
+  display: inline-block;
+  margin-left: 8px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--oro);
+  border-radius: 8px;
+  padding: 2px 10px;
+  letter-spacing: 0.25em;
+}
+
+.lista-sala {
+  list-style: none;
+  text-align: left;
+  margin: 12px auto;
+  width: min(360px, 100%);
+}
+
+.lista-sala li {
+  background: rgba(0,0,0,0.25);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.lista-sala li .papel { color: var(--oro); font-size: 0.8rem; margin-left: 8px; }
+
+/* ========== MESA ========== */
+#pantalla-mesa {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 8px 16px;
+}
+
+.barra-mesa {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 12px;
+  color: #d7ecc8;
+  font-size: 0.9rem;
+}
+
+#escenario {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  flex: 1;
+}
+
+#mesa-oval {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 420px;
+  background:
+    radial-gradient(ellipse at center, #149354 0%, var(--verde-mesa) 55%, var(--verde-oscuro) 100%);
+  border: 14px solid var(--madera);
+  outline: 4px solid var(--oro-oscuro);
+  border-radius: 50% / 50%;
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.45),
+    inset 0 0 80px rgba(0,0,0,0.25),
+    inset 0 0 0 8px var(--madera-clara);
+}
+
+/* Crupier en la parte superior central de la mesa */
+#crupier {
+  position: absolute;
+  top: -8%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  z-index: 6;
+  text-align: center;
+  pointer-events: none;
+}
+
+.crupier-figura svg { width: 140px; height: auto; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.45)); }
+
+.crupier-nombre {
+  margin-top: -8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--oro);
+  text-shadow: 0 1px 2px #000;
+}
+
+#centro-mesa {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 3;
+  min-width: 420px;
+}
+
+#bote {
+  display: inline-block;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid var(--oro-oscuro);
+  border-radius: 999px;
+  padding: 6px 18px;
+  color: var(--oro);
+  font-size: 1.05rem;
+  margin-bottom: 10px;
+}
+
+#comunitarias {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  min-height: 104px;
+}
+
+#etiqueta-calle {
+  margin-top: 6px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #d7ecc8;
+  min-height: 1em;
+}
+
+.hueco-carta {
+  width: 70px;
+  height: 100px;
+  border-radius: 8px;
+  border: 2px dashed rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.12);
+}
+
+#asientos { position: absolute; inset: 0; z-index: 4; }
+
+.asiento {
+  position: absolute;
+  width: 150px;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.asiento.es-turno .info-jugador {
+  box-shadow: 0 0 0 3px var(--oro), 0 6px 16px rgba(0,0,0,0.4);
+}
+
+.asiento.retirado { opacity: 0.55; }
+.asiento.retirado .cartas-asiento { filter: grayscale(0.6); }
+
+.cartas-asiento {
+  display: flex;
+  justify-content: center;
+  height: 78px;
+  margin-bottom: 4px;
+}
+
+.cartas-asiento .carta,
+.cartas-asiento .carta-dorso {
+  width: 52px;
+  height: 74px;
+  margin: 0 -6px;
+}
+
+.info-jugador {
+  background: rgba(0,0,0,0.55);
+  border-radius: 12px;
+  padding: 6px 8px 7px;
+  border: 1px solid rgba(244,211,94,0.35);
+  position: relative;
+}
+
+.nombre-jugador {
+  font-weight: 700;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fichas-jugador { color: var(--oro); font-size: 0.85rem; }
+
+.apuesta-frente {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7a1f2b;
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 28px;
+}
+
+.asiento.abajo .apuesta-frente { top: -12px; }
+.asiento.arriba .apuesta-frente { bottom: -12px; }
+.asiento.lado .apuesta-frente { top: -12px; }
+
+.insignias {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  display: flex;
+  gap: 3px;
+}
+
+.insignia {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1c1000;
+  background: var(--oro);
+  border: 1px solid #5a4308;
+}
+
+.insignia.sb, .insignia.bb { background: #e8e0c8; font-size: 0.55rem; }
+
+.estado-jugador {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffd0d0;
+  min-height: 0.9em;
+}
+
+/* Cartas (privadas, comunitarias y volando) */
+.carta, .carta-dorso {
+  position: relative;
+  width: 70px;
+  height: 100px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  background: #fffaf0;
+  color: #1a1a1a;
+  flex-shrink: 0;
+}
+
+.carta.roja { color: var(--rojo); }
+
+.carta .esquina {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.carta .esquina .rango { font-size: 0.85rem; }
+.carta .esquina .mini-palo { font-size: 0.7rem; }
+.carta .esquina.arriba { top: 4px; left: 5px; }
+.carta .esquina.abajo { bottom: 4px; right: 5px; transform: rotate(180deg); }
+.carta .palo-centro {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.8rem;
+}
+
+.carta-dorso, .carta.dorso {
+  background:
+    repeating-linear-gradient(45deg, #1b4e89, #1b4e89 6px, #163e6d 6px, #163e6d 12px);
+  border: 2px solid #f4d35e;
+}
+
+.carta.ganadora { box-shadow: 0 0 0 3px var(--oro), 0 4px 14px rgba(0,0,0,0.5); }
+
+#cartas-volando { position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: visible; }
+
+.carta-voladora {
+  position: absolute;
+  width: 52px;
+  height: 74px;
+  margin: 0;
+  transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.45s ease;
+  transform: rotate(-18deg);
+  z-index: 21;
+}
+
+.carta-voladora.al-centro {
+  width: 70px;
+  height: 100px;
+}
+
+#mensaje-mesa {
+  text-align: center;
+  min-height: 2em;
+  padding: 8px 12px 4px;
+  font-size: 1.1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+#mensaje-mesa.premio { color: var(--oro); font-weight: 700; }
+
+#panel-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0,0,0,0.35);
+  border-radius: 14px;
+  margin: 0 auto;
+  width: min(920px, 100%);
+}
+
+#panel-acciones[hidden] { display: none !important; }
+
+#panel-acciones button {
+  background: #e8e0c8;
+  color: #1c2a16;
+  box-shadow: 0 3px 0 #8a7d55;
+}
+
+#btn-retirarse { background: #8a3040; color: #fff; box-shadow: 0 3px 0 #4a1520; }
+#btn-subir, #btn-pasar, #btn-igualar { background: var(--oro); color: #3b2d00; }
+
+.grupo-subida {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 4px 8px;
+}
+
+#rango-subida { width: 140px; }
+#texto-subida { min-width: 48px; color: var(--oro); font-weight: 700; }
+
+@media (max-width: 800px) {
+  .opciones-menu { grid-template-columns: 1fr; }
+  #mesa-oval { aspect-ratio: 4 / 4; border-width: 10px; }
+  .asiento { width: 118px; }
+  .cartas-asiento .carta, .cartas-asiento .carta-dorso { width: 42px; height: 60px; }
+  .hueco-carta, #comunitarias .carta, #comunitarias .carta-dorso { width: 52px; height: 74px; }
+  #centro-mesa { min-width: 280px; }
+  #crupier { width: 110px; top: -6%; }
+  .crupier-figura svg { width: 100px; }
+}
+
+@media (max-width: 700px) {
+  .marco-menu { padding: 24px 18px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ========== MENÚ PRINCIPAL ========== -->
+    <section id="pantalla-menu" class="pantalla">
+      <div class="marco-menu">
+        <p class="etiqueta-casa">Casa de cartas</p>
+        <h1>Royal Flush</h1>
+        <p class="subtitulo">Texas Hold'em · No Limit</p>
+
+        <label class="campo-nombre">
+          Tu nombre
+          <input id="nombre-jugador" type="text" value="Fernando" maxlength="16" autocomplete="nickname">
+        </label>
+
+        <div class="opciones-menu">
+          <button type="button" id="btn-solo" class="btn-grande">
+            <span class="icono-btn" aria-hidden="true">♠</span>
+            <span class="titulo-btn">Jugar solo</span>
+            <span class="desc-btn">Una mesa llena de bots. Tú ocupas un asiento.</span>
+          </button>
+          <button type="button" id="btn-online" class="btn-grande">
+            <span class="icono-btn" aria-hidden="true">♥</span>
+            <span class="titulo-btn">Jugar online</span>
+            <span class="desc-btn">Con amigos en una sala privada, o en una mesa pública.</span>
+          </button>
+        </div>
+        <p class="pie-menu">Ciegas 5 / 10 · 1000 fichas iniciales</p>
+      </div>
+    </section>
+
+    <!-- ========== SUBMENÚ SOLO ========== -->
+    <section id="pantalla-solo" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Jugar solo</h2>
+        <p class="texto">El resto de asientos los ocupan bots con nombre propio. No hacen trampas: no ven tus cartas ni las que todavía no han salido.</p>
+        <fieldset class="selector-asientos">
+          <legend>Tamaño de la mesa</legend>
+          <label><input type="radio" name="asientos-solo" value="9" checked> 9 asientos</label>
+          <label><input type="radio" name="asientos-solo" value="10"> 10 asientos</label>
+        </fieldset>
+        <button type="button" id="btn-empezar-solo" class="principal">Sentarme a la mesa</button>
+        <button type="button" id="btn-volver-solo" class="secundario">Volver</button>
+      </div>
+    </section>
+
+    <!-- ========== AVISO ONLINE (versión de un solo archivo) ========== -->
+    <section id="pantalla-online" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Jugar online</h2>
+        <p class="texto">Todavía no se puede jugar online con este archivo, y no hace falta instalar ni arrancar nada para usarlo.</p>
+        <p class="texto">Cuando Royal Flush se publique en internet, podrás sentarte a una mesa con amigos o con gente nueva, en una sala privada o en una sala pública. Mientras tanto, vuelve atrás y elige <strong>Jugar solo</strong>: la mesa se llena de bots y puedes practicar con un doble clic.</p>
+        <p id="aviso-online" class="aviso" role="status"></p>
+        <button type="button" id="btn-volver-online" class="secundario">Volver</button>
+      </div>
+    </section>
+
+    <!-- ========== SALA DE ESPERA ========== -->
+    <section id="pantalla-sala" class="pantalla" hidden>
+      <div class="marco-menu estrecho">
+        <h2>Sala <span id="codigo-sala" class="codigo"></span></h2>
+        <p id="tipo-sala" class="texto"></p>
+        <ul id="lista-jugadores-sala" class="lista-sala"></ul>
+        <p id="asientos-libres" class="texto"></p>
+        <div class="botones-sala">
+          <button type="button" id="btn-llenar-bots" class="principal" hidden>Llenar asientos vacíos con bots</button>
+          <button type="button" id="btn-iniciar-online" class="principal" hidden>Iniciar partida</button>
+          <button type="button" id="btn-salir-sala" class="secundario">Salir de la sala</button>
+        </div>
+        <p id="aviso-sala" class="aviso" role="status"></p>
+      </div>
+    </section>
+
+    <!-- ========== MESA DE JUEGO ========== -->
+    <section id="pantalla-mesa" hidden>
+      <header class="barra-mesa">
+        <button type="button" id="btn-salir-mesa" class="secundario compacto">Salir</button>
+        <span id="info-sala"></span>
+        <span id="info-ciegas">Ciegas 5 / 10</span>
+      </header>
+
+      <div id="escenario">
+        <div id="mesa-oval">
+          <div id="crupier">
+            <div class="crupier-figura" aria-hidden="true">
+              <svg viewBox="0 0 160 150" role="img" aria-label="El crupier, Don Luis">
+                <!-- hombros y chaqueta -->
+                <ellipse cx="80" cy="148" rx="70" ry="28" fill="#111"/>
+                <path d="M18 150 Q20 110 50 108 L80 118 L110 108 Q140 110 142 150 Z" fill="#1a1a1a"/>
+                <path d="M58 112 L80 150 L102 112 L80 122 Z" fill="#0c0c0c"/>
+                <!-- camisa -->
+                <path d="M70 112 L80 128 L90 112 Z" fill="#f4f0e6"/>
+                <!-- pajarita -->
+                <path d="M68 116 L80 121 L92 116 L80 119 Z" fill="#8b1e2d"/>
+                <circle cx="80" cy="119" r="3" fill="#6b1522"/>
+                <!-- cuello -->
+                <rect x="72" y="98" width="16" height="16" rx="4" fill="#e8c4a0"/>
+                <!-- cabeza -->
+                <ellipse cx="80" cy="72" rx="28" ry="32" fill="#e8c4a0"/>
+                <!-- pelo -->
+                <path d="M52 72 Q50 36 80 34 Q110 36 108 72 Q100 48 80 48 Q60 48 52 72 Z" fill="#2b1b12"/>
+                <!-- orejas -->
+                <ellipse cx="50" cy="76" rx="6" ry="8" fill="#e0b894"/>
+                <ellipse cx="110" cy="76" rx="6" ry="8" fill="#e0b894"/>
+                <!-- cejas -->
+                <path d="M64 66 Q70 62 76 66" fill="none" stroke="#2b1b12" stroke-width="2" stroke-linecap="round"/>
+                <path d="M84 66 Q90 62 96 66" fill="none" stroke="#2b1b12" stroke-width="2" stroke-linecap="round"/>
+                <!-- ojos -->
+                <ellipse cx="70" cy="74" rx="4" ry="4.5" fill="#fff"/>
+                <ellipse cx="90" cy="74" rx="4" ry="4.5" fill="#fff"/>
+                <circle cx="71" cy="75" r="2.2" fill="#2a1c12"/>
+                <circle cx="91" cy="75" r="2.2" fill="#2a1c12"/>
+                <!-- sonrisa -->
+                <path d="M68 88 Q80 96 92 88" fill="none" stroke="#b07058" stroke-width="2" stroke-linecap="round"/>
+                <!-- mazo en la mano -->
+                <g transform="translate(118,108) rotate(18)">
+                  <rect x="0" y="0" width="26" height="36" rx="3" fill="#1b4e89" stroke="#f4d35e" stroke-width="1.5"/>
+                  <rect x="3" y="-3" width="26" height="36" rx="3" fill="#163e6d" stroke="#f4d35e" stroke-width="1"/>
+                </g>
+              </svg>
+            </div>
+            <p class="crupier-nombre">Don Luis</p>
+          </div>
+
+          <div id="centro-mesa">
+            <div id="bote">Bote <strong>0</strong></div>
+            <div id="comunitarias" aria-label="Cartas comunitarias"></div>
+            <p id="etiqueta-calle"></p>
+          </div>
+
+          <div id="asientos"></div>
+          <div id="cartas-volando" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <p id="mensaje-mesa" role="status"></p>
+
+      <div id="panel-acciones" hidden>
+        <button type="button" id="btn-retirarse">Retirarse</button>
+        <button type="button" id="btn-pasar">Pasar</button>
+        <button type="button" id="btn-igualar">Igualar</button>
+        <div class="grupo-subida">
+          <input type="range" id="rango-subida" min="10" max="1000" step="5" value="40">
+          <span id="texto-subida">40</span>
+          <button type="button" id="btn-subir" class="principal compacto">Subir</button>
+          <button type="button" id="btn-allin" class="peligro compacto">All-in</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+/* =========================================================
+   EVALUADOR DE MANOS — Texas Hold'em
+   ---------------------------------------------------------
+   En el Hold'em cada jugador tiene 2 cartas privadas y
+   comparte 5 cartas comunitarias (7 en total). Gana quien
+   forme la MEJOR mano de 5 cartas con esas 7.
+
+   Este archivo:
+   - Crea y baraja el mazo de 52 cartas
+   - Puntúa una mano de 5 cartas
+   - Elige la mejor combinación de 5 entre 5, 6 o 7 cartas
+   - Compara dos manos para decidir un ganador (o un empate)
+
+   Funciona en el navegador y también en Node.js (pruebas
+   y servidor), sin librerías externas.
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  const PALOS = [
+    { simbolo: "♠", color: "negra", nombre: "picas" },
+    { simbolo: "♥", color: "roja", nombre: "corazones" },
+    { simbolo: "♦", color: "roja", nombre: "diamantes" },
+    { simbolo: "♣", color: "negra", nombre: "tréboles" }
+  ];
+
+  const VALORES = [
+    { numero: 2, texto: "2" },
+    { numero: 3, texto: "3" },
+    { numero: 4, texto: "4" },
+    { numero: 5, texto: "5" },
+    { numero: 6, texto: "6" },
+    { numero: 7, texto: "7" },
+    { numero: 8, texto: "8" },
+    { numero: 9, texto: "9" },
+    { numero: 10, texto: "10" },
+    { numero: 11, texto: "J" },
+    { numero: 12, texto: "Q" },
+    { numero: 13, texto: "K" },
+    { numero: 14, texto: "A" }
+  ];
+
+  // De menor a mayor. El número se usa para comparar manos.
+  const CATEGORIAS = {
+    CARTA_ALTA: 0,
+    PAR: 1,
+    DOBLE_PAR: 2,
+    TRIO: 3,
+    ESCALERA: 4,
+    COLOR: 5,
+    FULL: 6,
+    POKER: 7,
+    ESCALERA_COLOR: 8,
+    ESCALERA_REAL: 9
+  };
+
+  const NOMBRES_CATEGORIA = {
+    0: "Carta alta",
+    1: "Par",
+    2: "Doble par",
+    3: "Trío",
+    4: "Escalera",
+    5: "Color",
+    6: "Full",
+    7: "Póker",
+    8: "Escalera de color",
+    9: "Escalera real"
+  };
+
+  function crearMazo() {
+    const mazo = [];
+    for (let i = 0; i < PALOS.length; i++) {
+      for (let j = 0; j < VALORES.length; j++) {
+        mazo.push({
+          numero: VALORES[j].numero,
+          texto: VALORES[j].texto,
+          palo: PALOS[i].simbolo,
+          color: PALOS[i].color,
+          nombrePalo: PALOS[i].nombre
+        });
+      }
+    }
+    return mazo;
+  }
+
+  /** Baraja una copia del mazo (algoritmo de Fisher-Yates). */
+  function barajar(mazo, aleatorio) {
+    const rnd = aleatorio || Math.random;
+    const mezclado = mazo.slice();
+    for (let i = mezclado.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      const tmp = mezclado[i];
+      mezclado[i] = mezclado[j];
+      mezclado[j] = tmp;
+    }
+    return mezclado;
+  }
+
+  function numerosOrdenados(cartas) {
+    const nums = [];
+    for (let i = 0; i < cartas.length; i++) nums.push(cartas[i].numero);
+    nums.sort(function (a, b) { return b - a; });
+    return nums;
+  }
+
+  function contarValores(cartas) {
+    const conteo = {};
+    for (let i = 0; i < cartas.length; i++) {
+      const n = cartas[i].numero;
+      conteo[n] = (conteo[n] || 0) + 1;
+    }
+    return conteo;
+  }
+
+  function esMismoPalo(cartas) {
+    const palo = cartas[0].palo;
+    for (let i = 1; i < cartas.length; i++) {
+      if (cartas[i].palo !== palo) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Devuelve la carta más alta de la escalera, o 0 si no lo es.
+   * La escalera A-2-3-4-5 cuenta como 5 (el As es bajo).
+   * K-A-2-3-4 NO es escalera.
+   */
+  function altoDeEscalera(cartas) {
+    const unicos = [];
+    const visto = {};
+    for (let i = 0; i < cartas.length; i++) {
+      const n = cartas[i].numero;
+      if (!visto[n]) {
+        visto[n] = true;
+        unicos.push(n);
+      }
+    }
+    if (unicos.length !== 5) return 0;
+    unicos.sort(function (a, b) { return a - b; });
+
+    if (unicos[4] - unicos[0] === 4) return unicos[4];
+
+    // Rueda: 2, 3, 4, 5, 14 (As)
+    if (
+      unicos[0] === 2 &&
+      unicos[1] === 3 &&
+      unicos[2] === 4 &&
+      unicos[3] === 5 &&
+      unicos[4] === 14
+    ) {
+      return 5;
+    }
+    return 0;
+  }
+
+  /**
+   * Puntúa exactamente 5 cartas.
+   * "clave" es un array que sirve para desempatar:
+   * primero la categoría y luego los valores en orden de importancia.
+   */
+  function puntuarCinco(cartas) {
+    if (!cartas || cartas.length !== 5) {
+      throw new Error("puntuarCinco necesita exactamente 5 cartas.");
+    }
+
+    const conteo = contarValores(cartas);
+    const grupos = [];
+    for (const numTexto in conteo) {
+      grupos.push({ numero: Number(numTexto), cantidad: conteo[numTexto] });
+    }
+    // Primero los grupos más grandes; si empatan, el valor más alto
+    grupos.sort(function (a, b) {
+      if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
+      return b.numero - a.numero;
+    });
+
+    const color = esMismoPalo(cartas);
+    const altoEsc = altoDeEscalera(cartas);
+    const escalera = altoEsc > 0;
+
+    let categoria;
+    let desempate;
+
+    if (color && escalera && altoEsc === 14) {
+      categoria = CATEGORIAS.ESCALERA_REAL;
+      desempate = [14];
+    } else if (color && escalera) {
+      categoria = CATEGORIAS.ESCALERA_COLOR;
+      desempate = [altoEsc];
+    } else if (grupos[0].cantidad === 4) {
+      categoria = CATEGORIAS.POKER;
+      desempate = [grupos[0].numero, grupos[1].numero];
+    } else if (grupos[0].cantidad === 3 && grupos[1] && grupos[1].cantidad === 2) {
+      categoria = CATEGORIAS.FULL;
+      desempate = [grupos[0].numero, grupos[1].numero];
+    } else if (color) {
+      categoria = CATEGORIAS.COLOR;
+      desempate = numerosOrdenados(cartas);
+    } else if (escalera) {
+      categoria = CATEGORIAS.ESCALERA;
+      desempate = [altoEsc];
+    } else if (grupos[0].cantidad === 3) {
+      categoria = CATEGORIAS.TRIO;
+      desempate = [grupos[0].numero, grupos[1].numero, grupos[2].numero];
+    } else if (grupos[0].cantidad === 2 && grupos[1] && grupos[1].cantidad === 2) {
+      categoria = CATEGORIAS.DOBLE_PAR;
+      // grupos ya tiene el par más alto primero (mismo tamaño, mayor valor)
+      desempate = [grupos[0].numero, grupos[1].numero, grupos[2].numero];
+    } else if (grupos[0].cantidad === 2) {
+      categoria = CATEGORIAS.PAR;
+      desempate = [grupos[0].numero];
+      for (let i = 1; i < grupos.length; i++) desempate.push(grupos[i].numero);
+    } else {
+      categoria = CATEGORIAS.CARTA_ALTA;
+      desempate = numerosOrdenados(cartas);
+    }
+
+    return {
+      categoria: categoria,
+      nombre: NOMBRES_CATEGORIA[categoria],
+      desempate: desempate,
+      cartas: cartas.slice()
+    };
+  }
+
+  /** Compara dos resultados de puntuarCinco. >0 gana A, <0 gana B, 0 empate. */
+  function compararPuntuaciones(a, b) {
+    if (a.categoria !== b.categoria) return a.categoria - b.categoria;
+    const n = Math.max(a.desempate.length, b.desempate.length);
+    for (let i = 0; i < n; i++) {
+      const va = a.desempate[i] || 0;
+      const vb = b.desempate[i] || 0;
+      if (va !== vb) return va - vb;
+    }
+    return 0;
+  }
+
+  /** Todas las formas de elegir k elementos de un array (sin repetir). */
+  function combinaciones(arr, k) {
+    const out = [];
+    function rec(inicio, combo) {
+      if (combo.length === k) {
+        out.push(combo.slice());
+        return;
+      }
+      for (let i = inicio; i <= arr.length - (k - combo.length); i++) {
+        combo.push(arr[i]);
+        rec(i + 1, combo);
+        combo.pop();
+      }
+    }
+    rec(0, []);
+    return out;
+  }
+
+  /**
+   * Mejor mano de 5 cartas posible usando 5, 6 o 7 cartas.
+   * En Hold'em se llama con las 2 privadas + las comunitarias.
+   */
+  function mejorMano(cartas) {
+    if (!cartas || cartas.length < 5) {
+      throw new Error("Se necesitan al menos 5 cartas para evaluar la mano.");
+    }
+    if (cartas.length === 5) return puntuarCinco(cartas);
+
+    const combos = combinaciones(cartas, 5);
+    let mejor = puntuarCinco(combos[0]);
+    for (let i = 1; i < combos.length; i++) {
+      const actual = puntuarCinco(combos[i]);
+      if (compararPuntuaciones(actual, mejor) > 0) mejor = actual;
+    }
+    return mejor;
+  }
+
+  /** Nombre más descriptivo: "Par de ases", "Full de reyes y doses", etc. */
+  function describirMano(resultado) {
+    if (!resultado) return "Sin mano";
+    const d = resultado.desempate;
+    const t = textoDeNumero;
+
+    switch (resultado.categoria) {
+      case CATEGORIAS.ESCALERA_REAL:
+        return "Escalera real";
+      case CATEGORIAS.ESCALERA_COLOR:
+        return "Escalera de color al " + t(d[0]);
+      case CATEGORIAS.POKER:
+        return "Póker de " + t(d[0], true);
+      case CATEGORIAS.FULL:
+        return "Full de " + t(d[0], true) + " y " + t(d[1], true);
+      case CATEGORIAS.COLOR:
+        return "Color al " + t(d[0]);
+      case CATEGORIAS.ESCALERA:
+        return "Escalera al " + t(d[0]);
+      case CATEGORIAS.TRIO:
+        return "Trío de " + t(d[0], true);
+      case CATEGORIAS.DOBLE_PAR:
+        return "Doble par de " + t(d[0], true) + " y " + t(d[1], true);
+      case CATEGORIAS.PAR:
+        return "Par de " + t(d[0], true);
+      default:
+        return "Carta alta: " + t(d[0]);
+    }
+  }
+
+  function textoDeNumero(n, plural) {
+    const mapa = {
+      14: plural ? "ases" : "as",
+      13: plural ? "reyes" : "rey",
+      12: plural ? "reinas" : "reina",
+      11: plural ? "jotas" : "jota",
+      10: plural ? "dieces" : "diez"
+    };
+    if (mapa[n]) return mapa[n];
+    return String(n);
+  }
+
+  /**
+   * Detecta posibles proyectadas (draws) con 5 o 6 cartas:
+   * color (4 del mismo palo) o escalera abierta / gutshot.
+   * Sirve para que los bots tomen decisiones más razonables.
+   */
+  function detectarProyectadas(cartas) {
+    const info = { color: false, escaleraAbierta: false, gutshot: false, palos: {}, outs: 0 };
+    if (!cartas || cartas.length < 5) return info;
+
+    const porPalo = {};
+    for (let i = 0; i < cartas.length; i++) {
+      const p = cartas[i].palo;
+      porPalo[p] = (porPalo[p] || 0) + 1;
+    }
+    info.palos = porPalo;
+    for (const p in porPalo) {
+      if (porPalo[p] === 4) info.color = true;
+    }
+
+    const unicos = [];
+    const visto = {};
+    for (let i = 0; i < cartas.length; i++) {
+      if (!visto[cartas[i].numero]) {
+        visto[cartas[i].numero] = true;
+        unicos.push(cartas[i].numero);
+      }
+    }
+    unicos.sort(function (a, b) { return a - b; });
+
+    // El As también cuenta como 1 para la rueda
+    if (visto[14] && !visto[1]) unicos.unshift(1);
+
+    // Buscamos 4 valores en una ventana de 5 (abierta o gutshot)
+    for (let alto = 5; alto <= 14; alto++) {
+      const bajo = alto - 4;
+      let dentro = 0;
+      for (let v = bajo; v <= alto; v++) {
+        const real = v === 1 ? 1 : v;
+        if (visto[real] || (real === 1 && visto[14])) dentro += 1;
+      }
+      if (dentro === 4) {
+        // Si faltan los extremos (o uno de ellos es hueco interior)
+        const faltaBajo = !(visto[bajo] || (bajo === 1 && visto[14]));
+        const faltaAlto = !visto[alto];
+        if (faltaBajo || faltaAlto) {
+          // Si el hueco está en un extremo y el otro extremo está, es abierta
+          // (excepto A-alta / rueda, que nunca es realmente abierta por los dos lados)
+          if ((faltaBajo && !faltaAlto) || (!faltaBajo && faltaAlto)) {
+            if (alto !== 14 && bajo !== 1) info.escaleraAbierta = true;
+            else info.gutshot = true;
+          } else {
+            info.gutshot = true;
+          }
+        }
+      }
+    }
+
+    if (info.color) info.outs += 9;
+    if (info.escaleraAbierta) info.outs += 8;
+    else if (info.gutshot) info.outs += 4;
+    return info;
+  }
+
+  const api = {
+    PALOS: PALOS,
+    VALORES: VALORES,
+    CATEGORIAS: CATEGORIAS,
+    NOMBRES_CATEGORIA: NOMBRES_CATEGORIA,
+    crearMazo: crearMazo,
+    barajar: barajar,
+    puntuarCinco: puntuarCinco,
+    compararPuntuaciones: compararPuntuaciones,
+    mejorMano: mejorMano,
+    describirMano: describirMano,
+    detectarProyectadas: detectarProyectadas,
+    combinaciones: combinaciones,
+    textoDeNumero: textoDeNumero
+  };
+
+  raiz.PokerEvaluador = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
+   MOTOR DEL JUEGO — Texas Hold'em No Limit
+   ---------------------------------------------------------
+   Aquí vive la "verdad" de la partida: quién tiene qué
+   cartas, de quién es el turno, cuánto hay en el bote y
+   quién gana. El servidor usa este mismo motor para el
+   modo en línea (así nadie puede hacer trampas desde el
+   navegador). El modo solo también lo usa, pero en tu
+   propia computadora.
+
+   Fases de una mano:
+     ciegas → 2 cartas a cada uno → apuestas (preflop)
+     → flop (3 cartas) → apuestas
+     → turn (1 carta) → apuestas
+     → river (1 carta) → apuestas
+     → showdown (se muestran las cartas y se reparte el bote)
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  const Ev = (typeof module !== "undefined" && typeof document === "undefined")
+    ? require("./evaluador.js")
+    : raiz.PokerEvaluador;
+
+  const FICHAS_INICIALES = 1000;
+  const CIEGA_PEQUENA = 5;
+  const CIEGA_GRANDE = 10;
+
+  function crearJugador(datos) {
+    return {
+      id: datos.id,
+      nombre: datos.nombre,
+      tipo: datos.tipo || "humano",
+      asiento: datos.asiento,
+      fichas: datos.fichas != null ? datos.fichas : FICHAS_INICIALES,
+      cartas: [],
+      retirado: false,
+      allIn: false,
+      apuestaRonda: 0,
+      aportado: 0,
+      enMano: false,
+      reveladas: false,
+      sentado: true,
+      conectado: true,
+      ultimaAccion: null
+    };
+  }
+
+  /**
+   * Recorre los asientos en el sentido de las agujas del reloj
+   * (en la mesa, hacia la izquierda del crupier) y devuelve el
+   * primero que cumple la condición.
+   */
+  function Mesa(opciones) {
+    opciones = opciones || {};
+    this.asientosTotales = opciones.asientos || 9;
+    this.fichasIniciales = opciones.fichasIniciales || FICHAS_INICIALES;
+    this.ciegaPequena = opciones.ciegaPequena || CIEGA_PEQUENA;
+    this.ciegaGrande = opciones.ciegaGrande || CIEGA_GRANDE;
+    this.porAsiento = new Array(this.asientosTotales).fill(null);
+    this.fase = "esperando";
+    this.mazo = [];
+    this.comunitarias = [];
+    this.botonDealer = null;
+    this.asientoSB = null;
+    this.asientoBB = null;
+    this.apuestaMaxima = 0;
+    this.subidaMinima = this.ciegaGrande;
+    this.turnoId = null;
+    this.faltanPorHablar = [];
+    this.boteTotal = 0;
+    this.botes = [];
+    this.resultadoShowdown = null;
+    this.manosJugadas = 0;
+    this.oyentes = [];
+    this.mensaje = "Esperando jugadores…";
+  }
+
+  Mesa.prototype.on = function (fn) {
+    this.oyentes.push(fn);
+  };
+
+  Mesa.prototype.emitir = function (evento) {
+    evento = evento || {};
+    if (!evento.estado) evento.estado = this.estadoPublico();
+    for (let i = 0; i < this.oyentes.length; i++) {
+      try { this.oyentes[i](evento); } catch (e) { /* un oyente no debe romper el juego */ }
+    }
+  };
+
+  Mesa.prototype.jugadores = function () {
+    const lista = [];
+    for (let i = 0; i < this.porAsiento.length; i++) {
+      if (this.porAsiento[i]) lista.push(this.porAsiento[i]);
+    }
+    return lista;
+  };
+
+  Mesa.prototype.jugadorPorId = function (id) {
+    const lista = this.jugadores();
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].id === id) return lista[i];
+    }
+    return null;
+  };
+
+  Mesa.prototype.asientoLibre = function () {
+    for (let i = 0; i < this.porAsiento.length; i++) {
+      if (!this.porAsiento[i]) return i;
+    }
+    return -1;
+  };
+
+  Mesa.prototype.sentar = function (datos) {
+    let asiento = datos.asiento;
+    if (asiento == null || asiento < 0 || asiento >= this.asientosTotales || this.porAsiento[asiento]) {
+      asiento = this.asientoLibre();
+    }
+    if (asiento < 0) return { error: "La mesa está llena." };
+    const jugador = crearJugador({
+      id: datos.id,
+      nombre: datos.nombre || "Jugador",
+      tipo: datos.tipo || "humano",
+      asiento: asiento,
+      fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales
+    });
+    this.porAsiento[asiento] = jugador;
+    this.emitir({ tipo: "jugador-sentado", jugadorId: jugador.id });
+    return { jugador: jugador };
+  };
+
+  Mesa.prototype.levantar = function (id) {
+    const j = this.jugadorPorId(id);
+    if (!j) return;
+    if (j.enMano && this.fase !== "esperando" && this.fase !== "entre-manos" && this.fase !== "showdown") {
+      if (!j.retirado) {
+        j.retirado = true;
+        j.ultimaAccion = "retirarse";
+        this.quitarDeFaltan(j.id);
+        if (this.turnoId === j.id) this.continuarTrasAccion(j);
+      }
+    }
+    this.porAsiento[j.asiento] = null;
+    this.emitir({ tipo: "jugador-levantado", jugadorId: id });
+  };
+
+  Mesa.prototype.siguienteAsiento = function (desde, pred, inclusive) {
+    const n = this.asientosTotales;
+    for (let i = 0; i < n; i++) {
+      const a = (desde + (inclusive && i === 0 ? 0 : 1) + (inclusive ? i : i)) % n;
+      // Cuando inclusive es true: i=0 → desde; i=1 → desde+1...
+      // Cuando inclusive es false: i=0 → desde+1; i=1 → desde+2...
+      const asiento = inclusive
+        ? (desde + i) % n
+        : (desde + 1 + i) % n;
+      const j = this.porAsiento[asiento];
+      if (j && pred(j)) return asiento;
+    }
+    return null;
+  };
+
+  Mesa.prototype.siguienteEnMano = function (desde, inclusive) {
+    return this.siguienteAsiento(desde, function (j) {
+      return j.enMano && !j.retirado;
+    }, inclusive);
+  };
+
+  Mesa.prototype.ponerFichas = function (jugador, cantidad) {
+    const pago = Math.min(cantidad, jugador.fichas);
+    jugador.fichas -= pago;
+    jugador.apuestaRonda += pago;
+    jugador.aportado += pago;
+    if (jugador.fichas === 0) jugador.allIn = true;
+    this.actualizarBote();
+    return pago;
+  };
+
+  Mesa.prototype.actualizarBote = function () {
+    let total = 0;
+    const lista = this.jugadores();
+    for (let i = 0; i < lista.length; i++) total += lista[i].aportado;
+    this.boteTotal = total;
+  };
+
+  /** Empieza una mano nueva si hay al menos 2 jugadores con fichas. */
+  Mesa.prototype.iniciarMano = function () {
+    if (this.fase !== "esperando" && this.fase !== "entre-manos") {
+      return { error: "Todavía hay una mano en curso." };
+    }
+
+    const conFichas = this.jugadores().filter(function (j) {
+      return j.sentado && j.fichas > 0;
+    });
+    if (conFichas.length < 2) {
+      this.fase = "esperando";
+      this.mensaje = "Se necesitan al menos 2 jugadores con fichas.";
+      this.emitir({ tipo: "esperando" });
+      return { error: this.mensaje };
+    }
+
+    const lista = this.jugadores();
+    for (let i = 0; i < lista.length; i++) {
+      const j = lista[i];
+      j.cartas = [];
+      j.retirado = false;
+      j.allIn = false;
+      j.apuestaRonda = 0;
+      j.aportado = 0;
+      j.enMano = j.sentado && j.fichas > 0;
+      j.reveladas = false;
+      j.ultimaAccion = null;
+    }
+
+    this.comunitarias = [];
+    this.botes = [];
+    this.resultadoShowdown = null;
+    this.mazo = Ev.barajar(Ev.crearMazo());
+    this.mensaje = "";
+
+    if (this.botonDealer == null || !this.porAsiento[this.botonDealer] || !this.porAsiento[this.botonDealer].enMano) {
+      this.botonDealer = conFichas[0].asiento;
+    }
+
+    const n = conFichas.length;
+    if (n === 2) {
+      this.asientoSB = this.botonDealer;
+      this.asientoBB = this.siguienteEnMano(this.botonDealer);
+    } else {
+      this.asientoSB = this.siguienteEnMano(this.botonDealer);
+      this.asientoBB = this.siguienteEnMano(this.asientoSB);
+    }
+
+    this.ponerFichas(this.porAsiento[this.asientoSB], this.ciegaPequena);
+    this.porAsiento[this.asientoSB].ultimaAccion = "ciega-pequena";
+    this.ponerFichas(this.porAsiento[this.asientoBB], this.ciegaGrande);
+    this.porAsiento[this.asientoBB].ultimaAccion = "ciega-grande";
+
+    this.apuestaMaxima = this.porAsiento[this.asientoBB].apuestaRonda;
+    this.subidaMinima = this.ciegaGrande;
+
+    // Se reparte empezando por la ciega pequeña, una carta cada vez, dos vueltas
+    const orden = [];
+    let a = this.asientoSB;
+    for (let i = 0; i < n; i++) {
+      orden.push(a);
+      a = this.siguienteEnMano(a);
+    }
+    const secuenciaReparto = [];
+    for (let vuelta = 0; vuelta < 2; vuelta++) {
+      for (let i = 0; i < orden.length; i++) {
+        const jug = this.porAsiento[orden[i]];
+        const carta = this.mazo.pop();
+        jug.cartas.push(carta);
+        secuenciaReparto.push({ asiento: orden[i], jugadorId: jug.id, indice: vuelta });
+      }
+    }
+
+    this.fase = "preflop";
+    this.manosJugadas += 1;
+    this.turnoId = null;
+    this._primerAsientoPreflop = n === 2 ? this.asientoSB : this.siguienteEnMano(this.asientoBB);
+
+    this.emitir({
+      tipo: "mano-iniciada",
+      secuenciaReparto: secuenciaReparto,
+      asientoSB: this.asientoSB,
+      asientoBB: this.asientoBB,
+      botonDealer: this.botonDealer
+    });
+    return { ok: true };
+  };
+
+  /**
+   * Arranca la primera ronda de apuestas (preflop).
+   * Se llama DESPUÉS de la animación del reparto, para que las
+   * cartas "vuelen" antes de que alguien tenga que hablar.
+   */
+  Mesa.prototype.empezarApuestas = function () {
+    if (this.fase !== "preflop" || this.turnoId) return { error: "La ronda ya ha empezado." };
+    if (this._primerAsientoPreflop == null) return { error: "No hay mano en curso." };
+    this.iniciarRondaApuestas(this._primerAsientoPreflop, true);
+    return { ok: true };
+  };
+
+  Mesa.prototype.iniciarRondaApuestas = function (primerAsiento, esPreflop) {
+    if (!esPreflop) {
+      const lista = this.jugadores();
+      for (let i = 0; i < lista.length; i++) lista[i].apuestaRonda = 0;
+      this.apuestaMaxima = 0;
+      this.subidaMinima = this.ciegaGrande;
+    }
+
+    this.faltanPorHablar = this.jugadores()
+      .filter(function (j) { return j.enMano && !j.retirado && !j.allIn; })
+      .map(function (j) { return j.id; });
+
+    const vivos = this.jugadores().filter(function (j) {
+      return j.enMano && !j.retirado;
+    });
+
+    if (vivos.length <= 1) {
+      this.turnoId = null;
+      this.cerrarRonda();
+      return;
+    }
+
+    const puedenActuar = this.faltanPorHablar.length;
+    // Si queda una sola persona con fichas y el resto está all-in, no hay más apuestas
+    if (puedenActuar <= 1) {
+      const unicoId = puedenActuar === 1 ? this.faltanPorHablar[0] : null;
+      const unico = unicoId ? this.jugadorPorId(unicoId) : null;
+      if (!unico || unico.apuestaRonda >= this.apuestaMaxima) {
+        this.turnoId = null;
+        this.cerrarRonda();
+        return;
+      }
+    }
+
+    this.turnoId = this.siguienteQueFalta(primerAsiento, true);
+    if (!this.turnoId) {
+      this.cerrarRonda();
+      return;
+    }
+    this.emitir({ tipo: "turno", jugadorId: this.turnoId });
+  };
+
+  Mesa.prototype.siguienteQueFalta = function (desdeAsiento, inclusive) {
+    const self = this;
+    const asiento = this.siguienteAsiento(desdeAsiento, function (j) {
+      return self.faltanPorHablar.indexOf(j.id) !== -1;
+    }, inclusive);
+    if (asiento == null) return null;
+    return this.porAsiento[asiento].id;
+  };
+
+  Mesa.prototype.quitarDeFaltan = function (id) {
+    this.faltanPorHablar = this.faltanPorHablar.filter(function (x) { return x !== id; });
+  };
+
+  Mesa.prototype.accionesLegales = function (jugadorId) {
+    const vacio = {
+      tipos: [],
+      puedeRetirarse: false,
+      puedePasar: false,
+      puedeIgualar: false,
+      puedeApostar: false,
+      puedeSubir: false,
+      puedeAllIn: false,
+      porIgualar: 0,
+      minSubida: 0,
+      maxSubida: 0
+    };
+    const j = this.jugadorPorId(jugadorId || this.turnoId);
+    if (!j || j.id !== this.turnoId) return vacio;
+    if (this.fase === "esperando" || this.fase === "entre-manos" || this.fase === "showdown") return vacio;
+
+    const porIgualar = Math.max(0, this.apuestaMaxima - j.apuestaRonda);
+    const tipos = [];
+    const res = {
+      puedeRetirarse: true,
+      puedePasar: false,
+      puedeIgualar: false,
+      puedeApostar: false,
+      puedeSubir: false,
+      puedeAllIn: j.fichas > 0,
+      porIgualar: porIgualar,
+      minSubida: 0,
+      maxSubida: j.apuestaRonda + j.fichas
+    };
+    tipos.push("retirarse");
+
+    if (porIgualar === 0) {
+      res.puedePasar = true;
+      tipos.push("pasar");
+    } else if (j.fichas > 0) {
+      res.puedeIgualar = true;
+      tipos.push("igualar");
+    }
+
+    const fichasTrasIgualar = j.fichas - Math.min(porIgualar, j.fichas);
+    const hayRivalConFichas = this.jugadores().some(function (o) {
+      return o.id !== j.id && o.enMano && !o.retirado && o.fichas > 0;
+    });
+
+    if (fichasTrasIgualar > 0 && hayRivalConFichas) {
+      const minObjetivo = (this.apuestaMaxima === 0)
+        ? this.ciegaGrande
+        : this.apuestaMaxima + this.subidaMinima;
+      res.minSubida = minObjetivo;
+      if (this.apuestaMaxima === 0) {
+        res.puedeApostar = true;
+        tipos.push("apostar");
+      } else {
+        res.puedeSubir = true;
+        tipos.push("subir");
+      }
+    }
+
+    if (res.puedeAllIn && tipos.indexOf("all-in") === -1) tipos.push("all-in");
+    res.tipos = tipos;
+    return res;
+  };
+
+  /**
+   * El jugador hace una acción.
+   * "cantidad" en apostar/subir es el TOTAL que quiere dejar puesto en ESTA ronda
+   * (por ejemplo: si la ciega grande es 10 y sube a 40, cantidad = 40).
+   */
+  Mesa.prototype.accion = function (jugadorId, tipo, cantidad) {
+    const j = this.jugadorPorId(jugadorId);
+    if (!j) return { error: "Jugador no encontrado." };
+    if (this.turnoId !== j.id) return { error: "No es tu turno." };
+
+    const legales = this.accionesLegales(j.id);
+    tipo = tipo || "";
+
+    if (tipo === "retirarse") {
+      j.retirado = true;
+      j.ultimaAccion = "retirarse";
+      this.quitarDeFaltan(j.id);
+    } else if (tipo === "pasar") {
+      if (!legales.puedePasar) return { error: "Ahora no puedes pasar." };
+      j.ultimaAccion = "pasar";
+      this.quitarDeFaltan(j.id);
+    } else if (tipo === "igualar") {
+      if (!legales.puedeIgualar) return { error: "Ahora no puedes igualar." };
+      this.ponerFichas(j, legales.porIgualar);
+      j.ultimaAccion = j.allIn ? "all-in" : "igualar";
+      this.quitarDeFaltan(j.id);
+    } else if (tipo === "apostar" || tipo === "subir" || tipo === "all-in") {
+      let objetivo;
+      if (tipo === "all-in") {
+        objetivo = j.apuestaRonda + j.fichas;
+      } else {
+        objetivo = Number(cantidad);
+        if (!isFinite(objetivo)) return { error: "Cantidad no válida." };
+      }
+
+      if (objetivo < j.apuestaRonda) return { error: "La apuesta es demasiado baja." };
+      const porPoner = objetivo - j.apuestaRonda;
+      if (porPoner <= 0 && tipo !== "all-in") return { error: "Tienes que poner más fichas para subir." };
+      if (porPoner > j.fichas) objetivo = j.apuestaRonda + j.fichas;
+
+      const minObjetivo = (this.apuestaMaxima === 0)
+        ? this.ciegaGrande
+        : this.apuestaMaxima + this.subidaMinima;
+
+      const nuevaApuesta = j.apuestaRonda + Math.min(objetivo - j.apuestaRonda, j.fichas);
+      const quedaAllIn = (j.fichas <= (objetivo - j.apuestaRonda));
+
+      // Una subida incompleta (all-in por menos del mínimo) no reabre la ronda
+      const esSubida = nuevaApuesta > this.apuestaMaxima;
+      const subidaCompleta = esSubida && (nuevaApuesta >= minObjetivo || quedaAllIn && nuevaApuesta >= minObjetivo);
+      const completa = esSubida && nuevaApuesta >= minObjetivo;
+
+      if (esSubida && !completa && !quedaAllIn) {
+        return { error: "La subida mínima es " + minObjetivo + " fichas." };
+      }
+
+      this.ponerFichas(j, objetivo - j.apuestaRonda);
+      j.ultimaAccion = j.allIn ? "all-in" : (this.apuestaMaxima === 0 ? "apostar" : "subir");
+
+      if (esSubida) {
+        if (completa) {
+          this.subidaMinima = nuevaApuesta - this.apuestaMaxima;
+          this.apuestaMaxima = nuevaApuesta;
+          const self = this;
+          this.faltanPorHablar = this.jugadores()
+            .filter(function (o) {
+              return o.id !== j.id && o.enMano && !o.retirado && !o.allIn;
+            })
+            .map(function (o) { return o.id; });
+        } else {
+          // All-in corto: sube lo que hay que igualar, pero no reabre
+          this.apuestaMaxima = nuevaApuesta;
+          this.quitarDeFaltan(j.id);
+        }
+      } else {
+        this.quitarDeFaltan(j.id);
+      }
+    } else {
+      return { error: "Acción desconocida: " + tipo };
+    }
+
+    this.emitir({
+      tipo: "accion",
+      jugadorId: j.id,
+      accion: j.ultimaAccion,
+      cantidad: j.apuestaRonda,
+      nombre: j.nombre
+    });
+
+    return this.continuarTrasAccion(j);
+  };
+
+  Mesa.prototype.continuarTrasAccion = function (jugadorQueActuo) {
+    const vivos = this.jugadores().filter(function (j) {
+      return j.enMano && !j.retirado;
+    });
+    if (vivos.length <= 1) {
+      this.turnoId = null;
+      this.cerrarRonda();
+      return { ok: true };
+    }
+    if (this.faltanPorHablar.length === 0) {
+      this.turnoId = null;
+      this.cerrarRonda();
+      return { ok: true };
+    }
+    this.turnoId = this.siguienteQueFalta(jugadorQueActuo.asiento, false);
+    if (!this.turnoId) {
+      this.cerrarRonda();
+      return { ok: true };
+    }
+    this.emitir({ tipo: "turno", jugadorId: this.turnoId });
+    return { ok: true };
+  };
+
+  Mesa.prototype.repartirCalle = function (cuantas, nombreCalle) {
+    this.mazo.pop(); // carta quemada (como en el casino de verdad)
+    const nuevas = [];
+    for (let i = 0; i < cuantas; i++) {
+      const c = this.mazo.pop();
+      this.comunitarias.push(c);
+      nuevas.push(c);
+    }
+    this.fase = nombreCalle;
+    this.mensaje = nombreCalle === "flop"
+      ? "Flop"
+      : (nombreCalle === "turn" ? "Turn" : "River");
+    this.emitir({ tipo: "calle", calle: nombreCalle, nuevas: nuevas });
+  };
+
+  Mesa.prototype.quedanApuestas = function () {
+    const vivos = this.jugadores().filter(function (j) {
+      return j.enMano && !j.retirado;
+    });
+    const conFichas = vivos.filter(function (j) { return !j.allIn && j.fichas > 0; });
+    return conFichas.length >= 2;
+  };
+
+  Mesa.prototype.cerrarRonda = function () {
+    this.actualizarBote();
+    const vivos = this.jugadores().filter(function (j) {
+      return j.enMano && !j.retirado;
+    });
+
+    if (vivos.length <= 1) {
+      this.ganarSinShowdown(vivos[0] || null);
+      return;
+    }
+
+    const callesPendientes = [];
+    if (this.fase === "preflop") callesPendientes.push({ n: 3, nombre: "flop" });
+    if (this.fase === "preflop" || this.fase === "flop") callesPendientes.push({ n: 1, nombre: "turn" });
+    if (this.fase === "preflop" || this.fase === "flop" || this.fase === "turn") {
+      callesPendientes.push({ n: 1, nombre: "river" });
+    }
+
+    if (this.fase === "river") {
+      this.showdown();
+      return;
+    }
+
+    // Si ya no puede haber más apuestas, se sacan todas las calles de golpe
+    if (!this.quedanApuestas()) {
+      for (let i = 0; i < callesPendientes.length; i++) {
+        this.repartirCalle(callesPendientes[i].n, callesPendientes[i].nombre);
+      }
+      this.showdown();
+      return;
+    }
+
+    const siguiente = callesPendientes[0];
+    this.repartirCalle(siguiente.n, siguiente.nombre);
+
+    if (this.fase === "river" && !this.quedanApuestas()) {
+      this.showdown();
+      return;
+    }
+
+    const primero = this.siguienteEnMano(this.botonDealer);
+    this.iniciarRondaApuestas(primero, false);
+  };
+
+  Mesa.prototype.ganarSinShowdown = function (ganador) {
+    this.actualizarBote();
+    const premio = this.boteTotal;
+    if (ganador) {
+      ganador.fichas += premio;
+      this.mensaje = ganador.nombre + " se lleva el bote de " + premio + " (el resto se retiró).";
+    }
+    this.fase = "entre-manos";
+    this.turnoId = null;
+    this.resultadoShowdown = {
+      sinShowdown: true,
+      ganadores: ganador ? [{ id: ganador.id, premio: premio, descripcion: "Todos se retiraron" }] : [],
+      revelados: [],
+      botes: [{ cantidad: premio, elegibles: ganador ? [ganador.id] : [] }]
+    };
+    this.moverBoton();
+    this.emitir({ tipo: "ganador-sin-showdown", jugadorId: ganador ? ganador.id : null, premio: premio });
+  };
+
+  /**
+   * Calcula el bote principal y los botes laterales (side pots)
+   * cuando alguien se queda all-in por menos fichas que el resto.
+   */
+  Mesa.prototype.calcularBotes = function () {
+    const lista = this.jugadores().filter(function (j) { return j.aportado > 0; });
+    const niveles = [];
+    for (let i = 0; i < lista.length; i++) {
+      if (niveles.indexOf(lista[i].aportado) === -1) niveles.push(lista[i].aportado);
+    }
+    niveles.sort(function (a, b) { return a - b; });
+
+    const botes = [];
+    let previo = 0;
+    for (let n = 0; n < niveles.length; n++) {
+      const nivel = niveles[n];
+      const participantes = lista.filter(function (j) { return j.aportado >= nivel; });
+      const cantidad = (nivel - previo) * participantes.length;
+      const elegibles = participantes
+        .filter(function (j) { return !j.retirado; })
+        .map(function (j) { return j.id; });
+      if (cantidad > 0) {
+        botes.push({ cantidad: cantidad, elegibles: elegibles });
+      }
+      previo = nivel;
+    }
+
+    // Unimos botes que tienen exactamente los mismos elegibles
+    const unidos = [];
+    for (let i = 0; i < botes.length; i++) {
+      const b = botes[i];
+      const clave = b.elegibles.slice().sort().join(",");
+      const existente = unidos.find(function (u) {
+        return u.elegibles.slice().sort().join(",") === clave;
+      });
+      if (existente) existente.cantidad += b.cantidad;
+      else unidos.push({ cantidad: b.cantidad, elegibles: b.elegibles.slice() });
+    }
+    return unidos;
+  };
+
+  Mesa.prototype.showdown = function () {
+    this.fase = "showdown";
+    this.turnoId = null;
+    this.actualizarBote();
+    const botes = this.calcularBotes();
+    this.botes = botes;
+
+    const revelados = [];
+    const lista = this.jugadores();
+    for (let i = 0; i < lista.length; i++) {
+      const j = lista[i];
+      if (j.enMano && !j.retirado && j.cartas.length === 2 && this.comunitarias.length === 5) {
+        j.reveladas = true;
+        const ev = Ev.mejorMano(j.cartas.concat(this.comunitarias));
+        revelados.push({
+          id: j.id,
+          nombre: j.nombre,
+          asiento: j.asiento,
+          cartas: j.cartas,
+          mano: ev,
+          descripcion: Ev.describirMano(ev)
+        });
+      }
+    }
+
+    const pagosPorJugador = {};
+    const resumenBotes = [];
+    const self = this;
+
+    function ordenDesdeBoton(asiento) {
+      return (asiento - self.botonDealer + self.asientosTotales) % self.asientosTotales;
+    }
+
+    for (let b = 0; b < botes.length; b++) {
+      const bote = botes[b];
+      const candidatos = revelados.filter(function (r) {
+        return bote.elegibles.indexOf(r.id) !== -1;
+      });
+      if (candidatos.length === 0) continue;
+
+      let mejores = [candidatos[0]];
+      for (let i = 1; i < candidatos.length; i++) {
+        const cmp = Ev.compararPuntuaciones(candidatos[i].mano, mejores[0].mano);
+        if (cmp > 0) mejores = [candidatos[i]];
+        else if (cmp === 0) mejores.push(candidatos[i]);
+      }
+
+      // La ficha impar (si el bote no se divide exacto) va al primero
+      // a la izquierda del botón, como en las reglas clásicas.
+      mejores.sort(function (a, c) {
+        return ordenDesdeBoton(a.asiento) - ordenDesdeBoton(c.asiento);
+      });
+
+      const base = Math.floor(bote.cantidad / mejores.length);
+      let resto = bote.cantidad % mejores.length;
+      const ganadoresBote = [];
+      for (let i = 0; i < mejores.length; i++) {
+        const premio = base + (resto > 0 ? 1 : 0);
+        if (resto > 0) resto -= 1;
+        const id = mejores[i].id;
+        this.jugadorPorId(id).fichas += premio;
+        pagosPorJugador[id] = (pagosPorJugador[id] || 0) + premio;
+        ganadoresBote.push({
+          id: id,
+          nombre: mejores[i].nombre,
+          premio: premio,
+          descripcion: mejores[i].descripcion
+        });
+      }
+      resumenBotes.push({ cantidad: bote.cantidad, ganadores: ganadoresBote });
+    }
+
+    const ganadores = [];
+    for (const id in pagosPorJugador) {
+      const r = revelados.find(function (x) { return x.id === id; });
+      ganadores.push({
+        id: id,
+        nombre: r ? r.nombre : id,
+        premio: pagosPorJugador[id],
+        descripcion: r ? r.descripcion : ""
+      });
+    }
+
+    if (ganadores.length === 1) {
+      this.mensaje = ganadores[0].nombre + " gana " + ganadores[0].premio + " fichas con " + ganadores[0].descripcion + ".";
+    } else if (ganadores.length > 1) {
+      this.mensaje = "Bote dividido: " + ganadores.map(function (g) {
+        return g.nombre + " (" + g.premio + ")";
+      }).join(", ") + ".";
+    }
+
+    this.resultadoShowdown = {
+      sinShowdown: false,
+      revelados: revelados,
+      botes: resumenBotes,
+      ganadores: ganadores
+    };
+
+    this.fase = "entre-manos";
+    this.moverBoton();
+    this.emitir({ tipo: "showdown", resultado: this.resultadoShowdown });
+  };
+
+  Mesa.prototype.moverBoton = function () {
+    if (this.botonDealer == null) return;
+    const sig = this.siguienteAsiento(this.botonDealer, function (j) {
+      return j.sentado && j.fichas > 0;
+    }, false);
+    if (sig != null) this.botonDealer = sig;
+  };
+
+  /**
+   * Foto pública de la mesa. Las cartas privadas de los demás
+   * NO viajan: solo ves las tuyas (o las que ya se revelaron
+   * en el showdown). Así el servidor puede ser "autoritativo".
+   */
+  Mesa.prototype.estadoPublico = function (paraId) {
+    const self = this;
+    const jugadores = this.jugadores().map(function (j) {
+      const mostrar = j.reveladas || (paraId && j.id === paraId);
+      return {
+        id: j.id,
+        nombre: j.nombre,
+        tipo: j.tipo,
+        asiento: j.asiento,
+        fichas: j.fichas,
+        apuestaRonda: j.apuestaRonda,
+        aportado: j.aportado,
+        retirado: j.retirado,
+        allIn: j.allIn,
+        enMano: j.enMano,
+        ultimaAccion: j.ultimaAccion,
+        cartas: mostrar ? j.cartas : (j.cartas.length ? j.cartas.map(function () { return { oculta: true }; }) : []),
+        esTurno: self.turnoId === j.id,
+        esBoton: self.botonDealer === j.asiento,
+        esSB: self.asientoSB === j.asiento,
+        esBB: self.asientoBB === j.asiento
+      };
+    });
+
+    return {
+      asientosTotales: this.asientosTotales,
+      fase: this.fase,
+      comunitarias: this.comunitarias,
+      boteTotal: this.boteTotal,
+      botonDealer: this.botonDealer,
+      asientoSB: this.asientoSB,
+      asientoBB: this.asientoBB,
+      apuestaMaxima: this.apuestaMaxima,
+      subidaMinima: this.subidaMinima,
+      ciegaPequena: this.ciegaPequena,
+      ciegaGrande: this.ciegaGrande,
+      turnoId: this.turnoId,
+      manosJugadas: this.manosJugadas,
+      mensaje: this.mensaje,
+      resultadoShowdown: this.resultadoShowdown,
+      acciones: (paraId && paraId === this.turnoId) ? this.accionesLegales(paraId) : this.accionesLegales(),
+      jugadores: jugadores
+    };
+  };
+
+  Mesa.prototype.cartasDe = function (jugadorId) {
+    const j = this.jugadorPorId(jugadorId);
+    return j ? j.cartas : [];
+  };
+
+  const api = {
+    Mesa: Mesa,
+    crearJugador: crearJugador,
+    FICHAS_INICIALES: FICHAS_INICIALES,
+    CIEGA_PEQUENA: CIEGA_PEQUENA,
+    CIEGA_GRANDE: CIEGA_GRANDE
+  };
+
+  raiz.PokerMotor = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
+   INTELIGENCIA DE LOS BOTS
+   ---------------------------------------------------------
+   Los bots NO hacen trampas: no miran las cartas ocultas
+   de nadie ni las cartas que todavía no han salido.
+
+   Su decisión se basa en:
+     1) Lo fuerte que es SU mano (o lo buena que era al
+        empezar, si todavía no hay flop)
+     2) Si tiene "proyectadas" (casi un color o una escalera)
+     3) Un poco de azar, para que no sean predecibles
+        (a veces farolean, a veces se asustan)
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  const Ev = (typeof module !== "undefined" && typeof document === "undefined")
+    ? require("./evaluador.js")
+    : raiz.PokerEvaluador;
+
+  const NOMBRES_BOT = [
+    "Lucía", "Carlos", "Sofía", "Miguel", "Ana",
+    "Diego", "Marta", "Javier", "Elena", "Pablo",
+    "Laura", "Andrés", "Valentina", "Hugo", "Camila",
+    "Mateo", "Isabel", "Nicolás", "Rosa", "Felipe"
+  ];
+
+  function nombreBot(yaUsados) {
+    yaUsados = yaUsados || [];
+    const libres = NOMBRES_BOT.filter(function (n) { return yaUsados.indexOf(n) === -1; });
+    if (libres.length === 0) {
+      return "Bot " + (yaUsados.length + 1);
+    }
+    return libres[Math.floor(Math.random() * libres.length)];
+  }
+
+  /** Puntuación de 0 a 1 para las 2 cartas iniciales. */
+  function fuerzaPreflop(cartas) {
+    if (!cartas || cartas.length < 2) return 0;
+    const a = Math.max(cartas[0].numero, cartas[1].numero);
+    const b = Math.min(cartas[0].numero, cartas[1].numero);
+    const par = a === b;
+    const mismoPalo = cartas[0].palo === cartas[1].palo;
+    const hueco = a - b;
+
+    if (par) {
+      if (a >= 13) return 0.96;
+      if (a >= 11) return 0.88;
+      if (a >= 9) return 0.76;
+      if (a >= 6) return 0.62;
+      return 0.48 + a * 0.015;
+    }
+
+    let s = (a * 0.045) + (b * 0.02);
+    if (a === 14 && b === 13) s = 0.9;
+    else if (a === 14 && b === 12) s = 0.84;
+    else if (a === 14 && b === 11) s = 0.78;
+    else if (a === 13 && b === 12) s = 0.74;
+    else if (a === 14 && b >= 10) s = 0.7;
+
+    if (mismoPalo) s += 0.06;
+    if (hueco === 1) s += 0.05;
+    else if (hueco === 2) s += 0.02;
+    else if (hueco >= 5) s -= 0.08;
+
+    return Math.max(0.05, Math.min(0.95, s));
+  }
+
+  /** Puntuación de 0 a 1 con flop, turn o river ya en la mesa. */
+  function fuerzaPostflop(privadas, comunitarias) {
+    const cartas = privadas.concat(comunitarias);
+    if (cartas.length < 5) return fuerzaPreflop(privadas);
+
+    const mano = Ev.mejorMano(cartas);
+    const cat = mano.categoria;
+    let s = 0.12;
+    if (cat === 0) s = 0.12 + (mano.desempate[0] / 14) * 0.1;
+    else if (cat === 1) s = 0.38 + (mano.desempate[0] >= 11 ? 0.14 : mano.desempate[0] * 0.015);
+    else if (cat === 2) s = 0.66;
+    else if (cat === 3) s = 0.8;
+    else if (cat === 4) s = 0.86;
+    else if (cat === 5) s = 0.9;
+    else if (cat === 6) s = 0.94;
+    else s = 0.98;
+
+    const draws = Ev.detectarProyectadas(cartas);
+    if (draws.color) s = Math.max(s, 0.58);
+    if (draws.escaleraAbierta) s = Math.max(s, 0.54);
+    else if (draws.gutshot) s += 0.08;
+
+    return Math.max(0.05, Math.min(0.99, s));
+  }
+
+  /**
+   * Elige una acción legal. Devuelve { tipo, cantidad }.
+   * "cantidad" es el total de la ronda (subir a X).
+   */
+  function decidir(legales, jugador, estado) {
+    if (!legales || !legales.tipos || legales.tipos.length === 0) {
+      return { tipo: "pasar" };
+    }
+
+    const privadas = (jugador.cartas || []).filter(function (c) { return !c.oculta; });
+    const comunitarias = estado.comunitarias || [];
+    const fase = estado.fase;
+    const fuerza = (fase === "preflop" || comunitarias.length < 3)
+      ? fuerzaPreflop(privadas)
+      : fuerzaPostflop(privadas, comunitarias);
+
+    const azar = Math.random();
+    const farol = azar < 0.06;
+    const asustado = azar > 0.88;
+    const porIgualar = legales.porIgualar || 0;
+    const bote = estado.boteTotal || 0;
+    const potOdds = porIgualar / (bote + porIgualar + 1);
+    const apuestaGrande = porIgualar >= Math.max(estado.ciegaGrande * 6, jugador.fichas * 0.25);
+
+    function subirAlgo(agresivo) {
+      const min = legales.minSubida || (estado.apuestaMaxima + (estado.subidaMinima || estado.ciegaGrande));
+      const max = legales.maxSubida;
+      if (!isFinite(min) || !isFinite(max) || max <= 0) return { tipo: legales.puedeIgualar ? "igualar" : (legales.puedePasar ? "pasar" : "retirarse") };
+      let objetivo;
+      // All-in solo con manos realmente fuertes y muy de vez en cuando
+      if (agresivo && fuerza > 0.93 && azar < 0.12) {
+        objetivo = max;
+      } else if ((estado.fase === "preflop" || (estado.comunitarias || []).length === 0) && (estado.apuestaMaxima || 0) <= (estado.ciegaGrande || 10)) {
+        // Apertura clásica: entre 2.5 y 4 ciegas grandes
+        const bb = estado.ciegaGrande || 10;
+        objetivo = bb * (agresivo ? 4 : 3);
+      } else {
+        const boteTras = bote + porIgualar;
+        const tamano = agresivo ? 0.65 : 0.45;
+        objetivo = Math.round((estado.apuestaMaxima || 0) + Math.max(estado.ciegaGrande, boteTras * tamano));
+        // Tope: no más de un tercio de las fichas en una sola subida (salvo all-in raro de arriba)
+        const tope = jugador.apuestaRonda + Math.max(min, Math.floor(jugador.fichas * 0.35));
+        objetivo = Math.min(objetivo, tope);
+      }
+      objetivo = Math.max(min, Math.min(max, objetivo));
+      if (objetivo >= max && fuerza < 0.9) objetivo = Math.max(min, max - 1);
+      if (objetivo >= max) return { tipo: "all-in" };
+      return { tipo: legales.puedeApostar ? "apostar" : "subir", cantidad: objetivo };
+    }
+
+    // Si puede pasar (nadie ha apostado, o ya está igualado)
+    if (legales.puedePasar) {
+      if (asustado) return { tipo: "pasar" };
+      const umbralApuesta = (estado.fase === "preflop") ? 0.72 : 0.62;
+      if ((fuerza > umbralApuesta || farol) && (legales.puedeApostar || legales.puedeSubir) && azar < 0.4 + fuerza * 0.25) {
+        return subirAlgo(fuerza > 0.8);
+      }
+      return { tipo: "pasar" };
+    }
+
+    // Alguien ha apostado: ¿igualamos, subimos o nos retiramos?
+    if (asustado && fuerza < 0.75 && apuestaGrande) {
+      return { tipo: "retirarse" };
+    }
+
+    if (fuerza < 0.22 && !farol) {
+      if (apuestaGrande || (potOdds > 0.35 && fuerza < 0.3)) {
+        return { tipo: "retirarse" };
+      }
+    }
+
+    if (fuerza < 0.35 && apuestaGrande && !farol && azar < 0.7) {
+      return { tipo: "retirarse" };
+    }
+
+    if ((fuerza > 0.78 || farol) && (legales.puedeSubir || legales.puedeApostar) && azar < 0.5 + fuerza * 0.25) {
+      return subirAlgo(true);
+    }
+
+    if (legales.puedeIgualar) return { tipo: "igualar" };
+    if (legales.puedePasar) return { tipo: "pasar" };
+    if (legales.puedeAllIn && fuerza > 0.92 && apuestaGrande) return { tipo: "all-in" };
+    return { tipo: "retirarse" };
+  }
+
+  const api = {
+    NOMBRES_BOT: NOMBRES_BOT,
+    nombreBot: nombreBot,
+    fuerzaPreflop: fuerzaPreflop,
+    fuerzaPostflop: fuerzaPostflop,
+    decidir: decidir
+  };
+
+  raiz.PokerBots = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
+   INTERFAZ — menú, mesa, animaciones y modo en línea
+   ---------------------------------------------------------
+   Este archivo "pinta" el juego y captura lo que pulsas.
+   La lógica (quién gana, de quién es el turno) vive en
+   motor.js. Aquí solo preguntamos al motor y dibujamos.
+   ========================================================= */
+
+(function () {
+  "use strict";
+
+  const Motor = window.PokerMotor;
+  const Bots = window.PokerBots;
+  const Ev = window.PokerEvaluador;
+
+  const ui = {
+    modo: "menu",
+    mesa: null,
+    tuId: null,
+    ws: null,
+    estado: null,
+    codigo: null,
+    esAnfitrion: false,
+    publica: false,
+    animando: false,
+    cola: [],
+    procesandoCola: false,
+    timerBot: null,
+    timerNuevaMano: null,
+    ultimaSecuencia: null
+  };
+
+  const $ = function (id) { return document.getElementById(id); };
+
+  function nombreJugador() {
+    const v = ($("nombre-jugador").value || "").trim();
+    return v || "Fernando";
+  }
+
+  function asientosElegidos(nombre) {
+    const marcado = document.querySelector('input[name="' + nombre + '"]:checked');
+    return marcado ? Number(marcado.value) : 9;
+  }
+
+  function mostrar(idPantalla) {
+    const ids = ["pantalla-menu", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
+    for (let i = 0; i < ids.length; i++) {
+      const el = $(ids[i]);
+      if (!el) continue;
+      if (ids[i] === idPantalla) el.hidden = false;
+      else el.hidden = true;
+    }
+  }
+
+  /* ---------- Navegación del menú ---------- */
+
+  function irMenu() {
+    detenerPartidaLocal();
+    cerrarWS();
+    ui.modo = "menu";
+    mostrar("pantalla-menu");
+  }
+
+  function irSolo() {
+    mostrar("pantalla-solo");
+  }
+
+  function irOnline() {
+    mostrar("pantalla-online");
+  }
+
+  /* ---------- Modo solo ---------- */
+
+  function empezarSolo() {
+    detenerPartidaLocal();
+    const n = asientosElegidos("asientos-solo");
+    const mesa = new Motor.Mesa({ asientos: n });
+    ui.mesa = mesa;
+    ui.tuId = "humano";
+    ui.modo = "solo";
+    ui.codigo = null;
+
+    mesa.sentar({ id: "humano", nombre: nombreJugador(), tipo: "humano", asiento: 0 });
+    const usados = [nombreJugador()];
+    for (let i = 1; i < n; i++) {
+      const nom = Bots.nombreBot(usados);
+      usados.push(nom);
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i });
+    }
+
+    mesa.on(alEventoLocal);
+    $("info-sala").textContent = "Modo solo · " + n + " asientos";
+    $("info-ciegas").textContent = "Ciegas " + mesa.ciegaPequena + " / " + mesa.ciegaGrande;
+    mostrar("pantalla-mesa");
+    renderMesa(mesa.estadoPublico(ui.tuId));
+    mesa.iniciarMano();
+  }
+
+  function detenerPartidaLocal() {
+    if (ui.timerBot) clearTimeout(ui.timerBot);
+    if (ui.timerNuevaMano) clearTimeout(ui.timerNuevaMano);
+    ui.timerBot = null;
+    ui.timerNuevaMano = null;
+    ui.mesa = null;
+    ui.cola = [];
+    ui.procesandoCola = false;
+    ui.animando = false;
+  }
+
+  function alEventoLocal(ev) {
+    ui.cola.push(ev);
+    if (ui.procesandoCola) return;
+    ui.procesandoCola = true;
+    setTimeout(procesarCola, 0);
+  }
+
+  async function procesarCola() {
+    while (ui.cola.length > 0) {
+      const ev = ui.cola.shift();
+      await manejarEvento(ev);
+    }
+    ui.procesandoCola = false;
+    programarBotsOEsperar();
+  }
+
+  async function manejarEvento(ev) {
+    if (!ui.mesa) return;
+    const estado = ui.mesa.estadoPublico(ui.tuId);
+
+    if (ev.tipo === "mano-iniciada") {
+      ui.animando = true;
+      $("mensaje-mesa").className = "";
+      $("mensaje-mesa").textContent = "Don Luis reparte las cartas…";
+      renderMesa(estado, { ocultarPrivadas: true, vaciarComunitarias: true });
+      await animarReparto(ev.secuenciaReparto);
+      ui.animando = false;
+      renderMesa(ui.mesa.estadoPublico(ui.tuId));
+      $("mensaje-mesa").textContent = "Preflop · a hablar.";
+      ui.mesa.empezarApuestas();
+      return;
+    }
+
+    if (ev.tipo === "calle") {
+      ui.animando = true;
+      const etiqueta = ev.calle === "flop" ? "Flop" : ev.calle === "turn" ? "Turn" : "River";
+      $("mensaje-mesa").textContent = etiqueta + "…";
+      await animarComunitarias(ev.nuevas);
+      ui.animando = false;
+      renderMesa(ui.mesa.estadoPublico(ui.tuId));
+      return;
+    }
+
+    if (ev.tipo === "accion") {
+      renderMesa(estado);
+      return;
+    }
+
+    if (ev.tipo === "turno") {
+      renderMesa(estado);
+      return;
+    }
+
+    if (ev.tipo === "showdown" || ev.tipo === "ganador-sin-showdown") {
+      renderMesa(estado);
+      const msg = $("mensaje-mesa");
+      msg.textContent = estado.mensaje || "";
+      msg.className = "premio";
+      programarNuevaMano();
+      return;
+    }
+
+    renderMesa(estado);
+  }
+
+  function programarNuevaMano() {
+    if (ui.timerNuevaMano) clearTimeout(ui.timerNuevaMano);
+    ui.timerNuevaMano = setTimeout(function () {
+      if (ui.modo === "solo" && ui.mesa) ui.mesa.iniciarMano();
+    }, 5500);
+  }
+
+  function programarBotsOEsperar() {
+    if (!ui.mesa || ui.modo !== "solo" || ui.animando) return;
+    const id = ui.mesa.turnoId;
+    if (!id) return;
+    const j = ui.mesa.jugadorPorId(id);
+    if (!j || j.tipo !== "bot") {
+      renderMesa(ui.mesa.estadoPublico(ui.tuId));
+      return;
+    }
+    if (ui.timerBot) clearTimeout(ui.timerBot);
+    const delay = 550 + Math.random() * 900;
+    ui.timerBot = setTimeout(function () {
+      if (!ui.mesa || ui.mesa.turnoId !== id) return;
+      const legales = ui.mesa.accionesLegales(id);
+      const decision = Bots.decidir(legales, j, ui.mesa.estadoPublico(id));
+      ui.mesa.accion(id, decision.tipo, decision.cantidad);
+    }, delay);
+  }
+
+  /* ---------- Dibujo de la mesa ---------- */
+
+  function htmlCarta(carta, extraClase) {
+    if (!carta || carta.oculta) return htmlDorso(extraClase);
+    const clases = ["carta"];
+    if (carta.color === "roja") clases.push("roja");
+    if (extraClase) clases.push(extraClase);
+    return (
+      '<div class="' + clases.join(" ") + '">' +
+        '<span class="esquina arriba"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
+        '<span class="palo-centro">' + carta.palo + "</span>" +
+        '<span class="esquina abajo"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
+      "</div>"
+    );
+  }
+
+  function htmlDorso(extraClase) {
+    return '<div class="carta-dorso' + (extraClase ? " " + extraClase : "") + '"></div>';
+  }
+
+  function posicionAsiento(indice, total) {
+    const ang = (indice / total) * Math.PI * 2;
+    // i=0 queda abajo, en el centro (nuestro asiento)
+    const x = 50 + Math.sin(ang) * 40;
+    const y = 54 + Math.cos(ang) * 36;
+    let zona = "lado";
+    if (indice === 0) zona = "abajo";
+    else if (y < 40) zona = "arriba";
+    return { x: x, y: y, zona: zona };
+  }
+
+  function textoAccion(accion) {
+    const mapa = {
+      "retirarse": "Retirado",
+      "pasar": "Pasa",
+      "igualar": "Iguala",
+      "apostar": "Apuesta",
+      "subir": "Sube",
+      "all-in": "All-in",
+      "ciega-pequena": "Ciega chica",
+      "ciega-grande": "Ciega grande"
+    };
+    return mapa[accion] || "";
+  }
+
+  function renderMesa(estado, opciones) {
+    opciones = opciones || {};
+    ui.estado = estado;
+    if (!estado) return;
+
+    const total = estado.asientosTotales;
+    const ganadores = (estado.resultadoShowdown && estado.resultadoShowdown.ganadores)
+      ? estado.resultadoShowdown.ganadores.map(function (g) { return g.id; })
+      : [];
+
+    const caja = $("asientos");
+    let html = "";
+    for (let i = 0; i < total; i++) {
+      const pos = posicionAsiento(i, total);
+      const j = (estado.jugadores || []).find(function (p) { return p.asiento === i; });
+      html += '<div class="asiento ' + pos.zona;
+      if (j && j.esTurno) html += " es-turno";
+      if (j && j.retirado) html += " retirado";
+      html += '" data-asiento="' + i + '" style="left:' + pos.x + "%;top:" + pos.y + '%;">';
+
+      html += '<div class="cartas-asiento">';
+      if (j && j.cartas && j.cartas.length && !opciones.ocultarPrivadas) {
+        for (let c = 0; c < j.cartas.length; c++) {
+          const extra = ganadores.indexOf(j.id) !== -1 ? "ganadora" : "";
+          html += htmlCarta(j.cartas[c], extra);
+        }
+      } else if (j && j.enMano && opciones.ocultarPrivadas) {
+        html += htmlDorso() + htmlDorso();
+      }
+      html += "</div>";
+
+      html += '<div class="info-jugador">';
+      if (j) {
+        html += '<div class="insignias">';
+        if (j.esBoton) html += '<span class="insignia" title="Botón del dealer">D</span>';
+        if (j.esSB) html += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
+        if (j.esBB) html += '<span class="insignia bb" title="Ciega grande">BB</span>';
+        html += "</div>";
+        html += '<div class="nombre-jugador">' + escapar(j.nombre) + (j.id === ui.tuId ? " (tú)" : "") + "</div>";
+        html += '<div class="fichas-jugador">' + j.fichas + " fichas</div>";
+        html += '<div class="estado-jugador">' + (j.allIn && j.ultimaAccion !== "all-in" ? "All-in" : textoAccion(j.ultimaAccion)) + "</div>";
+        if (j.apuestaRonda > 0) {
+          html += '<div class="apuesta-frente">' + j.apuestaRonda + "</div>";
+        }
+      } else {
+        html += '<div class="nombre-jugador">Asiento vacío</div>';
+      }
+      html += "</div></div>";
+    }
+    caja.innerHTML = html;
+
+    const com = $("comunitarias");
+    let hcom = "";
+    const cartasCom = opciones.vaciarComunitarias ? [] : (estado.comunitarias || []);
+    for (let i = 0; i < 5; i++) {
+      if (cartasCom[i]) hcom += htmlCarta(cartasCom[i]);
+      else hcom += '<div class="hueco-carta"></div>';
+    }
+    com.innerHTML = hcom;
+
+    $("bote").innerHTML = "Bote <strong>" + (estado.boteTotal || 0) + "</strong>";
+    const calle = { preflop: "Preflop", flop: "Flop", turn: "Turn", river: "River", "entre-manos": "", showdown: "Showdown", esperando: "" };
+    $("etiqueta-calle").textContent = calle[estado.fase] || "";
+
+    if (estado.mensaje && estado.fase === "entre-manos") {
+      $("mensaje-mesa").textContent = estado.mensaje;
+    }
+
+    actualizarPanelAcciones(estado);
+  }
+
+  function actualizarPanelAcciones(estado) {
+    const panel = $("panel-acciones");
+    const acciones = estado.acciones;
+    const esMiTurno = estado.turnoId && estado.turnoId === ui.tuId && acciones && acciones.tipos && acciones.tipos.length && !ui.animando;
+    panel.hidden = !esMiTurno;
+    if (!esMiTurno) return;
+
+    $("btn-retirarse").disabled = !acciones.puedeRetirarse;
+    $("btn-pasar").hidden = !acciones.puedePasar;
+    $("btn-igualar").hidden = !acciones.puedeIgualar;
+    $("btn-igualar").textContent = acciones.puedeIgualar
+      ? (acciones.porIgualar >= (infoFichasPropias(estado) || acciones.porIgualar) ? "All-in " + infoFichasPropias(estado) : "Igualar " + acciones.porIgualar)
+      : "Igualar";
+
+    const puedeAgredir = acciones.puedeApostar || acciones.puedeSubir;
+    $("btn-subir").hidden = !puedeAgredir;
+    $("btn-subir").textContent = acciones.puedeApostar ? "Apostar" : "Subir";
+    $("rango-subida").hidden = !puedeAgredir;
+    $("texto-subida").hidden = !puedeAgredir;
+    $("btn-allin").hidden = !acciones.puedeAllIn;
+    if (puedeAgredir) {
+      const min = acciones.minSubida;
+      const max = acciones.maxSubida;
+      const rango = $("rango-subida");
+      rango.min = String(min);
+      rango.max = String(max);
+      rango.step = "5";
+      if (Number(rango.value) < min || Number(rango.value) > max) {
+        rango.value = String(Math.min(max, Math.max(min, min)));
+      }
+      $("texto-subida").textContent = rango.value;
+    }
+  }
+
+  function infoFichasPropias(estado) {
+    const j = (estado.jugadores || []).find(function (p) { return p.id === ui.tuId; });
+    return j ? j.fichas : 0;
+  }
+
+  function escapar(texto) {
+    return String(texto)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /* ---------- Animación: cartas que vuelan ---------- */
+
+  function rectRelativo(el, contenedor) {
+    const r = el.getBoundingClientRect();
+    const c = contenedor.getBoundingClientRect();
+    return { x: r.left - c.left + r.width / 2, y: r.top - c.top + r.height / 2, w: r.width, h: r.height };
+  }
+
+  function esperar(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  async function animarReparto(secuencia) {
+    const mesa = $("mesa-oval");
+    const capa = $("cartas-volando");
+    const origenEl = document.querySelector(".crupier-figura") || $("crupier");
+    if (!secuencia || !secuencia.length || !mesa) return;
+
+    const origen = rectRelativo(origenEl, mesa);
+    capa.innerHTML = "";
+
+    for (let i = 0; i < secuencia.length; i++) {
+      const paso = secuencia[i];
+      const destinoEl = document.querySelector('.asiento[data-asiento="' + paso.asiento + '"] .cartas-asiento');
+      if (!destinoEl) continue;
+      const dest = rectRelativo(destinoEl, mesa);
+      const cartaEl = document.createElement("div");
+      cartaEl.className = "carta-dorso carta-voladora";
+      cartaEl.style.left = (origen.x - 26) + "px";
+      cartaEl.style.top = (origen.y - 10) + "px";
+      capa.appendChild(cartaEl);
+      // Forzar reflow para que la transición arranque
+      void cartaEl.offsetWidth;
+      cartaEl.style.left = (dest.x - 26 + (paso.indice === 1 ? 10 : -10)) + "px";
+      cartaEl.style.top = (dest.y - 37) + "px";
+      cartaEl.style.transform = "rotate(" + (paso.indice === 1 ? 8 : -8) + "deg)";
+      await esperar(130);
+    }
+    await esperar(350);
+    capa.innerHTML = "";
+  }
+
+  async function animarComunitarias(nuevas) {
+    const mesa = $("mesa-oval");
+    const capa = $("cartas-volando");
+    const origenEl = document.querySelector(".crupier-figura") || $("crupier");
+    if (!nuevas || !nuevas.length) return;
+    const origen = rectRelativo(origenEl, mesa);
+    const huecos = $("comunitarias").querySelectorAll(".hueco-carta");
+    // El primer hueco vacío es el destino de la primera carta nueva
+    const ocupadas = $("comunitarias").querySelectorAll(".carta").length;
+
+    for (let i = 0; i < nuevas.length; i++) {
+      const destinoEl = huecos[i] || huecos[huecos.length - 1];
+      if (!destinoEl) continue;
+      const dest = rectRelativo(destinoEl, mesa);
+      const cartaEl = document.createElement("div");
+      cartaEl.className = "carta-dorso carta-voladora al-centro";
+      cartaEl.style.left = (origen.x - 35) + "px";
+      cartaEl.style.top = (origen.y - 10) + "px";
+      capa.appendChild(cartaEl);
+      void cartaEl.offsetWidth;
+      cartaEl.style.left = (dest.x - 35) + "px";
+      cartaEl.style.top = (dest.y - 50) + "px";
+      cartaEl.style.transform = "rotate(0deg)";
+      await esperar(220);
+    }
+    await esperar(400);
+    capa.innerHTML = "";
+  }
+
+  /* ---------- Acciones del jugador ---------- */
+
+  function enviarAccion(tipo, cantidad) {
+    if (ui.modo === "solo" && ui.mesa) {
+      const r = ui.mesa.accion(ui.tuId, tipo, cantidad);
+      if (r && r.error) $("mensaje-mesa").textContent = r.error;
+      return;
+    }
+    if (ui.modo === "online") {
+      enviarWS({ tipo: "accion", accion: tipo, cantidad: cantidad });
+    }
+  }
+
+  /* ---------- Online (WebSocket) ---------- */
+
+  // La URL del WebSocket se construye desde la página actual:
+  // mismo host y puerto, y wss:// si la página va por https (como en Render).
+  function urlWS() {
+    if (location.protocol === "file:") return null;
+    const p = location.protocol === "https:" ? "wss:" : "ws:";
+    return p + "//" + location.host + "/ws";
+  }
+
+  function cerrarWS() {
+    if (ui.ws) {
+      try { ui.ws.close(); } catch (e) { /* nada */ }
+      ui.ws = null;
+    }
+  }
+
+  function conectarWS() {
+    return new Promise(function (resolve, reject) {
+      const url = urlWS();
+      if (!url) {
+        reject(new Error("Hay que abrir el juego a través del servidor (http://localhost:3000)."));
+        return;
+      }
+      if (ui.ws && ui.ws.readyState === 1) {
+        resolve(ui.ws);
+        return;
+      }
+      cerrarWS();
+      const ws = new WebSocket(url);
+      ui.ws = ws;
+      const timer = setTimeout(function () {
+        reject(new Error("No se pudo conectar con el servidor."));
+        try { ws.close(); } catch (e) { /* nada */ }
+      }, 6000);
+      ws.addEventListener("open", function () {
+        clearTimeout(timer);
+        resolve(ws);
+      });
+      ws.addEventListener("error", function () {
+        clearTimeout(timer);
+        reject(new Error("Error de conexión. ¿Está arrancado el servidor?"));
+      });
+      ws.addEventListener("message", function (ev) {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch (e) { return; }
+        alMensajeServidor(msg);
+      });
+      ws.addEventListener("close", function () {
+        if (ui.modo === "online") {
+          const aviso = $("aviso-online");
+          if (aviso && !$("pantalla-online").hidden) {
+            aviso.textContent = "Se ha cerrado la conexión con el servidor.";
+          }
+        }
+      });
+    });
+  }
+
+  function enviarWS(obj) {
+    if (ui.ws && ui.ws.readyState === 1) {
+      ui.ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function alMensajeServidor(msg) {
+    if (msg.tuId) ui.tuId = msg.tuId;
+    if (msg.codigo) ui.codigo = msg.codigo;
+    if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
+    if (msg.publica != null) ui.publica = !!msg.publica;
+
+    if (msg.tipo === "error") {
+      const aviso = !$("pantalla-sala").hidden ? $("aviso-sala") : $("aviso-online");
+      if (aviso) aviso.textContent = msg.mensaje || "Ha ocurrido un error.";
+      return;
+    }
+
+    if (msg.tipo === "en-sala" || msg.tipo === "sala-actualizada") {
+      pintarSalaEspera(msg);
+      if (msg.estado && (msg.estado.fase !== "esperando" && msg.partidaIniciada)) {
+        entrarEnMesaOnline(msg);
+      } else {
+        mostrar("pantalla-sala");
+      }
+      return;
+    }
+
+    if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
+      entrarEnMesaOnline(msg);
+      if (msg.secuenciaReparto) {
+        ui.animando = true;
+        $("mensaje-mesa").textContent = "Don Luis reparte las cartas…";
+        renderMesa(msg.estado, { ocultarPrivadas: true, vaciarComunitarias: true });
+        animarReparto(msg.secuenciaReparto).then(function () {
+          ui.animando = false;
+          if (ui.estado) renderMesa(msg.estado);
+          $("mensaje-mesa").textContent = "Preflop · a hablar.";
+        });
+      } else if (msg.estado) {
+        renderMesa(msg.estado);
+      }
+      return;
+    }
+
+    if (msg.tipo === "calle" && msg.nuevas) {
+      ui.animando = true;
+      animarComunitarias(msg.nuevas).then(function () {
+        ui.animando = false;
+        if (msg.estado) renderMesa(msg.estado);
+      });
+      if (msg.estado) {
+        // Mientras vuelan, ya podemos ir actualizando el bote
+        $("bote").innerHTML = "Bote <strong>" + (msg.estado.boteTotal || 0) + "</strong>";
+      }
+      return;
+    }
+
+    if (msg.estado) {
+      if ($("pantalla-mesa").hidden && msg.estado.fase !== "esperando") {
+        entrarEnMesaOnline(msg);
+      }
+      renderMesa(msg.estado);
+      if (msg.estado.mensaje && (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown" || msg.estado.fase === "entre-manos")) {
+        $("mensaje-mesa").textContent = msg.estado.mensaje;
+        $("mensaje-mesa").className = "premio";
+      }
+    }
+  }
+
+  function entrarEnMesaOnline(msg) {
+    ui.modo = "online";
+    $("info-sala").textContent = (ui.publica ? "Sala pública" : "Sala privada") +
+      (ui.codigo ? " · " + ui.codigo : "");
+    $("info-ciegas").textContent = "Ciegas 5 / 10";
+    mostrar("pantalla-mesa");
+    if (msg.estado) renderMesa(msg.estado);
+  }
+
+  function pintarSalaEspera(msg) {
+    $("codigo-sala").textContent = msg.codigo || ui.codigo || "";
+    $("tipo-sala").textContent = msg.publica
+      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre."
+      : "Sala privada. Comparte este código de 5 letras con tus amigos.";
+    const lista = $("lista-jugadores-sala");
+    const jugadores = (msg.estado && msg.estado.jugadores) || msg.jugadores || [];
+    lista.innerHTML = "";
+    for (let i = 0; i < jugadores.length; i++) {
+      const j = jugadores[i];
+      const li = document.createElement("li");
+      li.innerHTML = escapar(j.nombre) +
+        (j.id === ui.tuId ? " (tú)" : "") +
+        (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
+        (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "");
+      lista.appendChild(li);
+    }
+    const total = (msg.estado && msg.estado.asientosTotales) || msg.asientos || 9;
+    const libres = total - jugadores.length;
+    $("asientos-libres").textContent = libres === 0
+      ? "Mesa completa."
+      : "Asientos libres: " + libres + " de " + total + ".";
+
+    const anfitrion = !!msg.esAnfitrion || ui.esAnfitrion;
+    $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
+    $("btn-iniciar-online").hidden = !anfitrion;
+    $("aviso-sala").textContent = anfitrion
+      ? "Eres el anfitrión. Puedes llenar con bots e iniciar la partida cuando haya al menos 2 jugadores."
+      : "Esperando a que el anfitrión inicie la partida…";
+  }
+
+  async function crearPrivada() {
+    $("aviso-online").textContent = "";
+    try {
+      await conectarWS();
+      enviarWS({
+        tipo: "crear-privada",
+        nombre: nombreJugador(),
+        asientos: asientosElegidos("asientos-online")
+      });
+    } catch (e) {
+      $("aviso-online").textContent = e.message;
+    }
+  }
+
+  async function unirseCodigo() {
+    $("aviso-online").textContent = "";
+    const codigo = ($("input-codigo").value || "").trim().toUpperCase();
+    if (codigo.length !== 5) {
+      $("aviso-online").textContent = "El código tiene que tener 5 letras.";
+      return;
+    }
+    try {
+      await conectarWS();
+      enviarWS({ tipo: "unirse", nombre: nombreJugador(), codigo: codigo });
+    } catch (e) {
+      $("aviso-online").textContent = e.message;
+    }
+  }
+
+  async function unirsePublica() {
+    $("aviso-online").textContent = "";
+    try {
+      await conectarWS();
+      enviarWS({
+        tipo: "unirse-publica",
+        nombre: nombreJugador(),
+        asientos: asientosElegidos("asientos-online")
+      });
+    } catch (e) {
+      $("aviso-online").textContent = e.message;
+    }
+  }
+
+  /* ---------- Enlazar botones ---------- */
+
+  function iniciarUI() {
+    $("btn-solo").addEventListener("click", irSolo);
+    $("btn-online").addEventListener("click", irOnline);
+    $("btn-volver-solo").addEventListener("click", irMenu);
+    $("btn-volver-online").addEventListener("click", irMenu);
+    $("btn-empezar-solo").addEventListener("click", empezarSolo);
+
+    const enlazarSiExiste = function (id, ev, fn) {
+      const el = $(id);
+      if (el) el.addEventListener(ev, fn);
+    };
+    enlazarSiExiste("btn-crear-privada", "click", crearPrivada);
+    enlazarSiExiste("btn-unirse-codigo", "click", unirseCodigo);
+    enlazarSiExiste("btn-sala-publica", "click", unirsePublica);
+    enlazarSiExiste("btn-llenar-bots", "click", function () { enviarWS({ tipo: "llenar-bots" }); });
+    enlazarSiExiste("btn-iniciar-online", "click", function () { enviarWS({ tipo: "iniciar" }); });
+    enlazarSiExiste("btn-salir-sala", "click", function () {
+      enviarWS({ tipo: "salir" });
+      cerrarWS();
+      irMenu();
+    });
+    $("btn-salir-mesa").addEventListener("click", irMenu);
+
+    $("btn-retirarse").addEventListener("click", function () { enviarAccion("retirarse"); });
+    $("btn-pasar").addEventListener("click", function () { enviarAccion("pasar"); });
+    $("btn-igualar").addEventListener("click", function () { enviarAccion("igualar"); });
+    $("btn-subir").addEventListener("click", function () {
+      enviarAccion($("btn-subir").textContent === "Apostar" ? "apostar" : "subir", Number($("rango-subida").value));
+    });
+    $("btn-allin").addEventListener("click", function () { enviarAccion("all-in"); });
+    $("rango-subida").addEventListener("input", function () {
+      $("texto-subida").textContent = $("rango-subida").value;
+    });
+
+    enlazarSiExiste("input-codigo", "keydown", function (ev) {
+      if (ev.key === "Enter") unirseCodigo();
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciarUI);
+  } else {
+    iniciarUI();
+  }
+})();
+
+  </script>
+</body>
+</html>

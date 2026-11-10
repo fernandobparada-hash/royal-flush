@@ -1,0 +1,14 @@
+# Blueprint de Render (plan gratuito).
+# Esto no publica el juego por sí solo: hay que conectar el
+# repositorio en el panel de Render y aplicar el blueprint.
+services:
+  - type: web
+    name: royal-flush
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /salud
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

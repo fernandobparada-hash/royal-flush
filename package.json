@@ -1,0 +1,17 @@
+{
+  "name": "royal-flush",
+  "version": "1.0.0",
+  "description": "Royal Flush: Texas Hold'em No Limit. Juega solo contra bots o en línea con amigos.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node pruebas/probar-evaluador.js && node pruebas/probar-motor.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}

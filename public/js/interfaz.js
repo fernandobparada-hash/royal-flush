@@ -223,11 +223,38 @@
     return '<div class="carta-dorso' + (extraClase ? " " + extraClase : "") + '"></div>';
   }
 
+  function esVerticalEstrecho() {
+    return window.matchMedia("(orientation: portrait) and (max-width: 800px)").matches;
+  }
+
+  function esHorizontalBajo() {
+    return window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
+  }
+
   function posicionAsiento(indice, total) {
     const ang = (indice / total) * Math.PI * 2;
     // i=0 queda abajo, en el centro (nuestro asiento)
-    const x = 50 + Math.sin(ang) * 40;
-    const y = 54 + Math.cos(ang) * 36;
+    let rx = 40, ry = 36, cy = 54;
+    if (esVerticalEstrecho()) {
+      rx = 33;
+      ry = 36;
+      cy = 51;
+    } else if (esHorizontalBajo()) {
+      rx = 41;
+      ry = 31;
+      cy = 53;
+    }
+    let x = 50 + Math.sin(ang) * rx;
+    let y = cy + Math.cos(ang) * ry;
+    // Los vecinos del asiento propio se apartan un poco para no tapar las cartas grandes de abajo
+    if (esVerticalEstrecho() && (indice === 1 || indice === total - 1)) {
+      x = 50 + Math.sin(ang) * 42;
+      y = cy + Math.cos(ang) * 30;
+    }
+    if (esHorizontalBajo() && (indice === 1 || indice === total - 1)) {
+      x = 50 + Math.sin(ang) * 44;
+      y = cy + Math.cos(ang) * 26;
+    }
     let zona = "lado";
     if (indice === 0) zona = "abajo";
     else if (y < 40) zona = "arriba";
@@ -266,6 +293,7 @@
       html += '<div class="asiento ' + pos.zona;
       if (j && j.esTurno) html += " es-turno";
       if (j && j.retirado) html += " retirado";
+      if (j && j.id === ui.tuId) html += " propio";
       html += '" data-asiento="' + i + '" style="left:' + pos.x + "%;top:" + pos.y + '%;">';
 
       html += '<div class="cartas-asiento">';
@@ -696,6 +724,17 @@
 
     $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
+    });
+
+    let timerResize = null;
+    window.addEventListener("resize", function () {
+      if (!ui.estado || !$("pantalla-mesa") || $("pantalla-mesa").hidden) return;
+      clearTimeout(timerResize);
+      timerResize = setTimeout(function () {
+        if (ui.estado && $("pantalla-mesa") && !$("pantalla-mesa").hidden) {
+          renderMesa(ui.estado);
+        }
+      }, 150);
     });
   }
 

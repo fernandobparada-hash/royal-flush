@@ -2,13 +2,19 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#052616">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Royal Flush">
   <title>Royal Flush — Texas Hold'em</title>
   <!-- Versión de un solo archivo: se puede abrir con un doble clic. El modo solo funciona sin servidor. -->
   <style>
 /* =========================================================
    Estilos de la mesa de Texas Hold'em.
    Colores de casino: paño verde, madera y detalles dorados.
+   Una sola hoja: se adapta sola al escritorio y al celular.
    ========================================================= */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,6 +30,12 @@
   --crema: #f7f1e1;
   --rojo: #c41e3a;
   --texto: #f4f0e4;
+  --alto-pantalla: 100vh;
+  --alto-pantalla: 100dvh;
+  --seguro-arriba: env(safe-area-inset-top, 0px);
+  --seguro-abajo: env(safe-area-inset-bottom, 0px);
+  --seguro-izq: env(safe-area-inset-left, 0px);
+  --seguro-der: env(safe-area-inset-right, 0px);
 }
 
 html, body {
@@ -34,17 +46,38 @@ html, body {
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
-body { min-height: 100vh; }
+html {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: var(--alto-pantalla);
+  overflow-x: hidden;
+}
 
 /* El atributo hidden debe ganar a display:flex de las pantallas */
 [hidden] { display: none !important; }
 
+button,
+label,
+input[type="radio"],
+a {
+  touch-action: manipulation;
+}
+
+/* Evita el zoom automático de iOS al enfocar un campo */
+input, select, textarea {
+  font-size: 16px;
+}
+
 .pantalla {
-  min-height: 100vh;
+  min-height: var(--alto-pantalla);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 16px;
+  padding: max(24px, var(--seguro-arriba)) max(16px, var(--seguro-der)) max(24px, var(--seguro-abajo)) max(16px, var(--seguro-izq));
 }
 
 .marco-menu {
@@ -108,6 +141,7 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   color: #1c2a16;
   text-transform: none;
   letter-spacing: 0.04em;
+  min-height: 44px;
 }
 
 #input-codigo {
@@ -132,6 +166,7 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   padding: 22px 16px 18px;
   cursor: pointer;
   text-align: center;
+  min-height: 44px;
   transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -179,11 +214,19 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
 }
 
 .selector-asientos legend { padding: 0 8px; color: var(--oro); }
-.selector-asientos label { margin: 0 12px; cursor: pointer; }
+.selector-asientos label {
+  margin: 0 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
 
 .fila-codigo {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 8px;
   flex-wrap: wrap;
   margin: 8px 0 18px;
@@ -197,6 +240,7 @@ button.principal, button.secundario, button.peligro,
   border: none;
   border-radius: 10px;
   padding: 10px 18px;
+  min-height: 44px;
   cursor: pointer;
   margin: 6px 4px;
 }
@@ -252,34 +296,61 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .lista-sala li .papel { color: var(--oro); font-size: 0.8rem; margin-left: 8px; }
 
-/* ========== MESA ========== */
-#pantalla-mesa {
-  min-height: 100vh;
+.botones-sala {
   display: flex;
   flex-direction: column;
-  padding: 8px 8px 16px;
+  align-items: stretch;
+}
+
+/* ========== MESA ========== */
+#pantalla-mesa {
+  min-height: var(--alto-pantalla);
+  height: var(--alto-pantalla);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding:
+    max(8px, var(--seguro-arriba))
+    max(8px, var(--seguro-der))
+    max(8px, var(--seguro-abajo))
+    max(8px, var(--seguro-izq));
 }
 
 .barra-mesa {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 4px 12px;
   color: #d7ecc8;
   font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.barra-mesa span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #escenario {
   width: min(1180px, 100%);
   margin: 0 auto;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #mesa-oval {
   position: relative;
-  width: 100%;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
   aspect-ratio: 16 / 10;
-  min-height: 420px;
+  min-height: 0;
   background:
     radial-gradient(ellipse at center, #149354 0%, var(--verde-mesa) 55%, var(--verde-oscuro) 100%);
   border: 14px solid var(--madera);
@@ -308,10 +379,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .crupier-nombre {
   margin-top: -8px;
   font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--oro);
   text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
 }
 
 #centro-mesa {
@@ -321,7 +393,8 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 3;
-  min-width: 420px;
+  width: min(92%, 520px);
+  min-width: 0;
 }
 
 #bote {
@@ -456,6 +529,23 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   min-height: 0.9em;
 }
 
+/* El asiento propio, abajo, un poco más grande y legible */
+.asiento.propio {
+  width: 170px;
+  z-index: 5;
+}
+
+.asiento.propio .cartas-asiento { height: 90px; }
+
+.asiento.propio .cartas-asiento .carta,
+.asiento.propio .cartas-asiento .carta-dorso {
+  width: 60px;
+  height: 86px;
+}
+
+.asiento.propio .nombre-jugador { font-size: 0.95rem; }
+.asiento.propio .fichas-jugador { font-size: 0.92rem; }
+
 /* Cartas (privadas, comunitarias y volando) */
 .carta, .carta-dorso {
   position: relative;
@@ -522,6 +612,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   padding: 8px 12px 4px;
   font-size: 1.1rem;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  flex-shrink: 0;
 }
 
 #mensaje-mesa.premio { color: var(--oro); font-weight: 700; }
@@ -537,6 +628,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   border-radius: 14px;
   margin: 0 auto;
   width: min(920px, 100%);
+  flex-shrink: 0;
 }
 
 #panel-acciones[hidden] { display: none !important; }
@@ -559,22 +651,360 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   padding: 4px 8px;
 }
 
-#rango-subida { width: 140px; }
+#rango-subida {
+  width: 140px;
+  height: 32px;
+  accent-color: var(--oro);
+}
+
 #texto-subida { min-width: 48px; color: var(--oro); font-weight: 700; }
 
+/* ---- Tableta y celular en general ---- */
 @media (max-width: 800px) {
+  .pantalla {
+    align-items: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .opciones-menu { grid-template-columns: 1fr; }
-  #mesa-oval { aspect-ratio: 4 / 4; border-width: 10px; }
-  .asiento { width: 118px; }
-  .cartas-asiento .carta, .cartas-asiento .carta-dorso { width: 42px; height: 60px; }
-  .hueco-carta, #comunitarias .carta, #comunitarias .carta-dorso { width: 52px; height: 74px; }
-  #centro-mesa { min-width: 280px; }
-  #crupier { width: 110px; top: -6%; }
-  .crupier-figura svg { width: 100px; }
+
+  .marco-menu { padding: 24px 18px; }
+
+  h2 { font-size: clamp(1.35rem, 7vw, 1.8rem); }
+
+  .fila-codigo {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #input-codigo { width: 100%; }
+
+  .botones-sala button,
+  .marco-menu button.principal,
+  .marco-menu button.secundario {
+    width: 100%;
+    margin: 6px 0;
+  }
+
+  #mesa-oval {
+    aspect-ratio: 3 / 4;
+    border-width: 8px;
+    outline-width: 3px;
+    box-shadow:
+      0 12px 24px rgba(0,0,0,0.45),
+      inset 0 0 48px rgba(0,0,0,0.25),
+      inset 0 0 0 5px var(--madera-clara);
+  }
+
+  .asiento { width: clamp(72px, 22vw, 118px); }
+
+  .cartas-asiento { height: clamp(44px, 12vw, 60px); }
+
+  .cartas-asiento .carta,
+  .cartas-asiento .carta-dorso {
+    width: clamp(30px, 10vw, 42px);
+    height: clamp(44px, 14vw, 60px);
+    margin: 0 -4px;
+  }
+
+  .hueco-carta,
+  #comunitarias .carta,
+  #comunitarias .carta-dorso {
+    width: clamp(36px, 11vw, 52px);
+    height: clamp(52px, 16vw, 74px);
+  }
+
+  #comunitarias { gap: 4px; min-height: 0; }
+
+  .carta .esquina .rango { font-size: 0.65rem; }
+  .carta .esquina .mini-palo { font-size: 0.55rem; }
+  .carta .palo-centro { font-size: 1.15rem; }
+
+  #centro-mesa { width: min(96%, 420px); top: 44%; }
+
+  #bote { font-size: 0.85rem; padding: 4px 12px; margin-bottom: 6px; }
+
+  #crupier { width: 88px; top: -4%; }
+  .crupier-figura svg { width: 80px; }
+  .crupier-nombre { font-size: 0.58rem; }
+
+  .nombre-jugador { font-size: 0.7rem; }
+  .fichas-jugador { font-size: 0.68rem; }
+  .estado-jugador { font-size: 0.58rem; }
+  .info-jugador { padding: 4px 5px 5px; border-radius: 8px; }
+
+  .insignia { width: 16px; height: 16px; font-size: 0.55rem; }
+  .insignia.sb, .insignia.bb { font-size: 0.42rem; }
+
+  .asiento.propio,
+  .asiento.abajo {
+    width: clamp(110px, 36vw, 160px);
+    z-index: 5;
+  }
+
+  .asiento.propio .cartas-asiento,
+  .asiento.abajo .cartas-asiento { height: clamp(62px, 18vw, 86px); }
+
+  .asiento.propio .cartas-asiento .carta,
+  .asiento.propio .cartas-asiento .carta-dorso,
+  .asiento.abajo .cartas-asiento .carta,
+  .asiento.abajo .cartas-asiento .carta-dorso {
+    width: clamp(44px, 14vw, 58px);
+    height: clamp(62px, 20vw, 84px);
+  }
+
+  .asiento.propio .nombre-jugador,
+  .asiento.abajo .nombre-jugador { font-size: 0.85rem; }
+
+  #mensaje-mesa { font-size: 0.95rem; padding: 4px 8px; min-height: 1.6em; }
+
+  #panel-acciones {
+    width: 100%;
+    gap: 6px;
+    padding: 8px 8px max(8px, var(--seguro-abajo));
+    border-radius: 14px 14px 0 0;
+  }
+
+  #panel-acciones button {
+    min-height: 48px;
+    min-width: 72px;
+    margin: 2px;
+    font-size: 0.95rem;
+  }
+
+  .grupo-subida {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    padding: 6px 8px;
+  }
+
+  #rango-subida {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    height: 44px;
+  }
 }
 
 @media (max-width: 700px) {
-  .marco-menu { padding: 24px 18px; }
+  .marco-menu { padding: 20px 14px; border-width: 3px; }
+}
+
+/* Celular en vertical: mesa ovalada de pie, que quepa en la pantalla */
+@media (max-width: 480px) and (orientation: portrait) {
+  .barra-mesa {
+    padding: 2px 4px;
+    font-size: 0.75rem;
+  }
+
+  .barra-mesa button.compacto {
+    min-height: 40px;
+    padding: 6px 10px;
+  }
+
+  #mesa-oval {
+    aspect-ratio: 9 / 14;
+    border-width: 7px;
+  }
+
+  #crupier { width: 86px; top: -2%; }
+  .crupier-figura svg { width: 64px; }
+  .crupier-nombre { font-size: 0.55rem; margin-top: -4px; letter-spacing: 0.04em; }
+
+  .asiento { width: clamp(64px, 20vw, 96px); }
+
+  .cartas-asiento { height: 40px; }
+  .cartas-asiento .carta,
+  .cartas-asiento .carta-dorso {
+    width: 28px;
+    height: 40px;
+    margin: 0 -5px;
+    border-radius: 4px;
+  }
+
+  .hueco-carta,
+  #comunitarias .carta,
+  #comunitarias .carta-dorso,
+  .carta-voladora.al-centro {
+    width: 38px;
+    height: 54px;
+    border-radius: 5px;
+  }
+
+  .carta-voladora { width: 28px; height: 40px; }
+
+  .carta .esquina.arriba { top: 2px; left: 2px; }
+  .carta .esquina.abajo { bottom: 2px; right: 2px; }
+  .carta .esquina .rango { font-size: 0.52rem; }
+  .carta .palo-centro { font-size: 0.95rem; }
+
+  .asiento.propio,
+  .asiento.abajo {
+    width: clamp(108px, 36vw, 136px);
+  }
+
+  .asiento.propio .cartas-asiento,
+  .asiento.abajo .cartas-asiento { height: 62px; }
+
+  .asiento.propio .cartas-asiento .carta,
+  .asiento.propio .cartas-asiento .carta-dorso,
+  .asiento.abajo .cartas-asiento .carta,
+  .asiento.abajo .cartas-asiento .carta-dorso {
+    width: 44px;
+    height: 62px;
+    margin: 0 -5px;
+    border-radius: 6px;
+  }
+}
+
+/* Celular en horizontal: poco alto, mesa a lo ancho y barra de acciones compacta */
+@media (orientation: landscape) and (max-height: 500px) {
+  .pantalla {
+    align-items: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: max(6px, var(--seguro-arriba)) max(12px, var(--seguro-der)) max(6px, var(--seguro-abajo)) max(12px, var(--seguro-izq));
+  }
+
+  .marco-menu {
+    padding: 10px 16px 8px;
+    border-width: 3px;
+  }
+
+  .marco-menu.estrecho { width: min(680px, 100%); }
+
+  h1 { font-size: clamp(1.5rem, 5vh, 2rem); }
+  h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .subtitulo { margin: 2px 0 8px; }
+  .campo-nombre { margin-bottom: 8px; }
+  .campo-nombre input { min-height: 40px; padding: 6px 12px; }
+  .opciones-menu { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-grande { padding: 10px 12px 8px; }
+  .icono-btn { font-size: 1.4rem; margin-bottom: 2px; }
+  .titulo-btn { font-size: 1.05rem; margin-bottom: 2px; }
+  .desc-btn { font-size: 0.78rem; }
+  .pie-menu { margin-top: 8px; font-size: 0.8rem; }
+  .texto, .ayuda-opcion { margin: 2px 0 6px; font-size: 0.8rem; }
+  .ayuda-opcion { display: none; }
+  .aviso { margin: 4px 0; min-height: 0; }
+  .selector-asientos { margin: 6px 0; padding: 4px 10px; }
+  .selector-asientos label { min-height: 36px; }
+  .fila-codigo { flex-direction: row; flex-wrap: wrap; margin: 4px 0 8px; }
+  #input-codigo { width: 140px; }
+  .marco-menu button.principal,
+  .marco-menu button.secundario,
+  .botones-sala button {
+    width: auto;
+    margin: 4px 6px;
+    min-height: 40px;
+  }
+  .botones-sala { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+
+  #pantalla-mesa {
+    padding:
+      max(2px, var(--seguro-arriba))
+      max(6px, var(--seguro-der))
+      max(2px, var(--seguro-abajo))
+      max(6px, var(--seguro-izq));
+  }
+
+  .barra-mesa {
+    padding: 0 6px;
+    font-size: 0.75rem;
+  }
+
+  .barra-mesa button.compacto {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    margin: 2px;
+  }
+
+  #mesa-oval {
+    aspect-ratio: 16 / 9;
+    border-width: 6px;
+    outline-width: 2px;
+  }
+
+  #crupier { width: 56px; top: -6%; }
+  .crupier-figura svg { width: 52px; }
+  .crupier-nombre { display: none; }
+
+  .asiento { width: 72px; }
+
+  .cartas-asiento { height: 28px; margin-bottom: 1px; }
+  .cartas-asiento .carta,
+  .cartas-asiento .carta-dorso {
+    width: 20px;
+    height: 28px;
+    margin: 0 -3px;
+    border-radius: 3px;
+  }
+
+  .asiento.propio,
+  .asiento.abajo {
+    width: 108px;
+  }
+
+  .asiento.propio .cartas-asiento,
+  .asiento.abajo .cartas-asiento { height: 46px; }
+
+  .asiento.propio .cartas-asiento .carta,
+  .asiento.propio .cartas-asiento .carta-dorso,
+  .asiento.abajo .cartas-asiento .carta,
+  .asiento.abajo .cartas-asiento .carta-dorso {
+    width: 32px;
+    height: 46px;
+  }
+
+  #centro-mesa { top: 48%; }
+  #bote { font-size: 0.75rem; padding: 2px 10px; margin-bottom: 4px; }
+  #comunitarias { gap: 4px; min-height: 0; }
+
+  .hueco-carta,
+  #comunitarias .carta,
+  #comunitarias .carta-dorso,
+  .carta-voladora.al-centro {
+    width: 32px;
+    height: 46px;
+  }
+
+  .carta .esquina .rango { font-size: 0.48rem; }
+  .carta .palo-centro { font-size: 0.8rem; }
+
+  .nombre-jugador { font-size: 0.58rem; }
+  .fichas-jugador { font-size: 0.55rem; }
+  .estado-jugador { display: none; }
+  .info-jugador { padding: 1px 3px 2px; }
+  .apuesta-frente { font-size: 0.62rem; padding: 0 5px; }
+  .asiento.propio .estado-jugador,
+  .asiento.abajo .estado-jugador { display: block; font-size: 0.5rem; min-height: 0; }
+
+  #mensaje-mesa { font-size: 0.8rem; padding: 2px 8px; min-height: 1.2em; }
+
+  #panel-acciones {
+    gap: 4px;
+    padding: 4px 6px max(4px, var(--seguro-abajo));
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  #panel-acciones button {
+    min-height: 40px;
+    min-width: 64px;
+    margin: 0;
+    font-size: 0.82rem;
+    padding: 6px 10px;
+    flex-shrink: 0;
+  }
+
+  .grupo-subida {
+    flex: 1 1 auto;
+    padding: 2px 6px;
+  }
+
+  #rango-subida { width: 120px; height: 36px; flex: 1; }
 }
 
   </style>
@@ -625,12 +1055,29 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
       </div>
     </section>
 
-    <!-- ========== AVISO ONLINE (versión de un solo archivo) ========== -->
+    <!-- ========== SUBMENÚ ONLINE ========== -->
     <section id="pantalla-online" class="pantalla" hidden>
       <div class="marco-menu estrecho">
         <h2>Jugar online</h2>
-        <p class="texto">Todavía no se puede jugar online con este archivo, y no hace falta instalar ni arrancar nada para usarlo.</p>
-        <p class="texto">Cuando Royal Flush se publique en internet, podrás sentarte a una mesa con amigos o con gente nueva, en una sala privada o en una sala pública. Mientras tanto, vuelve atrás y elige <strong>Jugar solo</strong>: la mesa se llena de bots y puedes practicar con un doble clic.</p>
+        <p class="texto">Elige cómo quieres sentarte a una mesa con otras personas.</p>
+
+        <fieldset class="selector-asientos">
+          <legend>Tamaño de la mesa (al crear una sala)</legend>
+          <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
+          <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+        </fieldset>
+
+        <button type="button" id="btn-crear-privada" class="principal">Crear sala privada</button>
+        <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
+
+        <div class="fila-codigo">
+          <input id="input-codigo" type="text" maxlength="5" placeholder="CÓDIGO" spellcheck="false" autocomplete="off">
+          <button type="button" id="btn-unirse-codigo" class="principal">Unirse con código</button>
+        </div>
+
+        <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
+        <p class="ayuda-opcion">Te une a una mesa pública con sitio, o abre una nueva.</p>
+
         <p id="aviso-online" class="aviso" role="status"></p>
         <button type="button" id="btn-volver-online" class="secundario">Volver</button>
       </div>
@@ -2220,6 +2667,11 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   }
 
   function irOnline() {
+    $("aviso-online").textContent = "";
+    if (location.protocol === "file:") {
+      $("aviso-online").textContent =
+        "Para jugar online tienes que arrancar el servidor (npm start) y abrir http://localhost:3000 en el navegador. El modo solo sí funciona abriendo este archivo.";
+    }
     mostrar("pantalla-online");
   }
 
@@ -2372,11 +2824,38 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
     return '<div class="carta-dorso' + (extraClase ? " " + extraClase : "") + '"></div>';
   }
 
+  function esVerticalEstrecho() {
+    return window.matchMedia("(orientation: portrait) and (max-width: 800px)").matches;
+  }
+
+  function esHorizontalBajo() {
+    return window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
+  }
+
   function posicionAsiento(indice, total) {
     const ang = (indice / total) * Math.PI * 2;
     // i=0 queda abajo, en el centro (nuestro asiento)
-    const x = 50 + Math.sin(ang) * 40;
-    const y = 54 + Math.cos(ang) * 36;
+    let rx = 40, ry = 36, cy = 54;
+    if (esVerticalEstrecho()) {
+      rx = 33;
+      ry = 36;
+      cy = 51;
+    } else if (esHorizontalBajo()) {
+      rx = 41;
+      ry = 31;
+      cy = 53;
+    }
+    let x = 50 + Math.sin(ang) * rx;
+    let y = cy + Math.cos(ang) * ry;
+    // Los vecinos del asiento propio se apartan un poco para no tapar las cartas grandes de abajo
+    if (esVerticalEstrecho() && (indice === 1 || indice === total - 1)) {
+      x = 50 + Math.sin(ang) * 42;
+      y = cy + Math.cos(ang) * 30;
+    }
+    if (esHorizontalBajo() && (indice === 1 || indice === total - 1)) {
+      x = 50 + Math.sin(ang) * 44;
+      y = cy + Math.cos(ang) * 26;
+    }
     let zona = "lado";
     if (indice === 0) zona = "abajo";
     else if (y < 40) zona = "arriba";
@@ -2415,6 +2894,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
       html += '<div class="asiento ' + pos.zona;
       if (j && j.esTurno) html += " es-turno";
       if (j && j.retirado) html += " retirado";
+      if (j && j.id === ui.tuId) html += " propio";
       html += '" data-asiento="' + i + '" style="left:' + pos.x + "%;top:" + pos.y + '%;">';
 
       html += '<div class="cartas-asiento">';
@@ -2820,16 +3300,12 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
     $("btn-volver-online").addEventListener("click", irMenu);
     $("btn-empezar-solo").addEventListener("click", empezarSolo);
 
-    const enlazarSiExiste = function (id, ev, fn) {
-      const el = $(id);
-      if (el) el.addEventListener(ev, fn);
-    };
-    enlazarSiExiste("btn-crear-privada", "click", crearPrivada);
-    enlazarSiExiste("btn-unirse-codigo", "click", unirseCodigo);
-    enlazarSiExiste("btn-sala-publica", "click", unirsePublica);
-    enlazarSiExiste("btn-llenar-bots", "click", function () { enviarWS({ tipo: "llenar-bots" }); });
-    enlazarSiExiste("btn-iniciar-online", "click", function () { enviarWS({ tipo: "iniciar" }); });
-    enlazarSiExiste("btn-salir-sala", "click", function () {
+    $("btn-crear-privada").addEventListener("click", crearPrivada);
+    $("btn-unirse-codigo").addEventListener("click", unirseCodigo);
+    $("btn-sala-publica").addEventListener("click", unirsePublica);
+    $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
+    $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
+    $("btn-salir-sala").addEventListener("click", function () {
       enviarWS({ tipo: "salir" });
       cerrarWS();
       irMenu();
@@ -2847,8 +3323,19 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
       $("texto-subida").textContent = $("rango-subida").value;
     });
 
-    enlazarSiExiste("input-codigo", "keydown", function (ev) {
+    $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
+    });
+
+    let timerResize = null;
+    window.addEventListener("resize", function () {
+      if (!ui.estado || !$("pantalla-mesa") || $("pantalla-mesa").hidden) return;
+      clearTimeout(timerResize);
+      timerResize = setTimeout(function () {
+        if (ui.estado && $("pantalla-mesa") && !$("pantalla-mesa").hidden) {
+          renderMesa(ui.estado);
+        }
+      }, 150);
     });
   }
 

@@ -7,6 +7,9 @@ La interfaz está en español y el código va comentado, también en español.
 
 Puedes jugar **solo** (contra bots) o **online** (sala privada con código, o sala pública).
 
+Hay una sola página: se adapta sola al celular (en vertical y en horizontal) y al ordenador.
+En el celular puedes añadirla a la pantalla de inicio.
+
 ## Cómo ejecutarlo
 
 Necesitas [Node.js](https://nodejs.org/) 18 o superior.

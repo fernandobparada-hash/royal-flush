@@ -159,6 +159,7 @@
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
         <p id="info-fichas-sala" class="texto destacada"></p>
+        <button type="button" id="btn-cuentas-sala" class="btn block">💰 Recargar y cuentas</button>
         <div class="botones-sala">
           <button type="button" id="btn-iniciar-online" class="btn primary block" hidden disabled>Empezar</button>
           <button type="button" id="btn-llenar-bots" class="btn block" hidden>Rellenar con bots</button>
@@ -176,6 +177,7 @@
         <span id="info-sala" class="code-pill"></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
         <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
+        <button type="button" id="btn-abrir-cuentas" class="icon-btn" title="Recargar y cuentas en Bs" aria-label="Cuentas en bolivianos" hidden>💰</button>
         <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
       </header>
@@ -370,6 +372,34 @@
         </div>
       </div>
     </section>
+  </div>
+
+  <div id="panel-cuentas" hidden>
+    <div class="chat-cabeza">
+      <strong id="titulo-cuentas">Cuentas</strong>
+      <button type="button" id="btn-cerrar-cuentas" class="icon-btn" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="tabs-cuentas">
+      <button type="button" id="tab-recargar" class="activo">Recargar</button>
+      <button type="button" id="tab-resumen">Resumen</button>
+    </div>
+    <div id="vista-recargar">
+      <p id="texto-cambio" class="texto">Cambio: <strong>1 Bs = 10 fichas</strong>. El mínimo es 10 Bs (100 fichas).</p>
+      <p class="hint">Esto solo lleva la cuenta. No hay pagos por acá: los ajustan entre ustedes en efectivo.</p>
+      <label class="campo-nombre" for="input-recarga">Monto en bolivianos (Bs)
+        <input id="input-recarga" type="number" min="10" step="1" value="10" inputmode="numeric">
+      </label>
+      <p id="preview-recarga" class="texto destacada">10 Bs = 100 fichas</p>
+      <p id="aviso-recarga" class="aviso" role="status"></p>
+      <button type="button" id="btn-recargar" class="btn primary block">Recargar</button>
+      <p id="nota-recarga-pendiente" class="hint centro" hidden></p>
+    </div>
+    <div id="vista-resumen" hidden>
+      <div id="lista-cuentas" class="lista-cuentas"></div>
+      <div id="lista-pagos" class="lista-pagos"></div>
+    </div>
+    <button type="button" id="btn-terminar-partida" class="btn block" hidden>Terminar partida y ver cuentas</button>
+    <p class="disclaimer">Solo lleva la cuenta; los pagos se hacen entre ustedes.</p>
   </div>
 
   <div id="toasts" role="status" aria-live="assertive"></div>

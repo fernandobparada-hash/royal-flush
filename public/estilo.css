@@ -1105,3 +1105,38 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   .info-jugador { padding-top: 14px; }
   .controles-avatar { max-height: 32vh; }
 }
+
+
+/* --------- v7: cuentas en bolivianos (solo anotación) --------- */
+#btn-abrir-cuentas { font-size: 1.15rem; }
+#panel-cuentas {
+  position: fixed; left: 8px; right: 8px; bottom: calc(var(--seguro-abajo) + 8px);
+  margin: 0 auto; max-width: 520px; z-index: 40;
+  background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
+  padding: 10px 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  max-height: min(78vh, 620px); overflow: auto;
+}
+.tabs-cuentas { display: flex; gap: 0.35em; margin: 0 0 0.8em; }
+.tabs-cuentas button {
+  flex: 1; min-height: 40px; border-radius: 10px; border: 1px solid var(--linea);
+  background: var(--panel2); color: var(--texto); font-weight: 700; cursor: pointer;
+}
+.tabs-cuentas button.activo { background: var(--oro); color: #1f1600; border-color: transparent; }
+#preview-recarga { margin: 0.5em 0 0.3em; }
+.lista-cuentas { display: grid; gap: 0.5em; margin-bottom: 0.8em; }
+.fila-cuenta {
+  background: #111d18; border: 1px solid var(--linea); border-radius: 10px;
+  padding: 0.55em 0.7em; text-align: left;
+}
+.fila-cuenta header { display: flex; justify-content: space-between; gap: 0.5em; font-weight: 700; }
+.fila-cuenta .nums { font-size: 0.85rem; color: var(--muted); margin-top: 0.2em; }
+.fila-cuenta .gano { color: #5ee0a0; font-weight: 800; }
+.fila-cuenta .debe { color: #f3a39e; font-weight: 800; }
+.fila-cuenta .tablas { color: var(--muted); font-weight: 700; }
+.fila-cuenta.se-fue { opacity: 0.75; }
+.lista-pagos { margin: 0.4em 0 0.8em; font-size: 0.9rem; }
+.lista-pagos p { margin: 0.25em 0; }
+#btn-cuentas-sala { margin: 0.6em 0 0.2em; }
+@media (max-width: 800px) {
+  #panel-cuentas { max-width: none; }
+}

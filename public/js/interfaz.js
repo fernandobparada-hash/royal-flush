@@ -37,7 +37,8 @@
     logChat: [],
     timerPing: null,
     timerSalud: null,
-    timerReconnect: null
+    timerReconnect: null,
+    cuentas: null
   };
 
   const LS_NOMBRE = "rf_nombre";
@@ -202,6 +203,10 @@
       else el.hidden = true;
     }
     document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = idPantalla !== "pantalla-mesa" || ui.modo !== "online";
+    if (idPantalla !== "pantalla-mesa" && idPantalla !== "pantalla-sala") {
+      if ($("panel-cuentas")) $("panel-cuentas").hidden = true;
+    }
   }
 
   /* ---------- Enlaces de sala y avisos ---------- */
@@ -1771,6 +1776,7 @@
     if (msg.token) guardarSesionSala(msg.token, msg.codigo || ui.codigo);
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
     if (msg.publica != null) ui.publica = !!msg.publica;
+    if (msg.cuentas) recibirCuentas(msg);
 
     if (msg.tipo === "pong") return;
 
@@ -1779,11 +1785,34 @@
       if (msg.codigoError === "sala-inexistente") {
         borrarSesionSala();
       }
+      if ((msg.codigoError === "recarga-minima" || /recargar|mínimo/i.test(msg.mensaje || "")) && $("aviso-recarga")) {
+        $("aviso-recarga").textContent = msg.mensaje;
+      }
       return;
     }
 
     if (msg.tipo === "chat") {
       mostrarFrase(msg);
+      return;
+    }
+
+    if (msg.tipo === "recarga") {
+      if (msg.mensaje) toast(msg.mensaje, "ok");
+      if (msg.cuentas) recibirCuentas(msg);
+      pintarNotaRecarga();
+      if (msg.estado && $("pantalla-mesa") && !$("pantalla-mesa").hidden) renderMesa(msg.estado);
+      if ($("aviso-recarga")) $("aviso-recarga").textContent = "";
+      return;
+    }
+
+    if (msg.tipo === "partida-terminada") {
+      if (msg.estado) {
+        if ($("pantalla-mesa").hidden) mostrar("pantalla-sala");
+        else renderMesa(msg.estado);
+      }
+      recibirCuentas(msg);
+      abrirCuentas("resumen");
+      toast("Partida terminada. Acá están las cuentas.", "ok");
       return;
     }
 
@@ -1844,6 +1873,7 @@
     ui.modo = "online";
     $("info-sala").textContent = (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
     if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = !ui.codigo;
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = false;
     if (ui.codigo) actualizarUrlSala(ui.codigo);
     $("info-ciegas").textContent = "Ciegas 5 / 10";
     mostrar("pantalla-mesa");
@@ -2032,7 +2062,188 @@
     }, 600 + Math.random() * 900);
   }
 
+
+  function formatearBs(n) {
+    const v = Math.round((Number(n) || 0) * 100) / 100;
+    const s = (v % 1 === 0) ? String(v) : String(v).replace(".", ",");
+    return s + " Bs";
+  }
+
+  function fichasPorBs() {
+    return (ui.cuentas && ui.cuentas.fichasPorBs) || 10;
+  }
+
+  function minRecargaBs() {
+    return (ui.cuentas && ui.cuentas.minBs) || 10;
+  }
+
+  function recibirCuentas(msg) {
+    if (!msg || !msg.cuentas) return;
+    const eraTerminada = ui.cuentas && ui.cuentas.partidaTerminada;
+    ui.cuentas = msg.cuentas;
+    pintarCambio();
+    pintarResumen();
+    pintarNotaRecarga();
+    if (ui.cuentas.partidaTerminada && !eraTerminada) {
+      abrirCuentas("resumen");
+    }
+    if (msg.mensajeCuentas) toast(msg.mensajeCuentas, "ok");
+  }
+
+  function pintarCambio() {
+    const n = fichasPorBs();
+    const min = minRecargaBs();
+    const el = $("texto-cambio");
+    if (el) {
+      el.innerHTML = "Cambio: <strong>1 Bs = " + n + " fichas</strong>. El mínimo es " + min + " Bs (" + (min * n) + " fichas).";
+    }
+    actualizarPreviewRecarga();
+  }
+
+  function actualizarPreviewRecarga() {
+    const inp = $("input-recarga");
+    const prev = $("preview-recarga");
+    if (!inp || !prev) return;
+    const bs = Number(inp.value);
+    const n = fichasPorBs();
+    if (!isFinite(bs) || bs < minRecargaBs()) {
+      prev.textContent = "El mínimo es " + minRecargaBs() + " Bs (" + (minRecargaBs() * n) + " fichas).";
+    } else {
+      prev.textContent = Math.floor(bs) + " Bs = " + (Math.floor(bs) * n) + " fichas.";
+    }
+  }
+
+  function pintarNotaRecarga() {
+    const nota = $("nota-recarga-pendiente");
+    if (!nota) return;
+    const yo = ui.cuentas && (ui.cuentas.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    if (yo && yo.pendienteFichas > 0) {
+      nota.hidden = false;
+      const bs = yo.pendienteFichas / fichasPorBs();
+      nota.textContent = "Tenés " + formatearBs(bs) + " (" + yo.pendienteFichas + " fichas) que se suman al empezar la próxima mano.";
+    } else {
+      nota.hidden = true;
+      nota.textContent = "";
+    }
+  }
+
+  function pintarResumen() {
+    const caja = $("lista-cuentas");
+    const pagosCaja = $("lista-pagos");
+    if (!caja) return;
+    const cuentas = ui.cuentas || { jugadores: [] };
+    const js = cuentas.jugadores || [];
+    caja.innerHTML = "";
+    if (!js.length) {
+      caja.innerHTML = '<p class="hint">Todavía no hay recargas en esta mesa.</p>';
+    }
+    for (let i = 0; i < js.length; i++) {
+      const j = js[i];
+      const div = document.createElement("div");
+      div.className = "fila-cuenta" + (j.seFue ? " se-fue" : "");
+      let res = '<span class="tablas">En tablas</span>';
+      if (j.resultadoBs > 0.009) res = '<span class="gano">Ganó ' + formatearBs(j.resultadoBs) + "</span>";
+      else if (j.resultadoBs < -0.009) res = '<span class="debe">Debe ' + formatearBs(-j.resultadoBs) + "</span>";
+      const yo = j.id === ui.tuId ? " (tú)" : "";
+      const fue = j.seFue ? " · salió" : "";
+      div.innerHTML = "<header><span>" + escapar(j.nombre || "Jugador") + yo + fue + "</span>" + res + "</header>" +
+        '<div class="nums">Recargó ' + formatearBs(j.recargadoBs) + " · Tiene ahora " + formatearBs(j.tieneBs) + "</div>";
+      caja.appendChild(div);
+    }
+    if (pagosCaja) {
+      const pagos = liquidarLocal(js);
+      const avisoBote = cuentas.avisoBote
+        ? "<p class=\"hint\">La cuenta usa las fichas que cada uno tiene ahora; lo que quedó en el bote de esta mano no está incluido.</p>"
+        : "";
+      if (!pagos.length) {
+        pagosCaja.innerHTML = avisoBote + (js.length ? "<p>No hace falta pasarse plata entre sí.</p>" : "");
+      } else {
+        pagosCaja.innerHTML = avisoBote + "<p><strong>Quién le paga a quién</strong></p>" + pagos.map(function (p) {
+          return "<p>" + escapar(p.de) + " le paga " + formatearBs(p.monto) + " a " + escapar(p.a) + ".</p>";
+        }).join("");
+      }
+    }
+    const btnFin = $("btn-terminar-partida");
+    if (btnFin) {
+      btnFin.hidden = !ui.esAnfitrion || !!(cuentas.partidaTerminada);
+      btnFin.disabled = false;
+      if (cuentas.terminarAlFinal) {
+        btnFin.hidden = true;
+      }
+    }
+  }
+
+  function liquidarLocal(jugadores) {
+    const deudores = [];
+    const acreedores = [];
+    for (let i = 0; i < jugadores.length; i++) {
+      const r = Math.round((Number(jugadores[i].resultadoBs) || 0) * 100) / 100;
+      if (r < -0.009) deudores.push({ nombre: jugadores[i].nombre, falta: Math.round(-r * 100) / 100 });
+      else if (r > 0.009) acreedores.push({ nombre: jugadores[i].nombre, haber: r });
+    }
+    deudores.sort(function (a, b) { return b.falta - a.falta; });
+    acreedores.sort(function (a, b) { return b.haber - a.haber; });
+    const pagos = [];
+    let i = 0, k = 0;
+    while (i < deudores.length && k < acreedores.length) {
+      const monto = Math.round(Math.min(deudores[i].falta, acreedores[k].haber) * 100) / 100;
+      if (monto > 0.009) pagos.push({ de: deudores[i].nombre, a: acreedores[k].nombre, monto: monto });
+      deudores[i].falta = Math.round((deudores[i].falta - monto) * 100) / 100;
+      acreedores[k].haber = Math.round((acreedores[k].haber - monto) * 100) / 100;
+      if (deudores[i].falta <= 0.009) i++;
+      if (acreedores[k].haber <= 0.009) k++;
+    }
+    return pagos;
+  }
+
+  function mostrarTabCuentas(tab) {
+    const rec = $("vista-recargar");
+    const res = $("vista-resumen");
+    const bRec = $("tab-recargar");
+    const bRes = $("tab-resumen");
+    const recargaOn = tab !== "resumen";
+    if (rec) rec.hidden = !recargaOn;
+    if (res) res.hidden = recargaOn;
+    if (bRec) bRec.classList.toggle("activo", recargaOn);
+    if (bRes) bRes.classList.toggle("activo", !recargaOn);
+    if ($("titulo-cuentas")) $("titulo-cuentas").textContent = recargaOn ? "Recargar" : "Resumen";
+  }
+
+  function abrirCuentas(tab) {
+    const panel = $("panel-cuentas");
+    if (!panel) return;
+    if ($("panel-chat")) $("panel-chat").hidden = true;
+    panel.hidden = false;
+    mostrarTabCuentas(tab || "recargar");
+    pintarCambio();
+    pintarResumen();
+    pintarNotaRecarga();
+    const inp = $("input-recarga");
+    if (inp && tab !== "resumen") inp.focus();
+  }
+
+  function enviarRecarga() {
+    const aviso = $("aviso-recarga");
+    if (aviso) aviso.textContent = "";
+    const inp = $("input-recarga");
+    const bs = Math.floor(Number(inp && inp.value));
+    const min = minRecargaBs();
+    if (!isFinite(bs) || bs < min) {
+      const msg = "El mínimo para recargar es " + min + " Bs.";
+      if (aviso) aviso.textContent = msg;
+      toast(msg, "err");
+      return;
+    }
+    if (ui.modo !== "online") {
+      const msg = "Las recargas son solo en las mesas online, con amigos.";
+      if (aviso) aviso.textContent = msg;
+      return;
+    }
+    enviarWS({ tipo: "recargar", cantidadBs: bs });
+  }
+
   /* ---------- Enlazar botones ---------- */
+
 
   function iniciarUI() {
     cargarPreferencias();
@@ -2083,6 +2294,21 @@
     if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
     if ($("btn-abrir-chat")) $("btn-abrir-chat").addEventListener("click", abrirChat);
     if ($("btn-cerrar-chat")) $("btn-cerrar-chat").addEventListener("click", function () { $("panel-chat").hidden = true; });
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").addEventListener("click", function () { abrirCuentas("recargar"); });
+    if ($("btn-cuentas-sala")) $("btn-cuentas-sala").addEventListener("click", function () { abrirCuentas("recargar"); });
+    if ($("btn-cerrar-cuentas")) $("btn-cerrar-cuentas").addEventListener("click", function () { $("panel-cuentas").hidden = true; });
+    if ($("tab-recargar")) $("tab-recargar").addEventListener("click", function () { mostrarTabCuentas("recargar"); });
+    if ($("tab-resumen")) $("tab-resumen").addEventListener("click", function () { mostrarTabCuentas("resumen"); });
+    if ($("btn-recargar")) $("btn-recargar").addEventListener("click", enviarRecarga);
+    if ($("input-recarga")) {
+      $("input-recarga").addEventListener("input", actualizarPreviewRecarga);
+      $("input-recarga").addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") enviarRecarga();
+      });
+    }
+    if ($("btn-terminar-partida")) $("btn-terminar-partida").addEventListener("click", function () {
+      enviarWS({ tipo: "terminar-partida" });
+    });
     if ($("nombre-jugador")) {
       $("nombre-jugador").addEventListener("change", guardarNombre);
       $("nombre-jugador").addEventListener("keydown", function (ev) {

@@ -32,6 +32,8 @@ const DELAY_ENTRE_MANOS = RAPIDO ? 80 : 5500;
 const GRACE_MS = RAPIDO ? 30000 : 12 * 60 * 1000;
 const FOLD_DESCONEXION_MS = RAPIDO ? 400 : 25000;
 const CHAT_COOLDOWN_MS = 2000;
+const FICHAS_POR_BS = 10;
+const MIN_RECARGA_BS = 10;
 const FRASES_CHAT = Avatar.FRASES_CHAT;
 
 const app = express();
@@ -95,20 +97,6 @@ function enviar(ws, obj) {
   if (ws && ws.readyState === 1) {
     ws.send(JSON.stringify(obj));
   }
-}
-
-function meta(sala) {
-  return {
-    codigo: sala.codigo,
-    publica: sala.publica,
-    anfitrionId: sala.anfitrionId,
-    esAnfitrion: false,
-    partidaIniciada: sala.partidaIniciada,
-    asientos: sala.mesa.asientosTotales,
-    fichasIniciales: sala.mesa.fichasIniciales,
-    ciegaPequena: sala.mesa.ciegaPequena,
-    ciegaGrande: sala.mesa.ciegaGrande
-  };
 }
 
 function leerCiegas(msg) {
@@ -192,7 +180,10 @@ function crearSala(opciones) {
     clientes: new Map(),
     partidaIniciada: false,
     timers: [],
-    timerLimpieza: null
+    timerLimpieza: null,
+    cuentas: [],
+    partidaTerminada: false,
+    terminarAlFinal: false
   };
   engancharMesa(sala);
   salas.set(codigo, sala);
@@ -209,12 +200,16 @@ function engancharMesa(sala) {
       transmitir(sala, "calle", { calle: ev.calle, nuevas: ev.nuevas });
     } else if (ev.tipo === "showdown") {
       transmitir(sala, "showdown", { resultado: ev.resultado });
-      if (sala.partidaIniciada) {
+      if (sala.terminarAlFinal) {
+        finalizarPartida(sala);
+      } else if (sala.partidaIniciada && !sala.partidaTerminada) {
         luego(sala, DELAY_ENTRE_MANOS, function () { empezarMano(sala); });
       }
     } else if (ev.tipo === "ganador-sin-showdown") {
       transmitir(sala, "ganador-sin-showdown");
-      if (sala.partidaIniciada) {
+      if (sala.terminarAlFinal) {
+        finalizarPartida(sala);
+      } else if (sala.partidaIniciada && !sala.partidaTerminada) {
         luego(sala, DELAY_ENTRE_MANOS, function () { empezarMano(sala); });
       }
     } else if (ev.tipo === "accion" || ev.tipo === "turno" || ev.tipo === "jugador-sentado" || ev.tipo === "jugador-levantado" || ev.tipo === "esperando") {
@@ -224,6 +219,8 @@ function engancharMesa(sala) {
 }
 
 function empezarMano(sala) {
+  if (sala.partidaTerminada) return;
+  acreditarPendientes(sala);
   const r = sala.mesa.iniciarMano();
   if (r && r.error) {
     transmitir(sala, "esperando", { mensaje: r.error });
@@ -306,8 +303,193 @@ function buscarPorToken(token) {
         return { sala: sala, jugador: jugadores[i] };
       }
     }
+    const c = cuentaPorToken(sala, token);
+    if (c) return { sala: sala, jugador: null, cuenta: c };
   }
   return null;
+}
+
+
+function bsDesdeFichas(fichas) {
+  return Math.round((Number(fichas) || 0) * 100 / FICHAS_POR_BS) / 100;
+}
+
+function fichasDesdeBs(bs) {
+  return Math.round((Number(bs) || 0) * FICHAS_POR_BS);
+}
+
+function redondearBs(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function cuentaPorToken(sala, token) {
+  if (!token || !sala.cuentas) return null;
+  for (let i = 0; i < sala.cuentas.length; i++) {
+    if (sala.cuentas[i].token === token) return sala.cuentas[i];
+  }
+  return null;
+}
+
+function sincronizarCuentas(sala) {
+  if (sala.partidaTerminada) return;
+  if (!sala.cuentas) sala.cuentas = [];
+  const vivos = sala.mesa.jugadores();
+  for (let i = 0; i < sala.cuentas.length; i++) {
+    const c = sala.cuentas[i];
+    const j = vivos.find(function (p) { return (c.token && p.token === c.token) || p.id === c.id; });
+    if (j) {
+      c.id = j.id;
+      c.nombre = j.nombre;
+      c.fichas = j.fichas;
+      c.seFue = false;
+      c.conectado = j.conectado !== false;
+    }
+  }
+}
+
+function snapshotCuentas(sala) {
+  sincronizarCuentas(sala);
+  const jugadores = (sala.cuentas || []).map(function (c) {
+    const fichasTotales = (c.fichas || 0) + (c.pendienteFichas || 0);
+    const tieneBs = bsDesdeFichas(fichasTotales);
+    const recargadoBs = redondearBs(c.recargadoBs);
+    return {
+      id: c.id,
+      nombre: c.nombre,
+      recargadoBs: recargadoBs,
+      fichas: c.fichas || 0,
+      pendienteFichas: c.pendienteFichas || 0,
+      tieneBs: tieneBs,
+      resultadoBs: redondearBs(tieneBs - recargadoBs),
+      seFue: !!c.seFue,
+      conectado: c.conectado !== false && !c.seFue
+    };
+  });
+  return {
+    fichasPorBs: FICHAS_POR_BS,
+    minBs: MIN_RECARGA_BS,
+    partidaTerminada: !!sala.partidaTerminada,
+    terminarAlFinal: !!sala.terminarAlFinal,
+    avisoBote: !!sala.avisoBote,
+    jugadores: jugadores
+  };
+}
+
+function liquidarCuentas(jugadores) {
+  const deudores = [];
+  const acreedores = [];
+  for (let i = 0; i < jugadores.length; i++) {
+    const r = redondearBs(jugadores[i].resultadoBs);
+    if (r < -0.009) deudores.push({ nombre: jugadores[i].nombre, falta: redondearBs(-r) });
+    else if (r > 0.009) acreedores.push({ nombre: jugadores[i].nombre, haber: r });
+  }
+  deudores.sort(function (a, b) { return b.falta - a.falta; });
+  acreedores.sort(function (a, b) { return b.haber - a.haber; });
+  const pagos = [];
+  let i = 0, k = 0;
+  while (i < deudores.length && k < acreedores.length) {
+    const monto = redondearBs(Math.min(deudores[i].falta, acreedores[k].haber));
+    if (monto > 0.009) {
+      pagos.push({ de: deudores[i].nombre, a: acreedores[k].nombre, monto: monto });
+    }
+    deudores[i].falta = redondearBs(deudores[i].falta - monto);
+    acreedores[k].haber = redondearBs(acreedores[k].haber - monto);
+    if (deudores[i].falta <= 0.009) i++;
+    if (acreedores[k].haber <= 0.009) k++;
+  }
+  return pagos;
+}
+
+function registrarSitio(sala, jugador, reingreso) {
+  if (!jugador || jugador.tipo === "bot" || !jugador.token) return;
+  if (!sala.cuentas) sala.cuentas = [];
+  let c = cuentaPorToken(sala, jugador.token);
+  if (!c) {
+    c = {
+      token: jugador.token,
+      id: jugador.id,
+      nombre: jugador.nombre,
+      recargadoBs: bsDesdeFichas(jugador.fichas),
+      fichas: jugador.fichas,
+      pendienteFichas: 0,
+      seFue: false,
+      conectado: true,
+      avatar: jugador.avatar || null
+    };
+    sala.cuentas.push(c);
+    return;
+  }
+  c.id = jugador.id;
+  c.nombre = jugador.nombre;
+  c.seFue = false;
+  c.conectado = true;
+  if (jugador.avatar) c.avatar = jugador.avatar;
+  if (reingreso) {
+    const volver = (c.fichas || 0) + (c.pendienteFichas || 0);
+    jugador.fichas = volver;
+    c.pendienteFichas = 0;
+    c.fichas = volver;
+  } else {
+    c.fichas = jugador.fichas;
+  }
+}
+
+function congelarCuenta(sala, jugador) {
+  if (!jugador || !jugador.token) return;
+  const c = cuentaPorToken(sala, jugador.token);
+  if (!c) return;
+  c.id = jugador.id;
+  c.nombre = jugador.nombre;
+  c.fichas = jugador.fichas;
+  c.seFue = true;
+  c.conectado = false;
+  if (jugador.avatar) c.avatar = jugador.avatar;
+}
+
+function acreditarPendientes(sala) {
+  if (!sala.cuentas) return;
+  const vivos = sala.mesa.jugadores();
+  for (let i = 0; i < sala.cuentas.length; i++) {
+    const c = sala.cuentas[i];
+    if (!c.pendienteFichas) continue;
+    const j = vivos.find(function (p) { return p.token === c.token || p.id === c.id; });
+    if (j) {
+      j.fichas += c.pendienteFichas;
+      c.fichas = j.fichas;
+      c.pendienteFichas = 0;
+    }
+  }
+}
+
+function manoEnCurso(sala) {
+  const fase = sala.mesa && sala.mesa.fase;
+  return !!(sala.partidaIniciada && !sala.partidaTerminada && fase !== "esperando" && fase !== "entre-manos");
+}
+
+function finalizarPartida(sala) {
+  sala.partidaTerminada = true;
+  sala.terminarAlFinal = false;
+  sala.partidaIniciada = false;
+  acreditarPendientes(sala);
+  sincronizarCuentas(sala);
+  console.log("Partida terminada en", sala.codigo);
+  transmitir(sala, "partida-terminada", { cuentas: snapshotCuentas(sala) });
+}
+
+function meta(sala) {
+  return {
+    codigo: sala.codigo,
+    publica: sala.publica,
+    anfitrionId: sala.anfitrionId,
+    esAnfitrion: false,
+    partidaIniciada: sala.partidaIniciada,
+    partidaTerminada: !!sala.partidaTerminada,
+    asientos: sala.mesa.asientosTotales,
+    fichasIniciales: sala.mesa.fichasIniciales,
+    ciegaPequena: sala.mesa.ciegaPequena,
+    ciegaGrande: sala.mesa.ciegaGrande,
+    cuentas: snapshotCuentas(sala)
+  };
 }
 
 function sentarEnSala(sala, ws, nombre, tipo, avatar) {
@@ -322,6 +504,8 @@ function sentarEnSala(sala, ws, nombre, tipo, avatar) {
   const j = resultado.jugador;
   j.token = ws.token;
   j.conectado = true;
+  const previa = cuentaPorToken(sala, ws.token);
+  registrarSitio(sala, j, !!(previa && previa.seFue));
   sala.clientes.set(ws.jugadorId, ws);
   ws.codigoSala = sala.codigo;
   return resultado;
@@ -365,7 +549,20 @@ function entregarEstado(sala, ws) {
 
 function recostar(ws, hallado) {
   const sala = hallado.sala;
-  const jugador = hallado.jugador;
+  let jugador = hallado.jugador;
+  if (!jugador && hallado.cuenta) {
+    if (!ws.token) ws.token = hallado.cuenta.token;
+    const r = sentarEnSala(sala, ws, hallado.cuenta.nombre, "humano", hallado.cuenta.avatar || null);
+    if (r && r.error) {
+      enviar(ws, { tipo: "error", mensaje: r.error });
+      return false;
+    }
+    jugador = r.jugador || sala.mesa.jugadorPorId(ws.jugadorId);
+    programarLimpieza(sala);
+    entregarEstado(sala, ws);
+    transmitir(sala, "sala-actualizada");
+    return true;
+  }
   const viejo = sala.clientes.get(jugador.id);
   if (viejo && viejo !== ws) {
     viejo.salidaIntencional = false;
@@ -549,6 +746,10 @@ function manejar(ws, msg) {
   }
 
   if (tipo === "iniciar") {
+    if (sala.partidaTerminada) {
+      enviar(ws, { tipo: "error", mensaje: "Esta partida ya cerró las cuentas. Creá una sala nueva para jugar otra." });
+      return;
+    }
     if (sala.anfitrionId !== ws.jugadorId) {
       enviar(ws, { tipo: "error", mensaje: "Solo el anfitrión puede iniciar la partida." });
       return;
@@ -568,6 +769,10 @@ function manejar(ws, msg) {
   }
 
   if (tipo === "accion") {
+    if (sala.partidaTerminada) {
+      enviar(ws, { tipo: "error", mensaje: "La partida ya terminó. Las cuentas están cerradas." });
+      return;
+    }
     const r = sala.mesa.accion(ws.jugadorId, msg.accion, msg.cantidad);
     if (r && r.error) {
       enviar(ws, { tipo: "error", mensaje: r.error, estado: sala.mesa.estadoPublico(ws.jugadorId) });
@@ -608,6 +813,66 @@ function manejar(ws, msg) {
     return;
   }
 
+  if (tipo === "recargar") {
+    if (sala.partidaTerminada) {
+      enviar(ws, { tipo: "error", mensaje: "La partida ya terminó. No se pueden hacer más recargas." });
+      return;
+    }
+    const bs = Math.floor(Number(msg.cantidadBs));
+    if (!isFinite(bs) || bs < MIN_RECARGA_BS) {
+      enviar(ws, { tipo: "error", codigoError: "recarga-minima", mensaje: "El mínimo para recargar es " + MIN_RECARGA_BS + " Bs." });
+      return;
+    }
+    const j = sala.mesa.jugadorPorId(ws.jugadorId);
+    if (!j || j.tipo === "bot") {
+      enviar(ws, { tipo: "error", mensaje: "Tenés que estar sentado en la mesa para recargar." });
+      return;
+    }
+    const fichas = fichasDesdeBs(bs);
+    let c = cuentaPorToken(sala, j.token || ws.token);
+    if (!c) {
+      registrarSitio(sala, j, false);
+      c = cuentaPorToken(sala, j.token || ws.token);
+    }
+    c.recargadoBs = redondearBs((c.recargadoBs || 0) + bs);
+    let diferida = false;
+    if (manoEnCurso(sala)) {
+      c.pendienteFichas = (c.pendienteFichas || 0) + fichas;
+      diferida = true;
+    } else {
+      j.fichas += fichas;
+      c.fichas = j.fichas;
+    }
+    console.log("Recarga", bs, "Bs de", j.nombre, "en", sala.codigo, diferida ? "(próxima mano)" : "");
+    transmitir(sala, "recarga", {
+      deId: j.id,
+      deNombre: j.nombre,
+      cantidadBs: bs,
+      fichas: fichas,
+      diferida: diferida,
+      mensaje: diferida
+        ? j.nombre + " recargó " + bs + " Bs. Se suman " + fichas + " fichas al empezar la próxima mano."
+        : j.nombre + " recargó " + bs + " Bs (" + fichas + " fichas)."
+    });
+    return;
+  }
+
+  if (tipo === "terminar-partida") {
+    if (sala.anfitrionId !== ws.jugadorId) {
+      enviar(ws, { tipo: "error", mensaje: "Solo el anfitrión puede terminar la partida y cerrar las cuentas." });
+      return;
+    }
+    if (sala.partidaTerminada) {
+      transmitir(sala, "partida-terminada", { cuentas: snapshotCuentas(sala) });
+      return;
+    }
+    if (manoEnCurso(sala)) {
+      sala.avisoBote = true;
+    }
+    finalizarPartida(sala);
+    return;
+  }
+
   if (tipo === "salir") {
     alSalir(ws, true);
   }
@@ -636,12 +901,16 @@ function alSalir(ws, intencional) {
           sala.mesa.accion(j.id, "retirarse");
           programarBots(sala);
         }
+        congelarCuenta(sala, j);
         sala.mesa.levantar(ws.jugadorId);
       } else {
+        congelarCuenta(sala, j);
         sala.mesa.levantar(ws.jugadorId);
       }
     } else {
       j.conectado = false;
+      const c = cuentaPorToken(sala, j.token || ws.token);
+      if (c) { c.conectado = false; c.fichas = j.fichas; }
     }
   }
 

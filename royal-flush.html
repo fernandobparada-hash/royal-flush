@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
   <meta name="theme-color" content="#052616">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -39,6 +39,7 @@
   --seguro-der: env(safe-area-inset-right, 0px);
   --fuente-titulo: "Cinzel", Palatino, "Palatino Linotype", Georgia, serif;
   --fuente-cuerpo: "Source Sans 3", "Segoe UI", "Trebuchet MS", sans-serif;
+  --fuente-numeros: "Source Sans 3", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html, body {
@@ -49,8 +50,18 @@ html, body {
   font-family: var(--fuente-cuerpo);
 }
 
-html { overflow-x: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-body { min-height: var(--alto-pantalla); overflow-x: hidden; }
+html {
+  font-size: 16px;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+}
+body { min-height: var(--alto-pantalla); overflow-x: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+#app, #pantalla-mesa, #mesa-oval, .carta, .carta-dorso, .apuesta-frente, .pieza-info, #mensaje-mesa, #bote, .nombre-jugador, .fichas-jugador, .pila-valor {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 [hidden] { display: none !important; }
 
@@ -380,7 +391,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   border-radius: 999px;
   padding: 3px 12px;
   color: var(--oro);
-  font-size: clamp(0.68rem, 3.2cqh, 1.05rem);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--fuente-numeros);
   margin: 2px 0 0;
   font-weight: 700;
 }
@@ -464,13 +477,25 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
 .nombre-jugador {
   font-weight: 700;
-  font-size: clamp(0.62rem, 1.3vw, 0.88rem);
+  font-size: 12px;
+  font-family: var(--fuente-cuerpo);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  line-height: 1.15;
 }
-.fichas-jugador { color: var(--oro); font-size: clamp(0.58rem, 1.2vw, 0.84rem); font-variant-numeric: tabular-nums; }
+.pieza-info.propio .nombre-jugador {
+  font-size: 13px;
+  text-overflow: clip;
+}
+.fichas-jugador {
+  color: var(--oro);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--fuente-numeros);
+  font-weight: 700;
+}
 .estado-jugador {
   font-size: clamp(0.5rem, 1vw, 0.68rem);
   letter-spacing: 0.04em;
@@ -524,8 +549,8 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   height: var(--carta-p-h, 90px);
   margin: 0 -6px;
 }
-.pieza-info.propio { width: var(--ancho-info, 132px); z-index: 7; }
-.pieza-info.propio .nombre-jugador { font-size: inherit; }
+.pieza-info.propio { width: var(--ancho-propio, 110px); z-index: 7; }
+.pieza-info.propio .nombre-jugador { font-size: 13px; }
 .pieza-cartas.propio { z-index: 7; }
 
 .pieza-propio-grupo {
@@ -563,7 +588,8 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   .pieza-propio-grupo { gap: 2px; }
 }
 
-/* Cartas */
+/* Cartas: la cara es un SVG con viewBox, así el rango y el palo
+   escalan con la carta y no con el tamaño de letra del sistema (iOS). */
 .carta, .carta-dorso {
   position: relative;
   width: var(--carta-c, 70px);
@@ -571,29 +597,23 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   border-radius: 7px;
   box-shadow: 0 2px 0 rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.4);
   background: linear-gradient(180deg, #fffef9 0%, #f4efe2 100%);
-  color: #1a1a1a;
+  color: #161616;
   flex-shrink: 0;
   border: 1px solid #d8cdae;
+  overflow: hidden;
+  font-size: 8px; /* respaldo; el SVG no hereda el texto del sistema */
+  line-height: 1;
 }
 .carta.roja { color: var(--rojo); }
-.carta .esquina {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1;
-  font-weight: 800;
-  font-family: var(--fuente-titulo);
+.carta .cara-carta {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
 }
-.carta .esquina .rango { font-size: 0.82em; }
-.carta .esquina .mini-palo { font-size: 0.7em; }
-.carta .esquina.arriba { top: 3px; left: 4px; }
-.carta .esquina.abajo { bottom: 3px; right: 4px; transform: rotate(180deg); }
-.carta .palo-centro {
-  position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.7em;
-}
+.carta .esquina,
+.carta .palo-centro { display: none; } /* caras viejas, por si queda alguna */
 
 .carta-dorso, .carta.dorso {
   background:
@@ -657,26 +677,33 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 .pila-valor {
   margin-left: 4px;
   font-weight: 800;
-  font-size: 0.72rem;
+  font-size: 11px;
   color: #fff;
   text-shadow: 0 1px 2px #000;
   font-variant-numeric: tabular-nums;
+  font-family: var(--fuente-numeros);
+  line-height: 1;
 }
 .apuesta-frente {
   background: rgba(80, 12, 22, 0.92);
   color: #fff;
   border-radius: 999px;
-  padding: 2px 7px 3px;
-  font-size: 0.72rem;
+  padding: 2px 6px 3px;
+  font-size: 11px;
   font-weight: 700;
-  min-width: 32px;
+  min-width: 28px;
+  max-width: 72px;
   border: 1px solid rgba(244,211,94,0.35);
   display: flex;
   align-items: center;
   gap: 3px;
   white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--fuente-numeros);
+  line-height: 1.1;
 }
-.apuesta-frente .pila-valor { margin-left: 2px; font-size: 0.72rem; }
+.apuesta-frente .pila-valor { margin-left: 2px; font-size: 11px; }
 .ficha-voladora {
   position: absolute;
   z-index: 22;
@@ -705,11 +732,16 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
 #mensaje-mesa {
   text-align: center;
-  min-height: 1.6em;
+  min-height: 1.3em;
+  max-height: 2.6em;
   padding: 4px 10px 2px;
-  font-size: clamp(0.85rem, 2vw, 1.1rem);
+  font-size: 13px;
+  line-height: 1.25;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
   flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 #mensaje-mesa.premio { color: var(--oro); font-weight: 700; font-family: var(--fuente-titulo); }
 
@@ -767,13 +799,13 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   #centro-mesa { width: max-content; max-width: min(68%, 320px); }
   #bote { padding: 3px 10px; margin-bottom: 4px; }
   #crupier { width: clamp(64px, 18vw, 96px); top: 1.5%; }
-  #mensaje-mesa { font-size: 0.92rem; }
+  #mensaje-mesa { font-size: 13px; }
   #panel-acciones { width: 100%; gap: 6px; padding: 8px 8px max(8px, var(--seguro-abajo)); border-radius: 14px 14px 0 0; }
   #panel-acciones button { min-height: 48px; min-width: 72px; margin: 2px; font-size: 0.95rem; }
   .grupo-subida { flex: 1 1 100%; justify-content: space-between; padding: 6px 8px; }
   #rango-subida { flex: 1; width: auto; min-width: 0; height: 44px; }
-  .nombre-jugador { font-size: 0.68rem; }
-  .fichas-jugador { font-size: 0.64rem; }
+  .nombre-jugador { font-size: 11px; }
+  .fichas-jugador { font-size: 10px; }
   .info-jugador { padding: 3px 5px 4px; border-radius: 8px; }
   .insignia { min-width: 16px; height: 14px; font-size: 0.5rem; }
 }
@@ -857,7 +889,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   #centro-mesa { width: max-content; max-width: min(50%, 340px); top: 50%; }
   .estado-jugador { display: none; }
   .pieza-info.propio .estado-jugador { display: block; font-size: 0.5rem; }
-  #mensaje-mesa { font-size: 0.8rem; padding: 2px 8px; min-height: 1.2em; }
+  #mensaje-mesa { font-size: 12px; padding: 2px 8px; min-height: 1.2em; }
   #panel-acciones { gap: 4px; padding: 4px 6px max(4px, var(--seguro-abajo)); flex-wrap: nowrap; overflow-x: auto; }
   #panel-acciones button { min-height: 40px; min-width: 64px; margin: 0; font-size: 0.82rem; padding: 6px 10px; flex-shrink: 0; }
   .grupo-subida { flex: 1 1 auto; padding: 2px 6px; }
@@ -868,25 +900,25 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 @media (max-height: 800px) {
   .estado-jugador { display: none !important; }
   .info-jugador { padding: 3px 6px 4px; }
-  .nombre-jugador { font-size: 0.7rem; }
-  .fichas-jugador { font-size: 0.66rem; }
+  .nombre-jugador { font-size: 12px; }
+  .fichas-jugador { font-size: 11px; }
 }
 @media (max-height: 700px) {
   .barra-mesa { padding: 0 6px; font-size: 0.78rem; }
-  #mensaje-mesa { padding: 2px 8px; min-height: 1.2em; font-size: 0.88rem; }
+  #mensaje-mesa { padding: 2px 8px; min-height: 1.2em; font-size: 13px; }
   #panel-acciones { padding: 4px 6px; gap: 6px; }
   #panel-acciones button { min-height: 40px; padding: 6px 12px; font-size: 0.9rem; }
 }
 @media (max-height: 560px) {
   #panel-acciones { padding: 3px 4px; gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
   .info-jugador { padding: 2px 5px 3px; border-radius: 8px; }
-  .nombre-jugador { font-size: 0.65rem; }
-  .fichas-jugador { font-size: 0.62rem; }
+  .nombre-jugador { font-size: 11px; }
+  .fichas-jugador { font-size: 10px; }
   .insignias { transform: translateX(-50%) scale(0.85); }
   #panel-acciones button { min-height: 36px; min-width: 56px; padding: 4px 10px; font-size: 0.82rem; }
   .grupo-subida { padding: 1px 6px; }
   #rango-subida { height: 28px; }
-  #mensaje-mesa { font-size: 0.8rem; padding: 1px 8px; }
+  #mensaje-mesa { font-size: 12px; padding: 1px 8px; }
   .barra-mesa button.compacto { min-height: 32px; padding: 4px 8px; }
   .estado-jugador { display: none; }
   .pieza-info.propio .estado-jugador, .pieza-propio-grupo .estado-jugador { display: none; }
@@ -2987,11 +3019,27 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     const clases = ["carta"];
     if (carta.color === "roja") clases.push("roja");
     if (extraClase) clases.push(extraClase);
+    const fill = carta.color === "roja" ? "#c41e3a" : "#161616";
+    const rango = escapar(String(carta.texto || ""));
+    const palo = carta.palo || "";
+    const esDiez = rango === "10";
+    const fsRango = esDiez ? 12 : 15;
+    const xRango = esDiez ? 4.5 : 6;
+    function esquina() {
+      return (
+        '<text class="rango-svg" x="' + xRango + '" y="15" font-size="' + fsRango + '" text-anchor="start">' + rango + "</text>" +
+        '<text class="mini-palo-svg" x="' + (esDiez ? 10 : 10.5) + '" y="26" font-size="11" text-anchor="middle">' + palo + "</text>"
+      );
+    }
     return (
-      '<div class="' + clases.join(" ") + '">' +
-        '<span class="esquina arriba"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
-        '<span class="palo-centro">' + carta.palo + "</span>" +
-        '<span class="esquina abajo"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
+      '<div class="' + clases.join(" ") + '" aria-label="' + escapar(rango + " " + palo) + '">' +
+        '<svg class="cara-carta" viewBox="0 0 70 98" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' +
+          '<g fill="' + fill + '" font-family="ui-sans-serif, system-ui, -apple-system, \'Segoe UI\', sans-serif" font-weight="800" style="font-variant-numeric:tabular-nums">' +
+            esquina() +
+            '<text class="palo-centro-svg" x="35" y="58" font-size="28" text-anchor="middle" dominant-baseline="middle">' + palo + "</text>" +
+            '<g transform="rotate(180 35 49)">' + esquina() + "</g>" +
+          "</g>" +
+        "</svg>" +
       "</div>"
     );
   }
@@ -3137,8 +3185,10 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     mesa.style.setProperty("--carta-j-h", m.cardH + "px");
     mesa.style.setProperty("--carta-p", m.ownW + "px");
     mesa.style.setProperty("--carta-p-h", m.ownH + "px");
+    const minPropio = (m.W < 520 || m.H < 320) ? Math.max(m.infoW, 72) : 92;
+    m.infoW0 = Math.min(Math.max(m.infoW, minPropio), Math.round(m.W * 0.26));
     mesa.style.setProperty("--ancho-info", m.infoW + "px");
-    mesa.style.setProperty("--ancho-propio", m.infoW + "px");
+    mesa.style.setProperty("--ancho-propio", m.infoW0 + "px");
   }
 
   function calcularLayout(estado, mesa) {
@@ -3183,9 +3233,10 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       const zona = zonaDeAngulo(ang, i);
       let ix = cx + ux * infoRx;
       let iy = cy + uy * infoRy;
-      ix = clamp(ix, m.infoW / 2 + pad, W - m.infoW / 2 - pad);
+      const iW = (i === 0 ? m.infoW0 : m.infoW);
+      ix = clamp(ix, iW / 2 + pad, W - iW / 2 - pad);
       iy = clamp(iy, m.infoH / 2 + pad, H - m.infoH / 2 - pad);
-      const info = caja(ix, iy, m.infoW, m.infoH);
+      const info = caja(ix, iy, iW, m.infoH);
       const rSeat = Math.hypot(ix - cx, iy - cy);
 
       const cW = (i === 0 ? m.ownW * 1.7 : m.cardW * 1.7);
@@ -3445,11 +3496,13 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
           if (A.fixed && !B.fixed) apply(B, -px * 2, -py * 2);
           else if (B.fixed && !A.fixed) apply(A, px * 2, py * 2);
           else if (!A.fixed && !B.fixed) {
-            const ma = apply(A, px, py);
-            const mb = apply(B, -px, -py);
-            if (ma + mb < 0.5) {
-              apply(A, px * 2, py * 2);
-              apply(B, -px * 2, -py * 2);
+            apply(A, px, py);
+            apply(B, -px, -py);
+            if (A.b && B.b && sePisan(A.b, B.b, 4)) {
+              const qx = px ? 0 : (A.b.x >= B.b.x ? 1 : -1) * 6;
+              const qy = py ? 0 : (A.b.y >= B.b.y ? 1 : -1) * 6;
+              apply(A, qx, qy);
+              apply(B, -qx, -qy);
             }
           }
         }
@@ -3508,6 +3561,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       }
     }
     ajustarDesdeMedidas(L, estado);
+    ajustarNombres();
     ui._layout = L;
   }
 
@@ -3607,9 +3661,32 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       separarTodo(L);
       escribirL();
     })();
+    ajustarNombres();
   }
 
-  function pintarPortaVasos(total) {
+  function primerNombre(nombre) {
+    const txt = String(nombre || "").trim();
+    if (!txt) return "";
+    return txt.split(/\s+/)[0];
+  }
+
+  function ajustarNombres() {
+    const nombres = document.querySelectorAll(".pieza-info .nombre-jugador");
+    for (let i = 0; i < nombres.length; i++) {
+      const el = nombres[i];
+      const propio = !!(el.closest(".propio") || el.getAttribute("data-propio") === "1");
+      let fs = propio ? 13 : 11;
+      el.style.fontSize = fs + "px";
+      el.style.letterSpacing = "0";
+      el.style.textOverflow = propio ? "clip" : "ellipsis";
+      while (fs > (propio ? 8 : 7) && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+        fs -= 0.5;
+        el.style.fontSize = fs + "px";
+      }
+    }
+  }
+
+    function pintarPortaVasos(total) {
     const cajaV = $("porta-vasos");
     if (!cajaV) return;
     let html = "";
@@ -3723,7 +3800,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
         if (j.esBB) htmlInfo += '<span class="insignia bb" title="Ciega grande">BB</span>';
         htmlInfo += "</div>";
-        htmlInfo += '<div class="nombre-jugador">' + escapar(j.nombre) + (esPropio ? " (tú)" : "") + "</div>";
+        htmlInfo += '<div class="nombre-jugador" data-propio="' + (esPropio ? "1" : "0") + '">' + escapar(primerNombre(j.nombre)) + "</div>";
         htmlInfo += '<div class="fichas-jugador">' + formatearFichas(j.fichas) + "</div>";
         htmlInfo += '<div class="estado-jugador">' + (j.allIn && j.ultimaAccion !== "all-in" ? "All-in" : textoAccion(j.ultimaAccion)) + "</div>";
       } else {

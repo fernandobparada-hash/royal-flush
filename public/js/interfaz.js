@@ -278,11 +278,27 @@
     const clases = ["carta"];
     if (carta.color === "roja") clases.push("roja");
     if (extraClase) clases.push(extraClase);
+    const fill = carta.color === "roja" ? "#c41e3a" : "#161616";
+    const rango = escapar(String(carta.texto || ""));
+    const palo = carta.palo || "";
+    const esDiez = rango === "10";
+    const fsRango = esDiez ? 12 : 15;
+    const xRango = esDiez ? 4.5 : 6;
+    function esquina() {
+      return (
+        '<text class="rango-svg" x="' + xRango + '" y="15" font-size="' + fsRango + '" text-anchor="start">' + rango + "</text>" +
+        '<text class="mini-palo-svg" x="' + (esDiez ? 10 : 10.5) + '" y="26" font-size="11" text-anchor="middle">' + palo + "</text>"
+      );
+    }
     return (
-      '<div class="' + clases.join(" ") + '">' +
-        '<span class="esquina arriba"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
-        '<span class="palo-centro">' + carta.palo + "</span>" +
-        '<span class="esquina abajo"><span class="rango">' + carta.texto + '</span><span class="mini-palo">' + carta.palo + "</span></span>" +
+      '<div class="' + clases.join(" ") + '" aria-label="' + escapar(rango + " " + palo) + '">' +
+        '<svg class="cara-carta" viewBox="0 0 70 98" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">' +
+          '<g fill="' + fill + '" font-family="ui-sans-serif, system-ui, -apple-system, \'Segoe UI\', sans-serif" font-weight="800" style="font-variant-numeric:tabular-nums">' +
+            esquina() +
+            '<text class="palo-centro-svg" x="35" y="58" font-size="28" text-anchor="middle" dominant-baseline="middle">' + palo + "</text>" +
+            '<g transform="rotate(180 35 49)">' + esquina() + "</g>" +
+          "</g>" +
+        "</svg>" +
       "</div>"
     );
   }
@@ -428,8 +444,10 @@
     mesa.style.setProperty("--carta-j-h", m.cardH + "px");
     mesa.style.setProperty("--carta-p", m.ownW + "px");
     mesa.style.setProperty("--carta-p-h", m.ownH + "px");
+    const minPropio = (m.W < 520 || m.H < 320) ? Math.max(m.infoW, 72) : 92;
+    m.infoW0 = Math.min(Math.max(m.infoW, minPropio), Math.round(m.W * 0.26));
     mesa.style.setProperty("--ancho-info", m.infoW + "px");
-    mesa.style.setProperty("--ancho-propio", m.infoW + "px");
+    mesa.style.setProperty("--ancho-propio", m.infoW0 + "px");
   }
 
   function calcularLayout(estado, mesa) {
@@ -474,9 +492,10 @@
       const zona = zonaDeAngulo(ang, i);
       let ix = cx + ux * infoRx;
       let iy = cy + uy * infoRy;
-      ix = clamp(ix, m.infoW / 2 + pad, W - m.infoW / 2 - pad);
+      const iW = (i === 0 ? m.infoW0 : m.infoW);
+      ix = clamp(ix, iW / 2 + pad, W - iW / 2 - pad);
       iy = clamp(iy, m.infoH / 2 + pad, H - m.infoH / 2 - pad);
-      const info = caja(ix, iy, m.infoW, m.infoH);
+      const info = caja(ix, iy, iW, m.infoH);
       const rSeat = Math.hypot(ix - cx, iy - cy);
 
       const cW = (i === 0 ? m.ownW * 1.7 : m.cardW * 1.7);
@@ -736,11 +755,13 @@
           if (A.fixed && !B.fixed) apply(B, -px * 2, -py * 2);
           else if (B.fixed && !A.fixed) apply(A, px * 2, py * 2);
           else if (!A.fixed && !B.fixed) {
-            const ma = apply(A, px, py);
-            const mb = apply(B, -px, -py);
-            if (ma + mb < 0.5) {
-              apply(A, px * 2, py * 2);
-              apply(B, -px * 2, -py * 2);
+            apply(A, px, py);
+            apply(B, -px, -py);
+            if (A.b && B.b && sePisan(A.b, B.b, 4)) {
+              const qx = px ? 0 : (A.b.x >= B.b.x ? 1 : -1) * 6;
+              const qy = py ? 0 : (A.b.y >= B.b.y ? 1 : -1) * 6;
+              apply(A, qx, qy);
+              apply(B, -qx, -qy);
             }
           }
         }
@@ -799,6 +820,7 @@
       }
     }
     ajustarDesdeMedidas(L, estado);
+    ajustarNombres();
     ui._layout = L;
   }
 
@@ -898,9 +920,32 @@
       separarTodo(L);
       escribirL();
     })();
+    ajustarNombres();
   }
 
-  function pintarPortaVasos(total) {
+  function primerNombre(nombre) {
+    const txt = String(nombre || "").trim();
+    if (!txt) return "";
+    return txt.split(/\s+/)[0];
+  }
+
+  function ajustarNombres() {
+    const nombres = document.querySelectorAll(".pieza-info .nombre-jugador");
+    for (let i = 0; i < nombres.length; i++) {
+      const el = nombres[i];
+      const propio = !!(el.closest(".propio") || el.getAttribute("data-propio") === "1");
+      let fs = propio ? 13 : 11;
+      el.style.fontSize = fs + "px";
+      el.style.letterSpacing = "0";
+      el.style.textOverflow = propio ? "clip" : "ellipsis";
+      while (fs > (propio ? 8 : 7) && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+        fs -= 0.5;
+        el.style.fontSize = fs + "px";
+      }
+    }
+  }
+
+    function pintarPortaVasos(total) {
     const cajaV = $("porta-vasos");
     if (!cajaV) return;
     let html = "";
@@ -1014,7 +1059,7 @@
         if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
         if (j.esBB) htmlInfo += '<span class="insignia bb" title="Ciega grande">BB</span>';
         htmlInfo += "</div>";
-        htmlInfo += '<div class="nombre-jugador">' + escapar(j.nombre) + (esPropio ? " (tú)" : "") + "</div>";
+        htmlInfo += '<div class="nombre-jugador" data-propio="' + (esPropio ? "1" : "0") + '">' + escapar(primerNombre(j.nombre)) + "</div>";
         htmlInfo += '<div class="fichas-jugador">' + formatearFichas(j.fichas) + "</div>";
         htmlInfo += '<div class="estado-jugador">' + (j.allIn && j.ultimaAccion !== "all-in" ? "All-in" : textoAccion(j.ultimaAccion)) + "</div>";
       } else {

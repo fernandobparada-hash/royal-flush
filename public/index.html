@@ -29,21 +29,71 @@
             <p class="muted">Texas Hold'em No Limit, solo o con amigos.</p>
           </div>
           <p id="aviso-invitacion" class="form-ok" hidden>Te invitaron a una mesa. Escribí tu nombre y te llevamos directo.</p>
+          <p id="aviso-menu" class="aviso" role="status"></p>
           <div class="card-panel">
-            <label class="campo-nombre" for="nombre-jugador">¿Cómo te llamás?
-              <input id="nombre-jugador" type="text" value="Fernando" maxlength="20" autocomplete="nickname" placeholder="Tu nombre en la mesa">
+            <label class="campo-nombre" for="nombre-jugador">Tu nombre
+              <input id="nombre-jugador" type="text" value="" maxlength="20" autocomplete="nickname" placeholder="Cómo te van a ver en la mesa">
             </label>
-            <p class="hint">Así te van a ver en la mesa. No hace falta contraseña.</p>
+            <p class="hint">No hace falta contraseña. Lo recordamos en este aparato.</p>
             <div id="caja-entrar-invitacion" class="stack-btns" hidden>
-              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar a la mesa</button>
+              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar</button>
               <p class="hint centro" id="texto-codigo-invitacion"></p>
             </div>
             <div id="acciones-menu-normal" class="stack-btns">
-              <button type="button" id="btn-solo" class="btn primary block">Jugar solo</button>
-              <button type="button" id="btn-online" class="btn block">Jugar online</button>
+              <button type="button" id="btn-amigos" class="btn primary block">Jugar con amigos</button>
+              <button type="button" id="btn-solo" class="btn block">Jugar solo</button>
+              <button type="button" id="btn-publica" class="btn block">Mesa con desconocidos</button>
             </div>
+            <details id="opciones-online" class="opciones-extra">
+              <summary>Opciones</summary>
+              <fieldset class="selector-asientos">
+                <legend>Tamaño de la mesa</legend>
+                <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
+                <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+              </fieldset>
+              <fieldset class="selector-fichas" data-grupo="online">
+                <legend>Fichas iniciales</legend>
+                <div class="fichas-controles">
+                  <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
+                  <div class="fichas-numero-fila">
+                    <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
+                    <span class="fichas-formato">1.000 fichas</span>
+                  </div>
+                </div>
+                <p class="ciegas-preview">Ciegas 5 / 10</p>
+                <div class="presets-fichas">
+                  <button type="button" data-fichas="100">100</button>
+                  <button type="button" data-fichas="1000">1.000</button>
+                  <button type="button" data-fichas="5000">5.000</button>
+                  <button type="button" data-fichas="10000">10.000</button>
+                  <button type="button" data-fichas="50000">50.000</button>
+                </div>
+              </fieldset>
+              <div class="fila-codigo" id="caja-tengo-codigo">
+                <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
+                <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
+              </div>
+            </details>
           </div>
-          <p class="disclaimer">Elegí las fichas al empezar, de 10 a 50.000. No se usa dinero real.</p>
+          <p class="disclaimer">Elegí las fichas en Opciones, de 10 a 50.000. No se usa dinero real.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PERSONALIZAR AVATAR ========== -->
+    <section id="pantalla-avatar" class="pantalla" hidden>
+      <div class="auth-wrap">
+        <div class="auth-box ancho-avatar">
+          <h2>Personaliza tu jugador</h2>
+          <p class="texto">Así te van a ver en la mesa. Podés saltarlo o pedir uno al azar.</p>
+          <div id="preview-avatar" class="preview-avatar"></div>
+          <p id="nombre-preview-avatar" class="hint centro"></p>
+          <div id="controles-avatar" class="controles-avatar"></div>
+          <div class="stack-btns">
+            <button type="button" id="btn-avatar-listo" class="btn primary block">Listo</button>
+            <button type="button" id="btn-avatar-aleatorio" class="btn block">Aleatorio</button>
+            <button type="button" id="btn-avatar-saltar" class="btn ghost block">Saltar</button>
+          </div>
         </div>
       </div>
     </section>
@@ -82,70 +132,37 @@
       </div>
     </section>
 
-    <!-- ========== SUBMENÚ ONLINE ========== -->
+    <!-- ========== SUBMENÚ ONLINE (compatibilidad oculta) ========== -->
     <section id="pantalla-online" class="pantalla" hidden>
       <div class="marco-menu estrecho">
         <h2>Jugar online</h2>
-        <p class="texto">Elige cómo quieres sentarte a una mesa con otras personas.</p>
-
-        <fieldset class="selector-asientos">
-          <legend>Tamaño de la mesa (al crear una sala)</legend>
-          <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
-          <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
-        </fieldset>
-
-        <fieldset class="selector-fichas" data-grupo="online">
-          <legend>Fichas iniciales</legend>
-          <div class="fichas-controles">
-            <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
-            <div class="fichas-numero-fila">
-              <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
-              <span class="fichas-formato">1.000 fichas</span>
-            </div>
-          </div>
-          <p class="ciegas-preview">Ciegas 5 / 10</p>
-          <div class="presets-fichas">
-            <button type="button" data-fichas="100">100</button>
-            <button type="button" data-fichas="1000">1.000</button>
-            <button type="button" data-fichas="5000">5.000</button>
-            <button type="button" data-fichas="10000">10.000</button>
-            <button type="button" data-fichas="50000">50.000</button>
-          </div>
-        </fieldset>
-
-        <button type="button" id="btn-crear-privada" class="principal">Crear sala privada</button>
-        <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
-
-        <div class="fila-codigo">
-          <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
-          <button type="button" id="btn-unirse-codigo" class="principal">Unirse</button>
-        </div>
-
-        <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
-        <p class="ayuda-opcion">Te une a una mesa pública con sitio, o abre una nueva.</p>
-
         <p id="aviso-online" class="aviso" role="status"></p>
+        <button type="button" id="btn-crear-privada" class="principal" hidden>Crear sala privada</button>
+        <button type="button" id="btn-sala-publica" class="principal" hidden>Sala pública</button>
         <button type="button" id="btn-volver-online" class="secundario">Volver</button>
+        <button type="button" id="btn-online" hidden>Jugar online</button>
       </div>
     </section>
 
     <!-- ========== SALA DE ESPERA ========== -->
     <section id="pantalla-sala" class="pantalla" hidden>
-      <div class="marco-menu estrecho">
-        <h2>Sala <span id="codigo-sala" class="codigo code-pill"></span></h2>
-        <p id="tipo-sala" class="texto"></p>
-        <div class="copy-row" id="caja-enlace-sala">
-          <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación">
-          <button type="button" id="btn-copiar-enlace" class="btn">Copiar enlace</button>
-          <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
+      <div class="marco-menu estrecho espera-amiga">
+        <p class="muted centro" id="tipo-sala">Sala privada</p>
+        <p class="label-codigo">Código de la mesa</p>
+        <div id="codigo-sala" class="codigo-gigante"></div>
+        <div class="stack-btns">
+          <button type="button" id="btn-invitar-amigo" class="btn primary block">Invitar amigo</button>
+          <button type="button" id="btn-copiar-enlace" class="btn block">Copiar enlace</button>
         </div>
+        <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación" class="enlace-espera">
+        <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
         <p id="info-fichas-sala" class="texto destacada"></p>
         <div class="botones-sala">
-          <button type="button" id="btn-llenar-bots" class="principal" hidden>Llenar asientos vacíos con bots</button>
-          <button type="button" id="btn-iniciar-online" class="principal" hidden>Iniciar partida</button>
-          <button type="button" id="btn-salir-sala" class="secundario">Salir de la sala</button>
+          <button type="button" id="btn-iniciar-online" class="btn primary block" hidden disabled>Empezar</button>
+          <button type="button" id="btn-llenar-bots" class="btn block" hidden>Rellenar con bots</button>
+          <button type="button" id="btn-salir-sala" class="btn ghost block">Salir de la sala</button>
         </div>
         <p id="aviso-sala" class="aviso" role="status"></p>
       </div>
@@ -158,6 +175,7 @@
         <span class="brand-mini">Royal <span>Flush</span></span>
         <span id="info-sala" class="code-pill"></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
+        <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
         <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
       </header>
@@ -331,6 +349,15 @@
 
       <p id="mensaje-mesa" role="status"></p>
 
+      <div id="panel-chat" hidden>
+        <div class="chat-cabeza">
+          <strong>Frases rápidas</strong>
+          <button type="button" id="btn-cerrar-chat" class="icon-btn" aria-label="Cerrar">✕</button>
+        </div>
+        <div id="frases-chat" class="frases-chat"></div>
+        <ul id="log-chat" class="log-chat"></ul>
+      </div>
+
       <div id="panel-acciones" hidden>
         <button type="button" id="btn-retirarse">Retirarse</button>
         <button type="button" id="btn-pasar">Pasar</button>
@@ -349,6 +376,7 @@
   <script src="/js/evaluador.js"></script>
   <script src="/js/motor.js"></script>
   <script src="/js/bots.js"></script>
+  <script src="/js/avatar.js"></script>
   <script src="/js/interfaz.js"></script>
 </body>
 </html>

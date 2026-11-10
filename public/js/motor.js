@@ -74,7 +74,9 @@
       reveladas: false,
       sentado: true,
       conectado: true,
-      ultimaAccion: null
+      ultimaAccion: null,
+      token: datos.token || null,
+      avatar: datos.avatar || null
     };
   }
 
@@ -161,7 +163,9 @@
       nombre: datos.nombre || "Jugador",
       tipo: datos.tipo || "humano",
       asiento: asiento,
-      fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales
+      fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales,
+      avatar: datos.avatar || null,
+      token: datos.token || null
     });
     this.porAsiento[asiento] = jugador;
     this.emitir({ tipo: "jugador-sentado", jugadorId: jugador.id });
@@ -818,7 +822,9 @@
         esTurno: self.turnoId === j.id,
         esBoton: self.botonDealer === j.asiento,
         esSB: self.asientoSB === j.asiento,
-        esBB: self.asientoBB === j.asiento
+        esBB: self.asientoBB === j.asiento,
+        avatar: j.avatar || null,
+        conectado: j.conectado !== false
       };
     });
 

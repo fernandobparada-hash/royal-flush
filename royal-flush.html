@@ -1019,6 +1019,109 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   }
 }
 
+/* --------- v6: online simple, avatar, chat --------- */
+.aviso { color: #f3c7c4; text-align: center; min-height: 1.2em; margin: 0.6em 0; font-weight: 600; }
+.form-error { background: #3a1c1c; border: 1px solid var(--rojo); color: #f8d4d2; padding: 0.7em 0.9em; border-radius: 10px; margin: 0 0 1em; text-align: center; }
+.opciones-extra { margin-top: 1em; border: 1px solid var(--linea); border-radius: 10px; padding: 0.2em 0.8em 0.6em; background: #111d18; }
+.opciones-extra summary { cursor: pointer; font-weight: 700; padding: 0.7em 0; color: var(--muted); }
+.opciones-extra .fila-codigo { margin-top: 0.6em; }
+.espera-amiga { text-align: center; }
+.espera-amiga .centro { text-align: center; }
+.label-codigo { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--muted); margin-top: 0.4em; }
+.codigo-gigante {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: clamp(2.4rem, 10vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--oro);
+  margin: 0.15em 0 0.7em;
+}
+.enlace-espera {
+  width: 100%; margin: 0.4em 0 1em; min-height: 40px;
+  border-radius: 10px; border: 1px solid var(--linea);
+  background: #111d18; color: var(--texto); padding: 0.4em 0.7em; font-size: 0.85rem;
+}
+.lista-sala { list-style: none; margin: 0.6em 0; display: grid; gap: 0.4em; }
+.lista-sala li {
+  display: flex; align-items: center; gap: 0.55em; justify-content: center;
+  background: #111d18; border-radius: 999px; padding: 0.35em 0.8em;
+}
+.lista-sala .avatar-svg { width: 28px; height: 28px; flex: none; }
+.lista-sala .papel { color: var(--oro); font-size: 0.8rem; margin-left: 0.3em; }
+.lista-sala .desconectado { opacity: 0.55; }
+button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+.ancho-avatar { max-width: 520px; }
+.preview-avatar { display: flex; justify-content: center; margin: 0.4em 0; }
+.preview-avatar .avatar-svg { width: 108px; height: 108px; }
+.controles-avatar { display: grid; gap: 0.55em; margin: 0.5em 0 0.8em; max-height: min(38vh, 320px); overflow: auto; }
+#pantalla-avatar .stack-btns { position: sticky; bottom: 0; background: var(--verde-fondo); padding-top: 0.4em; }
+.pieza-info { overflow: visible; }
+.info-jugador { overflow: visible; }
+.fila-avatar-opcion { text-align: left; }
+.fila-avatar-opcion strong { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.3em; }
+.opciones-chips { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.opciones-chips button {
+  min-height: 34px; padding: 0.25em 0.6em; border-radius: 999px;
+  border: 1px solid var(--linea); background: var(--panel2); color: var(--texto);
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.opciones-chips button.activo { background: var(--oro); color: #1f1600; border-color: transparent; }
+
+.info-jugador { padding-top: 18px; }
+.avatar-asiento {
+  position: absolute; left: 50%; top: 0;
+  transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: 50%;
+  overflow: hidden; border: 2px solid var(--linea);
+  background: #163028; pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.avatar-asiento .avatar-svg { width: 100%; height: 100%; display: block; }
+.pieza-info.propio .avatar-asiento { border-color: var(--oro); }
+.pieza-info.desconectado .info-jugador { opacity: 0.7; }
+
+.pieza-globo {
+  z-index: 12; pointer-events: none; max-width: 140px;
+}
+.globo-chat {
+  background: #eef5f1; color: #122019; font-weight: 700; font-size: 0.78rem;
+  padding: 0.35em 0.55em; border-radius: 12px 12px 12px 4px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.35); line-height: 1.2;
+  animation: globo-entra 0.2s ease-out;
+}
+@keyframes globo-entra { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+#btn-abrir-chat { font-size: 1.15rem; }
+#panel-chat {
+  position: absolute; left: 8px; right: 8px; bottom: calc(var(--seguro-abajo) + 8px);
+  margin: 0 auto; max-width: 520px; z-index: 30;
+  background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
+  padding: 10px 12px 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+#pantalla-mesa { position: relative; }
+.chat-cabeza { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.frases-chat { display: flex; flex-wrap: wrap; gap: 0.35em; }
+.frases-chat button {
+  min-height: 36px; padding: 0.3em 0.7em; border-radius: 999px;
+  border: 1px solid var(--linea); background: var(--panel2); color: var(--texto);
+  font-weight: 700; cursor: pointer; font-size: 0.85rem;
+}
+.frases-chat button:hover { background: var(--oro); color: #1f1600; }
+.log-chat { list-style: none; max-height: 7em; overflow: auto; margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+.log-chat li { padding: 0.15em 0; }
+
+@media (max-width: 800px) {
+  .avatar-asiento { width: 26px; height: 26px; }
+  .codigo-gigante { font-size: 2.2rem; }
+  .preview-avatar .avatar-svg { width: 112px; height: 112px; }
+}
+@media (max-height: 600px) {
+  .avatar-asiento { width: 22px; height: 22px; }
+  .info-jugador { padding-top: 14px; }
+  .controles-avatar { max-height: 32vh; }
+}
+
   </style>
 </head>
 <body>
@@ -1034,21 +1137,71 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
             <p class="muted">Texas Hold'em No Limit, solo o con amigos.</p>
           </div>
           <p id="aviso-invitacion" class="form-ok" hidden>Te invitaron a una mesa. Escribí tu nombre y te llevamos directo.</p>
+          <p id="aviso-menu" class="aviso" role="status"></p>
           <div class="card-panel">
-            <label class="campo-nombre" for="nombre-jugador">¿Cómo te llamás?
-              <input id="nombre-jugador" type="text" value="Fernando" maxlength="20" autocomplete="nickname" placeholder="Tu nombre en la mesa">
+            <label class="campo-nombre" for="nombre-jugador">Tu nombre
+              <input id="nombre-jugador" type="text" value="" maxlength="20" autocomplete="nickname" placeholder="Cómo te van a ver en la mesa">
             </label>
-            <p class="hint">Así te van a ver en la mesa. No hace falta contraseña.</p>
+            <p class="hint">No hace falta contraseña. Lo recordamos en este aparato.</p>
             <div id="caja-entrar-invitacion" class="stack-btns" hidden>
-              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar a la mesa</button>
+              <button type="button" id="btn-entrar-invitacion" class="btn primary block">Entrar</button>
               <p class="hint centro" id="texto-codigo-invitacion"></p>
             </div>
             <div id="acciones-menu-normal" class="stack-btns">
-              <button type="button" id="btn-solo" class="btn primary block">Jugar solo</button>
-              <button type="button" id="btn-online" class="btn block">Jugar online</button>
+              <button type="button" id="btn-amigos" class="btn primary block">Jugar con amigos</button>
+              <button type="button" id="btn-solo" class="btn block">Jugar solo</button>
+              <button type="button" id="btn-publica" class="btn block">Mesa con desconocidos</button>
             </div>
+            <details id="opciones-online" class="opciones-extra">
+              <summary>Opciones</summary>
+              <fieldset class="selector-asientos">
+                <legend>Tamaño de la mesa</legend>
+                <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
+                <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+              </fieldset>
+              <fieldset class="selector-fichas" data-grupo="online">
+                <legend>Fichas iniciales</legend>
+                <div class="fichas-controles">
+                  <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
+                  <div class="fichas-numero-fila">
+                    <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
+                    <span class="fichas-formato">1.000 fichas</span>
+                  </div>
+                </div>
+                <p class="ciegas-preview">Ciegas 5 / 10</p>
+                <div class="presets-fichas">
+                  <button type="button" data-fichas="100">100</button>
+                  <button type="button" data-fichas="1000">1.000</button>
+                  <button type="button" data-fichas="5000">5.000</button>
+                  <button type="button" data-fichas="10000">10.000</button>
+                  <button type="button" data-fichas="50000">50.000</button>
+                </div>
+              </fieldset>
+              <div class="fila-codigo" id="caja-tengo-codigo">
+                <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
+                <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
+              </div>
+            </details>
           </div>
-          <p class="disclaimer">Elegí las fichas al empezar, de 10 a 50.000. No se usa dinero real.</p>
+          <p class="disclaimer">Elegí las fichas en Opciones, de 10 a 50.000. No se usa dinero real.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PERSONALIZAR AVATAR ========== -->
+    <section id="pantalla-avatar" class="pantalla" hidden>
+      <div class="auth-wrap">
+        <div class="auth-box ancho-avatar">
+          <h2>Personaliza tu jugador</h2>
+          <p class="texto">Así te van a ver en la mesa. Podés saltarlo o pedir uno al azar.</p>
+          <div id="preview-avatar" class="preview-avatar"></div>
+          <p id="nombre-preview-avatar" class="hint centro"></p>
+          <div id="controles-avatar" class="controles-avatar"></div>
+          <div class="stack-btns">
+            <button type="button" id="btn-avatar-listo" class="btn primary block">Listo</button>
+            <button type="button" id="btn-avatar-aleatorio" class="btn block">Aleatorio</button>
+            <button type="button" id="btn-avatar-saltar" class="btn ghost block">Saltar</button>
+          </div>
         </div>
       </div>
     </section>
@@ -1087,70 +1240,37 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       </div>
     </section>
 
-    <!-- ========== SUBMENÚ ONLINE ========== -->
+    <!-- ========== SUBMENÚ ONLINE (compatibilidad oculta) ========== -->
     <section id="pantalla-online" class="pantalla" hidden>
       <div class="marco-menu estrecho">
         <h2>Jugar online</h2>
-        <p class="texto">Elige cómo quieres sentarte a una mesa con otras personas.</p>
-
-        <fieldset class="selector-asientos">
-          <legend>Tamaño de la mesa (al crear una sala)</legend>
-          <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
-          <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
-        </fieldset>
-
-        <fieldset class="selector-fichas" data-grupo="online">
-          <legend>Fichas iniciales</legend>
-          <div class="fichas-controles">
-            <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
-            <div class="fichas-numero-fila">
-              <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
-              <span class="fichas-formato">1.000 fichas</span>
-            </div>
-          </div>
-          <p class="ciegas-preview">Ciegas 5 / 10</p>
-          <div class="presets-fichas">
-            <button type="button" data-fichas="100">100</button>
-            <button type="button" data-fichas="1000">1.000</button>
-            <button type="button" data-fichas="5000">5.000</button>
-            <button type="button" data-fichas="10000">10.000</button>
-            <button type="button" data-fichas="50000">50.000</button>
-          </div>
-        </fieldset>
-
-        <button type="button" id="btn-crear-privada" class="principal">Crear sala privada</button>
-        <p class="ayuda-opcion">Se genera un código de 5 letras para compartir con tus amigos.</p>
-
-        <div class="fila-codigo">
-          <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
-          <button type="button" id="btn-unirse-codigo" class="principal">Unirse</button>
-        </div>
-
-        <button type="button" id="btn-sala-publica" class="principal">Sala pública</button>
-        <p class="ayuda-opcion">Te une a una mesa pública con sitio, o abre una nueva.</p>
-
         <p id="aviso-online" class="aviso" role="status"></p>
+        <button type="button" id="btn-crear-privada" class="principal" hidden>Crear sala privada</button>
+        <button type="button" id="btn-sala-publica" class="principal" hidden>Sala pública</button>
         <button type="button" id="btn-volver-online" class="secundario">Volver</button>
+        <button type="button" id="btn-online" hidden>Jugar online</button>
       </div>
     </section>
 
     <!-- ========== SALA DE ESPERA ========== -->
     <section id="pantalla-sala" class="pantalla" hidden>
-      <div class="marco-menu estrecho">
-        <h2>Sala <span id="codigo-sala" class="codigo code-pill"></span></h2>
-        <p id="tipo-sala" class="texto"></p>
-        <div class="copy-row" id="caja-enlace-sala">
-          <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación">
-          <button type="button" id="btn-copiar-enlace" class="btn">Copiar enlace</button>
-          <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
+      <div class="marco-menu estrecho espera-amiga">
+        <p class="muted centro" id="tipo-sala">Sala privada</p>
+        <p class="label-codigo">Código de la mesa</p>
+        <div id="codigo-sala" class="codigo-gigante"></div>
+        <div class="stack-btns">
+          <button type="button" id="btn-invitar-amigo" class="btn primary block">Invitar amigo</button>
+          <button type="button" id="btn-copiar-enlace" class="btn block">Copiar enlace</button>
         </div>
+        <input id="input-enlace-sala" type="text" readonly value="" aria-label="Enlace de invitación" class="enlace-espera">
+        <button type="button" id="btn-compartir-sala" class="btn" hidden>Compartir…</button>
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
         <p id="info-fichas-sala" class="texto destacada"></p>
         <div class="botones-sala">
-          <button type="button" id="btn-llenar-bots" class="principal" hidden>Llenar asientos vacíos con bots</button>
-          <button type="button" id="btn-iniciar-online" class="principal" hidden>Iniciar partida</button>
-          <button type="button" id="btn-salir-sala" class="secundario">Salir de la sala</button>
+          <button type="button" id="btn-iniciar-online" class="btn primary block" hidden disabled>Empezar</button>
+          <button type="button" id="btn-llenar-bots" class="btn block" hidden>Rellenar con bots</button>
+          <button type="button" id="btn-salir-sala" class="btn ghost block">Salir de la sala</button>
         </div>
         <p id="aviso-sala" class="aviso" role="status"></p>
       </div>
@@ -1163,6 +1283,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         <span class="brand-mini">Royal <span>Flush</span></span>
         <span id="info-sala" class="code-pill"></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
+        <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
         <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
       </header>
@@ -1335,6 +1456,15 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       </div>
 
       <p id="mensaje-mesa" role="status"></p>
+
+      <div id="panel-chat" hidden>
+        <div class="chat-cabeza">
+          <strong>Frases rápidas</strong>
+          <button type="button" id="btn-cerrar-chat" class="icon-btn" aria-label="Cerrar">✕</button>
+        </div>
+        <div id="frases-chat" class="frases-chat"></div>
+        <ul id="log-chat" class="log-chat"></ul>
+      </div>
 
       <div id="panel-acciones" hidden>
         <button type="button" id="btn-retirarse">Retirarse</button>
@@ -1830,7 +1960,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       reveladas: false,
       sentado: true,
       conectado: true,
-      ultimaAccion: null
+      ultimaAccion: null,
+      token: datos.token || null,
+      avatar: datos.avatar || null
     };
   }
 
@@ -1917,7 +2049,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       nombre: datos.nombre || "Jugador",
       tipo: datos.tipo || "humano",
       asiento: asiento,
-      fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales
+      fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales,
+      avatar: datos.avatar || null,
+      token: datos.token || null
     });
     this.porAsiento[asiento] = jugador;
     this.emitir({ tipo: "jugador-sentado", jugadorId: jugador.id });
@@ -2574,7 +2708,9 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         esTurno: self.turnoId === j.id,
         esBoton: self.botonDealer === j.asiento,
         esSB: self.asientoSB === j.asiento,
-        esBB: self.asientoBB === j.asiento
+        esBB: self.asientoBB === j.asiento,
+        avatar: j.avatar || null,
+        conectado: j.conectado !== false
       };
     });
 
@@ -2816,6 +2952,197 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   }
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
+/* Avatares SVG propios de Royal Flush. Se pueden pintar en el
+   navegador y en el servidor (bots). El objeto es compacto. */
+(function (raiz, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  raiz.PokerAvatar = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  const CAMPOS = {
+    cara: 3,
+    piel: 6,
+    pelo: 8,
+    colorPelo: 7,
+    ojos: 4,
+    cejas: 4,
+    boca: 5,
+    barba: 5,
+    lentes: 3,
+    aretes: 2,
+    camisa: 8,
+    fondo: 8
+  };
+
+  const PIEL = ["#f3e0c8", "#f6d0b1", "#e0aa7b", "#c68642", "#8d5524", "#5c3317"];
+  const PELO = ["#1a1a1a", "#3b2a1a", "#8b4513", "#d4a017", "#c0392b", "#4a6fa5", "#d8d4cf"];
+  const CAMISA = ["#1f4e79", "#1b7a46", "#8b1e1e", "#3d2b6b", "#c47c16", "#0e7490", "#1f2933", "#7f1d4a"];
+  const FONDO = ["#163028", "#1d3a4a", "#3a2040", "#3a2a16", "#14221c", "#2a1a1a", "#1a2840", "#243018"];
+
+  const LABELS = {
+    cara: ["Redonda", "Óvalo", "Cuadrada"],
+    piel: ["Muy clara", "Clara", "Media", "Morena", "Oscura", "Profunda"],
+    pelo: ["Corto", "Largo", "Rizado", "Calvo", "Coleta", "De lado", "Gorra", "Gorro"],
+    colorPelo: ["Negro", "Castaño", "Cobre", "Rubio", "Rojo", "Azul", "Canoso"],
+    ojos: ["Normales", "Alegres", "Cerrados", "Pícaros"],
+    cejas: ["Naturales", "Pobladas", "Finas", "Levantadas"],
+    boca: ["Sonrisa", "Gran sonrisa", "Seria", "Sorpresa", "Guiño"],
+    barba: ["Sin barba", "Sombra", "Barba", "Bigote", "Perilla"],
+    lentes: ["Sin lentes", "Anteojos", "De sol"],
+    aretes: ["Sin aretes", "Aretes"],
+    camisa: ["Azul", "Verde", "Roja", "Violeta", "Mostaza", "Cielo", "Grafito", "Fucsia"],
+    fondo: ["Bosque", "Lago", "Uva", "Tierra", "Musgo", "Vino", "Noche", "Oliva"]
+  };
+
+  function acotar(n, max) {
+    n = Number(n);
+    if (!isFinite(n) || n < 0) return 0;
+    return Math.min(max - 1, Math.round(n));
+  }
+
+  function normalizar(crudo) {
+    const a = {};
+    const src = crudo && typeof crudo === "object" ? crudo : {};
+    Object.keys(CAMPOS).forEach(function (k) {
+      a[k] = acotar(src[k], CAMPOS[k]);
+    });
+    return a;
+  }
+
+  function aleatorio(semilla) {
+    let s = 0;
+    if (typeof semilla === "string") {
+      for (let i = 0; i < semilla.length; i++) s = (s * 33 + semilla.charCodeAt(i)) >>> 0;
+    } else if (typeof semilla === "number") {
+      s = semilla >>> 0;
+    } else {
+      s = Math.floor(Math.random() * 0xffffffff);
+    }
+    function rnd(n) {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s % n;
+    }
+    const a = {};
+    Object.keys(CAMPOS).forEach(function (k) { a[k] = rnd(CAMPOS[k]); });
+    return a;
+  }
+
+  function porDefecto() {
+    return normalizar({ cara: 1, piel: 1, pelo: 0, colorPelo: 1, ojos: 0, cejas: 0, boca: 0, barba: 0, lentes: 0, aretes: 0, camisa: 0, fondo: 0 });
+  }
+
+  function svg(avatar, tam) {
+    const a = normalizar(avatar);
+    tam = tam || 80;
+    const piel = PIEL[a.piel];
+    const peloC = PELO[a.colorPelo];
+    const camisa = CAMISA[a.camisa];
+    const fondo = FONDO[a.fondo];
+    const id = "a" + a.cara + a.piel + a.pelo + a.colorPelo + a.ojos + a.cejas + a.boca + a.barba + a.lentes + a.aretes + a.camisa + a.fondo;
+
+    const cx = 40, cy = 36;
+    let rx = 18, ry = 21;
+    if (a.cara === 0) { rx = 20; ry = 19; }
+    if (a.cara === 2) { rx = 17; ry = 21; }
+
+    const oreja = '<ellipse cx="' + (cx - rx + 1) + '" cy="38" rx="3.2" ry="5" fill="' + piel + '"/><ellipse cx="' + (cx + rx - 1) + '" cy="38" rx="3.2" ry="5" fill="' + piel + '"/>';
+
+    let pelo = "";
+    if (a.pelo === 0) { // corto
+      pelo = '<path d="M' + (cx - rx - 1) + ' 34 C ' + (cx - rx) + ' 16, ' + (cx + rx) + ' 16, ' + (cx + rx + 1) + ' 34 L ' + (cx + rx - 2) + ' 28 C ' + cx + ' 18, ' + (cx - rx + 2) + ' 28, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
+    } else if (a.pelo === 1) { // largo
+      pelo = '<path d="M' + (cx - rx - 2) + ' 58 C ' + (cx - rx - 4) + ' 40, ' + (cx - rx) + ' 14, ' + cx + ' 14 C ' + (cx + rx) + ' 14, ' + (cx + rx + 4) + ' 40, ' + (cx + rx + 2) + ' 58 L ' + (cx + rx - 1) + ' 32 C ' + cx + ' 18, ' + (cx - rx + 1) + ' 32, ' + (cx - rx + 1) + ' 32 Z" fill="' + peloC + '"/>';
+    } else if (a.pelo === 2) { // rizado
+      pelo = '<circle cx="' + (cx - 12) + '" cy="22" r="7" fill="' + peloC + '"/><circle cx="' + (cx - 4) + '" cy="16" r="7.5" fill="' + peloC + '"/><circle cx="' + (cx + 5) + '" cy="15" r="8" fill="' + peloC + '"/><circle cx="' + (cx + 13) + '" cy="22" r="7" fill="' + peloC + '"/><circle cx="' + (cx - 14) + '" cy="30" r="6" fill="' + peloC + '"/><circle cx="' + (cx + 14) + '" cy="30" r="6" fill="' + peloC + '"/>';
+    } else if (a.pelo === 3) { // calvo — brillo
+      pelo = '<ellipse cx="' + (cx - 6) + '" cy="22" rx="4" ry="2" fill="rgba(255,255,255,0.25)"/>';
+    } else if (a.pelo === 4) { // coleta
+      pelo = '<path d="M' + (cx - rx) + ' 34 C ' + (cx - rx) + ' 16, ' + (cx + rx) + ' 16, ' + (cx + rx) + ' 34 C ' + cx + ' 18, ' + (cx - rx) + ' 28, ' + (cx - rx) + ' 34 Z" fill="' + peloC + '"/><ellipse cx="' + (cx + 16) + '" cy="48" rx="6" ry="10" fill="' + peloC + '"/>';
+    } else if (a.pelo === 5) { // de lado
+      pelo = '<path d="M' + (cx - rx - 1) + ' 36 C ' + (cx - 10) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + rx) + ' 28 L ' + (cx + 8) + ' 24 C ' + (cx - 6) + ' 18, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
+    } else if (a.pelo === 6) { // gorra
+      pelo = '<path d="M' + (cx - 18) + ' 30 C ' + (cx - 16) + ' 16, ' + (cx + 16) + ' 16, ' + (cx + 18) + ' 30 Z" fill="#1f2933"/><rect x="' + (cx - 22) + '" y="28" width="44" height="5" rx="2" fill="#111827"/>';
+    } else if (a.pelo === 7) { // gorro
+      pelo = '<path d="M' + (cx - 17) + ' 32 C ' + (cx - 16) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + 17) + ' 32 Z" fill="#c0392b"/><circle cx="' + cx + '" cy="14" r="4" fill="#eef5f1"/>';
+    }
+
+    let cejas = "";
+    const yC = 31;
+    if (a.cejas === 0) cejas = '<path d="M26 31 q6 -3 12 0" stroke="#3b2a1a" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M42 31 q6 -3 12 0" stroke="#3b2a1a" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+    if (a.cejas === 1) cejas = '<path d="M25 31 q7 -4 13 1" stroke="#2a1a10" stroke-width="2.3" fill="none" stroke-linecap="round"/><path d="M42 32 q6 -4 13 0" stroke="#2a1a10" stroke-width="2.3" fill="none" stroke-linecap="round"/>';
+    if (a.cejas === 2) cejas = '<path d="M27 32 q6 -2 11 0" stroke="#3b2a1a" stroke-width="1.1" fill="none" stroke-linecap="round"/><path d="M42 32 q6 -2 11 0" stroke="#3b2a1a" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
+    if (a.cejas === 3) cejas = '<path d="M26 33 q6 -6 12 -1" stroke="#3b2a1a" stroke-width="1.7" fill="none" stroke-linecap="round"/><path d="M42 32 q6 -6 12 -1" stroke="#3b2a1a" stroke-width="1.7" fill="none" stroke-linecap="round"/>';
+
+    let ojos = "";
+    if (a.ojos === 0) {
+      ojos = '<ellipse cx="32" cy="36" rx="3.2" ry="3.6" fill="#fff"/><circle cx="32.4" cy="36.3" r="1.6" fill="#2a1a10"/><ellipse cx="48" cy="36" rx="3.2" ry="3.6" fill="#fff"/><circle cx="48.4" cy="36.3" r="1.6" fill="#2a1a10"/>';
+    } else if (a.ojos === 1) {
+      ojos = '<ellipse cx="32" cy="36" rx="3.4" ry="4" fill="#fff"/><circle cx="32.5" cy="36.4" r="1.7" fill="#2a1a10"/><path d="M28 33 q4 -3 8 0" stroke="#2a1a10" stroke-width="1" fill="none"/><ellipse cx="48" cy="36" rx="3.4" ry="4" fill="#fff"/><circle cx="48.5" cy="36.4" r="1.7" fill="#2a1a10"/><path d="M44 33 q4 -3 8 0" stroke="#2a1a10" stroke-width="1" fill="none"/>';
+    } else if (a.ojos === 2) {
+      ojos = '<path d="M28 37 q4 3 8 0" stroke="#2a1a10" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M44 37 q4 3 8 0" stroke="#2a1a10" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+    } else {
+      ojos = '<ellipse cx="32" cy="36" rx="3.2" ry="3.4" fill="#fff"/><circle cx="33" cy="36" r="1.6" fill="#2a1a10"/><path d="M44 37 q4 0 8 0" stroke="#2a1a10" stroke-width="1.5" fill="none"/><ellipse cx="48" cy="35.5" rx="3.2" ry="2.4" fill="#fff"/><circle cx="49" cy="35.5" r="1.4" fill="#2a1a10"/>';
+    }
+
+    let boca = "";
+    if (a.boca === 0) boca = '<path d="M33 47 q7 6 14 0" stroke="#a04a3a" stroke-width="1.7" fill="none" stroke-linecap="round"/>';
+    if (a.boca === 1) boca = '<path d="M32 46 q8 8 16 0 q-8 4 -16 0" fill="#a04a3a"/><path d="M35 48 q5 3 10 0" stroke="#fff" stroke-width="0.8" fill="none"/>';
+    if (a.boca === 2) boca = '<path d="M33 49 h14" stroke="#a04a3a" stroke-width="1.6" stroke-linecap="round"/>';
+    if (a.boca === 3) boca = '<ellipse cx="40" cy="49" rx="4.2" ry="3.4" fill="#7a2e2e"/>';
+    if (a.boca === 4) boca = '<path d="M33 47 q4 5 8 0" stroke="#a04a3a" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M44 47 q4 2 7 0" stroke="#a04a3a" stroke-width="1.5" fill="none" stroke-linecap="round"/>';
+
+    let barba = "";
+    if (a.barba === 1) barba = '<ellipse cx="40" cy="52" rx="12" ry="8" fill="' + peloC + '" opacity="0.35"/>';
+    if (a.barba === 2) barba = '<path d="M' + (cx - 13) + ' 46 C ' + (cx - 14) + ' 62, ' + (cx + 14) + ' 62, ' + (cx + 13) + ' 46 C ' + cx + ' 52, ' + (cx - 13) + ' 46 Z" fill="' + peloC + '"/>';
+    if (a.barba === 3) barba = '<path d="M30 48 q10 4 20 0" stroke="' + peloC + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+    if (a.barba === 4) barba = '<path d="M36 50 C 36 58, 44 58, 44 50 Q 40 54 36 50" fill="' + peloC + '"/>';
+
+    let lentes = "";
+    if (a.lentes === 1) lentes = '<circle cx="32" cy="36.5" r="6" fill="none" stroke="#222" stroke-width="1.5"/><circle cx="48" cy="36.5" r="6" fill="none" stroke="#222" stroke-width="1.5"/><path d="M38 36.5 h4" stroke="#222" stroke-width="1.4"/>';
+    if (a.lentes === 2) lentes = '<rect x="25" y="32" width="14" height="10" rx="3" fill="#111" opacity="0.85"/><rect x="41" y="32" width="14" height="10" rx="3" fill="#111" opacity="0.85"/><path d="M39 36 h2" stroke="#111" stroke-width="1.6"/>';
+
+    const aretes = a.aretes ? '<circle cx="' + (cx - rx) + '" cy="44" r="2" fill="#f2c14e"/><circle cx="' + (cx + rx) + '" cy="44" r="2" fill="#f2c14e"/>' : "";
+
+    const camisaG = '<path d="M12 72 C 16 58, 28 56, 40 56 C 52 56, 64 58, 68 72 L 68 80 L 12 80 Z" fill="' + camisa + '"/><path d="M40 56 L 46 80 L 34 80 Z" fill="rgba(255,255,255,0.15)"/>';
+
+    return '<svg class="avatar-svg" viewBox="0 0 80 80" width="' + tam + '" height="' + tam + '" aria-hidden="true"><circle cx="40" cy="40" r="40" fill="' + fondo + '"/>' +
+      camisaG + oreja + pelo +
+      '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + rx + '" ry="' + ry + '" fill="' + piel + '"/>' +
+      cejas + ojos + barba + boca + lentes + aretes +
+      '</svg>';
+  }
+
+  const FRASES_CHAT = [
+    "¡All in!",
+    "Trica",
+    "Págame",
+    "Si me pagas te pago",
+    "Sos un farol",
+    "Me estás faroleando",
+    "¡Buena mano!",
+    "Qué suerte",
+    "Apúrate",
+    "Gg",
+    "😂",
+    "😎",
+    "🔥",
+    "😡",
+    "👏"
+  ];
+
+  return {
+    CAMPOS: CAMPOS,
+    LABELS: LABELS,
+    normalizar: normalizar,
+    aleatorio: aleatorio,
+    porDefecto: porDefecto,
+    svg: svg,
+    FRASES_CHAT: FRASES_CHAT
+  };
+});
+
 /* =========================================================
    INTERFAZ — menú, mesa, animaciones y modo en línea
    ---------------------------------------------------------
@@ -2830,6 +3157,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   const Motor = window.PokerMotor;
   const Bots = window.PokerBots;
   const Ev = window.PokerEvaluador;
+  const Avatar = window.PokerAvatar;
 
   const ui = {
     modo: "menu",
@@ -2845,14 +3173,107 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     procesandoCola: false,
     timerBot: null,
     timerNuevaMano: null,
-    ultimaSecuencia: null
+    ultimaSecuencia: null,
+    token: null,
+    avatar: null,
+    reconectando: false,
+    despuesAvatar: null,
+    globos: {},
+    logChat: [],
+    timerPing: null,
+    timerSalud: null,
+    timerReconnect: null
   };
+
+  const LS_NOMBRE = "rf_nombre";
+  const LS_AVATAR = "rf_avatar";
+  const LS_TOKEN = "rf_token";
+  const LS_CODIGO = "rf_codigo";
+  const FRASES_CHAT = (Avatar && Avatar.FRASES_CHAT) ? Avatar.FRASES_CHAT : [];
 
   const $ = function (id) { return document.getElementById(id); };
 
-  function nombreJugador() {
-    const v = ($("nombre-jugador").value || "").trim();
-    return v || "Fernando";
+  function nombreJugador(exigir) {
+    const v = ($("nombre-jugador") && $("nombre-jugador").value || "").trim();
+    if (v) return v;
+    if (exigir) {
+      mostrarError("Escribí tu nombre (al menos 2 letras) para entrar.");
+      const inp = $("nombre-jugador");
+      if (inp) inp.focus();
+      return "";
+    }
+    return "Jugador";
+  }
+
+  function guardarNombre() {
+    const n = ($("nombre-jugador") && $("nombre-jugador").value || "").trim();
+    try { if (n) localStorage.setItem(LS_NOMBRE, n); } catch (e) { /* */ }
+    return n;
+  }
+
+  function cargarPreferencias() {
+    try {
+      const n = localStorage.getItem(LS_NOMBRE);
+      if (n && $("nombre-jugador") && !$("nombre-jugador").value) $("nombre-jugador").value = n;
+      const raw = localStorage.getItem(LS_AVATAR);
+      if (raw) ui.avatar = Avatar.normalizar(JSON.parse(raw));
+      const tok = localStorage.getItem(LS_TOKEN);
+      if (tok) ui.token = tok;
+      const cod = localStorage.getItem(LS_CODIGO);
+      if (cod && !ui.codigo) ui.codigo = cod;
+    } catch (e) { /* */ }
+    if (!ui.avatar) ui.avatar = Avatar.porDefecto();
+  }
+
+  function guardarAvatar(a) {
+    ui.avatar = Avatar.normalizar(a || ui.avatar || Avatar.porDefecto());
+    try { localStorage.setItem(LS_AVATAR, JSON.stringify(ui.avatar)); } catch (e) { /* */ }
+    return ui.avatar;
+  }
+
+  function guardarSesionSala(token, codigo) {
+    if (token) {
+      ui.token = token;
+      try { localStorage.setItem(LS_TOKEN, token); } catch (e) { /* */ }
+    }
+    if (codigo) {
+      ui.codigo = codigo;
+      try { localStorage.setItem(LS_CODIGO, codigo); } catch (e) { /* */ }
+    }
+  }
+
+  function borrarSesionSala() {
+    ui.token = null;
+    ui.codigo = null;
+    try {
+      localStorage.removeItem(LS_TOKEN);
+      localStorage.removeItem(LS_CODIGO);
+    } catch (e) { /* */ }
+  }
+
+  function mostrarError(msg) {
+    if (!msg) return;
+    toast(msg, "err");
+    const ids = ["aviso-menu", "aviso-sala", "aviso-online"];
+    for (let i = 0; i < ids.length; i++) {
+      const el = $(ids[i]);
+      if (el && el.closest && el.closest("section") && !el.closest("section").hidden) {
+        el.textContent = msg;
+        el.hidden = false;
+      } else if (el && !el.closest("section").hidden) {
+        el.textContent = msg;
+      }
+    }
+    const menu = $("aviso-menu");
+    if (menu && $("pantalla-menu") && !$("pantalla-menu").hidden) menu.textContent = msg;
+    const sala = $("aviso-sala");
+    if (sala && $("pantalla-sala") && !$("pantalla-sala").hidden) sala.textContent = msg;
+  }
+
+  function limpiarAvisos() {
+    ["aviso-menu", "aviso-sala", "aviso-online"].forEach(function (id) {
+      if ($(id)) $(id).textContent = "";
+    });
   }
 
   function asientosElegidos(nombre) {
@@ -2918,7 +3339,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   }
 
   function mostrar(idPantalla) {
-    const ids = ["pantalla-menu", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
+    const ids = ["pantalla-menu", "pantalla-avatar", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
     for (let i = 0; i < ids.length; i++) {
       const el = $(ids[i]);
       if (!el) continue;
@@ -3026,26 +3447,127 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     const caja = $("caja-entrar-invitacion");
     const texto = $("texto-codigo-invitacion");
     const normal = $("acciones-menu-normal");
+    const opciones = $("opciones-online");
+    const disc = document.querySelector("#pantalla-menu .disclaimer");
     if (codigo) {
       if (aviso) aviso.hidden = false;
       if (caja) caja.hidden = false;
       if (texto) texto.textContent = "Mesa " + codigo;
       if ($("input-codigo")) $("input-codigo").value = codigo;
       if (normal) normal.hidden = true;
+      if (opciones) opciones.hidden = true;
+      if (disc) disc.hidden = true;
       return codigo;
     }
     if (aviso) aviso.hidden = true;
     if (caja) caja.hidden = true;
     if (normal) normal.hidden = false;
+    if (opciones) opciones.hidden = false;
+    if (disc) disc.hidden = false;
     return "";
+  }
+
+  function pintarPreviewAvatar() {
+    const caja = $("preview-avatar");
+    if (!caja || !Avatar) return;
+    caja.innerHTML = Avatar.svg(ui.avatar, 132);
+    if ($("nombre-preview-avatar")) $("nombre-preview-avatar").textContent = nombreJugador(false);
+  }
+
+  function montarControlesAvatar() {
+    const caja = $("controles-avatar");
+    if (!caja || !Avatar) return;
+    caja.innerHTML = "";
+    const campos = Avatar.CAMPOS;
+    const labels = Avatar.LABELS;
+    Object.keys(campos).forEach(function (campo) {
+      const fila = document.createElement("div");
+      fila.className = "fila-avatar-opcion";
+      const tit = document.createElement("strong");
+      const nombresCampo = { cara: "Cara", piel: "Piel", pelo: "Pelo", colorPelo: "Color de pelo", ojos: "Ojos", cejas: "Cejas", boca: "Boca", barba: "Barba", lentes: "Lentes", aretes: "Aretes", camisa: "Camisa", fondo: "Fondo" };
+      tit.textContent = nombresCampo[campo] || campo;
+      fila.appendChild(tit);
+      const chips = document.createElement("div");
+      chips.className = "opciones-chips";
+      const ops = labels[campo] || [];
+      for (let i = 0; i < campos[campo]; i++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = ops[i] || String(i + 1);
+        if (ui.avatar && ui.avatar[campo] === i) b.className = "activo";
+        b.addEventListener("click", function () {
+          ui.avatar = Avatar.normalizar(ui.avatar);
+          ui.avatar[campo] = i;
+          guardarAvatar(ui.avatar);
+          montarControlesAvatar();
+          pintarPreviewAvatar();
+        });
+        chips.appendChild(b);
+      }
+      fila.appendChild(chips);
+      caja.appendChild(fila);
+    });
+  }
+
+  function abrirPersonalizar(luego) {
+    ui.despuesAvatar = luego || null;
+    if (!ui.avatar) ui.avatar = Avatar.porDefecto();
+    mostrar("pantalla-avatar");
+    montarControlesAvatar();
+    pintarPreviewAvatar();
+  }
+
+  function terminarAvatar(saltar) {
+    if (saltar && !localStorage.getItem(LS_AVATAR)) {
+      guardarAvatar(Avatar.aleatorio(nombreJugador(false)));
+    } else {
+      guardarAvatar(ui.avatar || Avatar.porDefecto());
+    }
+    const fn = ui.despuesAvatar;
+    ui.despuesAvatar = null;
+    if (typeof fn === "function") fn();
+    else irMenu();
+  }
+
+  function necesitaPersonalizar() {
+    try { return !localStorage.getItem(LS_AVATAR); } catch (e) { return true; }
+  }
+
+  function conNombreYAvatar(fn, opciones) {
+    opciones = opciones || {};
+    const n = nombreJugador(true);
+    if (!n || n.length < 2) return;
+    if (n.length < 2) { mostrarError("Escribí tu nombre (al menos 2 letras) para entrar."); return; }
+    guardarNombre();
+    if (!opciones.saltarAvatar && necesitaPersonalizar()) {
+      abrirPersonalizar(fn);
+      return;
+    }
+    if (!ui.avatar) guardarAvatar(Avatar.porDefecto());
+    fn();
+  }
+
+  function invitarAmigo() {
+    const codigo = ui.codigo;
+    const link = enlaceInvitacion(codigo);
+    if (!link) { mostrarError("Todavía no hay una sala para compartir."); return; }
+    const texto = "Sumate a mi mesa de Royal Flush. Entrá con este enlace: " + link;
+    if (navigator.share) {
+      navigator.share({ title: "Royal Flush", text: texto, url: link }).catch(function () {
+        fallbackCopy(texto, function () { toast("Enlace copiado. Mandáselo a tu amigo.", "ok"); });
+      });
+    } else {
+      fallbackCopy(texto, function () { toast("Enlace copiado. Mandáselo a tu amigo por WhatsApp o como quieras.", "ok"); });
+    }
   }
 
   /* ---------- Navegación del menú ---------- */
 
   function irMenu() {
     detenerPartidaLocal();
-    cerrarWS();
+    cerrarWS(false);
     ui.modo = "menu";
+    limpiarAvisos();
     mostrar("pantalla-menu");
     mostrarInvitacionPendiente();
   }
@@ -3067,9 +3589,17 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
   function entrarInvitacion() {
     const codigo = codigoDesdeUbicacion() || extraerCodigo(($("input-codigo") && $("input-codigo").value) || "");
-    if (!codigo) { irOnline(); return; }
+    if (!codigo) { mostrarError("No encuentro el código de la mesa."); return; }
     if ($("input-codigo")) $("input-codigo").value = codigo;
-    unirseCodigo();
+    conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
+  }
+
+  function jugarConAmigos() {
+    conNombreYAvatar(function () { crearPrivada(); });
+  }
+
+  function jugarPublica() {
+    conNombreYAvatar(function () { unirsePublica(); });
   }
 
   /* ---------- Modo solo ---------- */
@@ -3090,12 +3620,12 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     ui.modo = "solo";
     ui.codigo = null;
 
-    mesa.sentar({ id: "humano", nombre: nombreJugador(), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
-    const usados = [nombreJugador()];
+    mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
+    const usados = [nombreJugador(false)];
     for (let i = 1; i < n; i++) {
       const nom = Bots.nombreBot(usados);
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
 
     mesa.on(alEventoLocal);
@@ -3743,6 +4273,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
       if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
       if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+      const globo = document.querySelector('.pieza-globo[data-asiento="' + S.i + '"]');
+      if (globo) {
+        globo.style.left = Math.round(S.info.x) + "px";
+        globo.style.top = Math.round(S.info.y - S.info.h / 2 - 16) + "px";
+      }
     }
 
     const vasos = $("porta-vasos");
@@ -3841,6 +4376,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
         if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
         if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+        const globo = document.querySelector('.pieza-globo[data-asiento="' + S.i + '"]');
+        if (globo) {
+          globo.style.left = Math.round(S.info.x) + "px";
+          globo.style.top = Math.round(S.info.y - S.info.h / 2 - 16) + "px";
+        }
       }
     }
     escribirL();
@@ -3980,7 +4520,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       const j = (estado.jugadores || []).find(function (p) { return p.asiento === i; });
       const esPropio = !!(j && j.id === ui.tuId);
       const esGanador = !!(j && ganadores.indexOf(j.id) !== -1);
-      const clasesExtra = (j && j.esTurno ? " es-turno" : "") + (j && j.retirado ? " retirado" : "") + (esPropio ? " propio" : "") + (esGanador ? " ganador" : "");
+      const clasesExtra = (j && j.esTurno ? " es-turno" : "") + (j && j.retirado ? " retirado" : "") + (esPropio ? " propio" : "") + (esGanador ? " ganador" : "") + (j && j.conectado === false ? " desconectado" : "");
 
       let htmlCartas = '<div class="cartas-asiento">';
       if (j && j.cartas && j.cartas.length && !opciones.ocultarPrivadas) {
@@ -3992,9 +4532,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       }
       htmlCartas += "</div>";
 
+      const descon = j && j.conectado === false ? " desconectado" : "";
       let htmlInfo = '<div class="info-jugador">';
       htmlInfo += '<span class="anillo-turno" aria-hidden="true"><svg viewBox="0 0 36 36" preserveAspectRatio="none"><circle cx="18" cy="18" r="16.2" pathLength="120"></circle></svg></span>';
       if (j) {
+        if (Avatar && j.avatar) htmlInfo += '<div class="avatar-asiento">' + Avatar.svg(j.avatar, 30) + "</div>";
         htmlInfo += '<div class="insignias">';
         if (j.esBoton) htmlInfo += '<span class="insignia" title="Botón del dealer">D</span>';
         if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
@@ -4016,6 +4558,11 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       if (j && j.apuestaRonda > 0) {
         html += '<div class="pieza pieza-apuesta" data-asiento="' + i + '">';
         html += '<div class="apuesta-frente">' + htmlPilaFichas(j.apuestaRonda, true) + "</div></div>";
+      }
+
+      const globo = ui.globos[i];
+      if (globo && Date.now() < globo.hasta) {
+        html += '<div class="pieza pieza-globo" data-asiento="' + i + '"><div class="globo-chat">' + escapar(globo.frase) + "</div></div>";
       }
     }
     cajaAs.innerHTML = html;
@@ -4138,6 +4685,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   }
 
   function celebrar(estado) {
+    chatBotsOcasional("win");
     const capa = $("celebracion");
     if (!capa || movimientoReducido()) return;
     capa.innerHTML = "";
@@ -4223,6 +4771,7 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
   /* ---------- Acciones del jugador ---------- */
 
   function enviarAccion(tipo, cantidad) {
+    if (tipo === "all-in") chatBotsOcasional("all-in");
     if (ui.modo === "solo" && ui.mesa) {
       const r = ui.mesa.accion(ui.tuId, tipo, cantidad);
       if (r && r.error) $("mensaje-mesa").textContent = r.error;
@@ -4243,38 +4792,73 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     return p + "//" + location.host + "/ws";
   }
 
-  function cerrarWS() {
+  function cerrarWS(intencional) {
+    detenerKeepAlive();
+    if (ui.timerReconnect) { clearTimeout(ui.timerReconnect); ui.timerReconnect = null; }
     if (ui.ws) {
-      try { ui.ws.close(); } catch (e) { /* nada */ }
+      try {
+        if (intencional) ui.ws.salidaIntencional = true;
+        ui.ws.onclose = null;
+        ui.ws.close();
+      } catch (e) { /* nada */ }
       ui.ws = null;
     }
   }
 
-  function conectarWS() {
+  function arrancarKeepAlive() {
+    detenerKeepAlive();
+    ui.timerPing = setInterval(function () {
+      if (ui.ws && ui.ws.readyState === 1) {
+        try { ui.ws.send(JSON.stringify({ tipo: "ping" })); } catch (e) { /* */ }
+      }
+    }, 20000);
+    ui.timerSalud = setInterval(function () {
+      if (location.protocol === "file:") return;
+      try { fetch("/salud", { cache: "no-store" }).catch(function () { /* */ }); } catch (e) { /* */ }
+    }, 4 * 60 * 1000);
+  }
+
+  function detenerKeepAlive() {
+    if (ui.timerPing) { clearInterval(ui.timerPing); ui.timerPing = null; }
+    if (ui.timerSalud) { clearInterval(ui.timerSalud); ui.timerSalud = null; }
+  }
+
+  function conectarWS(intento) {
+    intento = intento || 1;
     return new Promise(function (resolve, reject) {
       const url = urlWS();
       if (!url) {
-        reject(new Error("Hay que abrir el juego a través del servidor (http://localhost:3000)."));
+        reject(new Error("Para jugar online hay que abrir el juego en la web (no como archivo)."));
         return;
       }
       if (ui.ws && ui.ws.readyState === 1) {
         resolve(ui.ws);
         return;
       }
-      cerrarWS();
+      if (ui.ws) {
+        try { ui.ws.onclose = null; ui.ws.close(); } catch (e) { /* */ }
+        ui.ws = null;
+      }
+      if (intento > 1) toast("El servidor se está despertando, un segundo…", "ok");
       const ws = new WebSocket(url);
       ui.ws = ws;
+      const limite = intento === 1 ? 25000 : 45000;
       const timer = setTimeout(function () {
-        reject(new Error("No se pudo conectar con el servidor."));
-        try { ws.close(); } catch (e) { /* nada */ }
-      }, 6000);
+        try { ws.close(); } catch (e) { /* */ }
+        if (intento < 4) {
+          toast("El servidor se está despertando, un segundo…", "ok");
+          conectarWS(intento + 1).then(resolve, reject);
+        } else {
+          reject(new Error("No se pudo conectar con el servidor. Probá de nuevo en un momento."));
+        }
+      }, limite);
       ws.addEventListener("open", function () {
         clearTimeout(timer);
+        arrancarKeepAlive();
         resolve(ws);
       });
       ws.addEventListener("error", function () {
-        clearTimeout(timer);
-        reject(new Error("Error de conexión. ¿Está arrancado el servidor?"));
+        /* el close/timeout se encargan */
       });
       ws.addEventListener("message", function (ev) {
         let msg;
@@ -4282,31 +4866,69 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
         alMensajeServidor(msg);
       });
       ws.addEventListener("close", function () {
-        if (ui.modo === "online") {
-          const aviso = $("aviso-online");
-          if (aviso && !$("pantalla-online").hidden) {
-            aviso.textContent = "Se ha cerrado la conexión con el servidor.";
-          }
+        if (ws !== ui.ws) return;
+        ui.ws = null;
+        detenerKeepAlive();
+        if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
+          programarReconexion();
         }
       });
     });
   }
 
+  function programarReconexion() {
+    if (ui.timerReconnect) return;
+    ui.reconectando = true;
+    toast("Se cortó la conexión. Reconectando…", "err");
+    let n = 0;
+    function tentar() {
+      n++;
+      conectarWS(Math.min(n, 3)).then(function () {
+        enviarWS({ tipo: "reconectar", token: ui.token, codigo: ui.codigo });
+        ui.reconectando = false;
+        ui.timerReconnect = null;
+      }).catch(function () {
+        if (n < 8) {
+          ui.timerReconnect = setTimeout(tentar, Math.min(12000, 1500 * n));
+        } else {
+          ui.reconectando = false;
+          ui.timerReconnect = null;
+          mostrarError("La sala ya no existe, crea una nueva");
+          borrarSesionSala();
+          irMenu();
+        }
+      });
+    }
+    ui.timerReconnect = setTimeout(tentar, 600);
+  }
+
   function enviarWS(obj) {
     if (ui.ws && ui.ws.readyState === 1) {
       ui.ws.send(JSON.stringify(obj));
+    } else if (ui.modo === "online" && ui.token) {
+      programarReconexion();
     }
   }
 
   function alMensajeServidor(msg) {
     if (msg.tuId) ui.tuId = msg.tuId;
     if (msg.codigo) ui.codigo = msg.codigo;
+    if (msg.token) guardarSesionSala(msg.token, msg.codigo || ui.codigo);
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
     if (msg.publica != null) ui.publica = !!msg.publica;
 
+    if (msg.tipo === "pong") return;
+
     if (msg.tipo === "error") {
-      const aviso = !$("pantalla-sala").hidden ? $("aviso-sala") : $("aviso-online");
-      if (aviso) aviso.textContent = msg.mensaje || "Ha ocurrido un error.";
+      mostrarError(msg.mensaje || "Ha ocurrido un error.");
+      if (msg.codigoError === "sala-inexistente") {
+        borrarSesionSala();
+      }
+      return;
+    }
+
+    if (msg.tipo === "chat") {
+      mostrarFrase(msg);
       return;
     }
 
@@ -4375,31 +4997,41 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
   function pintarSalaEspera(msg) {
     const codigo = msg.codigo || ui.codigo || "";
-    $("codigo-sala").textContent = codigo;
+    if ($("codigo-sala")) $("codigo-sala").textContent = codigo;
     actualizarUrlSala(codigo);
     const link = enlaceInvitacion(codigo);
     if ($("input-enlace-sala")) $("input-enlace-sala").value = link;
-    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = !navigator.share;
-    $("tipo-sala").textContent = msg.publica
-      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre. También podés compartir el enlace."
-      : "Sala privada. Compartí el enlace o el código de 5 letras con tus amigos.";
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = true;
+    if ($("tipo-sala")) {
+      $("tipo-sala").textContent = msg.publica
+        ? "Mesa pública. Puede entrar cualquiera con un asiento libre."
+        : "Mesa privada. Invitá a tus amigos con el botón de abajo.";
+    }
     const lista = $("lista-jugadores-sala");
     const jugadores = (msg.estado && msg.estado.jugadores) || msg.jugadores || [];
-    lista.innerHTML = "";
-    for (let i = 0; i < jugadores.length; i++) {
-      const j = jugadores[i];
-      const li = document.createElement("li");
-      li.innerHTML = escapar(j.nombre) +
-        (j.id === ui.tuId ? " (tú)" : "") +
-        (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
-        (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "");
-      lista.appendChild(li);
+    if (lista) {
+      lista.innerHTML = "";
+      for (let i = 0; i < jugadores.length; i++) {
+        const j = jugadores[i];
+        const li = document.createElement("li");
+        if (j.conectado === false) li.className = "desconectado";
+        const cara = (Avatar && j.avatar) ? Avatar.svg(j.avatar, 28) : "";
+        li.innerHTML = cara + "<span>" + escapar(j.nombre) +
+          (j.id === ui.tuId ? " (tú)" : "") +
+          (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
+          (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "") +
+          (j.conectado === false ? ' <span class="papel">reconectando…</span>' : "") +
+          "</span>";
+        lista.appendChild(li);
+      }
     }
     const total = (msg.estado && msg.estado.asientosTotales) || msg.asientos || 9;
     const libres = total - jugadores.length;
-    $("asientos-libres").textContent = libres === 0
-      ? "Mesa completa."
-      : "Asientos libres: " + libres + " de " + total + ".";
+    if ($("asientos-libres")) {
+      $("asientos-libres").textContent = libres === 0
+        ? "Mesa completa."
+        : (jugadores.length === 1 ? "Esperando a tu amigo…" : (jugadores.length + " jugadores · " + libres + " asientos libres."));
+    }
     const fi = msg.fichasIniciales || (msg.estado && msg.estado.fichasIniciales);
     const sb = msg.ciegaPequena != null ? msg.ciegaPequena : (msg.estado && msg.estado.ciegaPequena);
     const bb = msg.ciegaGrande != null ? msg.ciegaGrande : (msg.estado && msg.estado.ciegaGrande);
@@ -4412,84 +5044,198 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 
     const anfitrion = !!(msg.esAnfitrion || ui.esAnfitrion || (msg.anfitrionId && msg.anfitrionId === ui.tuId));
     if (anfitrion) ui.esAnfitrion = true;
-    $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
-    $("btn-iniciar-online").hidden = !anfitrion;
-    $("aviso-sala").textContent = anfitrion
-      ? "Eres el anfitrión. Puedes llenar con bots e iniciar la partida cuando haya al menos 2 jugadores."
-      : "Esperando a que el anfitrión inicie la partida…";
+    const humanos = jugadores.filter(function (j) { return j.tipo !== "bot"; }).length;
+    const puedeEmpezar = jugadores.filter(function (j) { return j.fichas > 0; }).length >= 2;
+    if ($("btn-llenar-bots")) $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
+    if ($("btn-iniciar-online")) {
+      $("btn-iniciar-online").hidden = !anfitrion;
+      $("btn-iniciar-online").disabled = !puedeEmpezar;
+    }
+    if ($("aviso-sala")) {
+      $("aviso-sala").textContent = anfitrion
+        ? (puedeEmpezar ? "Cuando quieras, tocá Empezar." : "Invitá a un amigo o rellená con bots para empezar.")
+        : "Esperando a que el anfitrión inicie la partida…";
+    }
   }
 
   async function crearPrivada() {
-    $("aviso-online").textContent = "";
+    limpiarAvisos();
+    ui.modo = "online";
     try {
       await conectarWS();
       enviarWS({
         tipo: "crear-privada",
-        nombre: nombreJugador(),
+        nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
-        fichasIniciales: fichasElegidas("online")
+        fichasIniciales: fichasElegidas("online"),
+        avatar: ui.avatar,
+        token: ui.token
       });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
   }
 
   async function unirseCodigo() {
-    $("aviso-online").textContent = "";
-    const codigo = extraerCodigo($("input-codigo").value);
+    limpiarAvisos();
+    const crudo = ($("input-codigo") && $("input-codigo").value) || codigoDesdeUbicacion() || "";
+    const codigo = extraerCodigo(crudo);
     if (codigo.length !== 5) {
-      $("aviso-online").textContent = "El código tiene que tener 5 letras, o pegá el enlace de la mesa.";
+      mostrarError("El código tiene que tener 5 letras, o pegá el enlace de la mesa.");
       return;
     }
+    ui.modo = "online";
     try {
       await conectarWS();
-      enviarWS({ tipo: "unirse", nombre: nombreJugador(), codigo: codigo });
+      enviarWS({ tipo: "unirse", nombre: nombreJugador(false), codigo: codigo, avatar: ui.avatar, token: ui.token });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
   }
 
   async function unirsePublica() {
-    $("aviso-online").textContent = "";
+    limpiarAvisos();
+    ui.modo = "online";
     try {
       await conectarWS();
       enviarWS({
         tipo: "unirse-publica",
-        nombre: nombreJugador(),
+        nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
-        fichasIniciales: fichasElegidas("online")
+        fichasIniciales: fichasElegidas("online"),
+        avatar: ui.avatar,
+        token: ui.token
       });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
+  }
+
+  function mostrarFrase(msg) {
+    const asiento = (msg.deAsiento != null) ? msg.deAsiento : (msg.asiento);
+    const frase = msg.frase || "";
+    if (asiento == null || !frase) return;
+    ui.globos[asiento] = { frase: frase, hasta: Date.now() + 3000 };
+    ui.logChat = (ui.logChat || []).concat([{ nombre: msg.deNombre || "", frase: frase }]).slice(-20);
+    const log = $("log-chat");
+    if (log) {
+      const li = document.createElement("li");
+      li.textContent = (msg.deNombre ? msg.deNombre + ": " : "") + frase;
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+    }
+    if (ui.estado) renderMesa(ui.estado);
+    setTimeout(function () {
+      const g = ui.globos[asiento];
+      if (g && g.hasta <= Date.now() + 50) {
+        delete ui.globos[asiento];
+        if (ui.estado) renderMesa(ui.estado);
+      }
+    }, 3100);
+  }
+
+  function abrirChat() {
+    const panel = $("panel-chat");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) montarFrasesChat();
+  }
+
+  function montarFrasesChat() {
+    const caja = $("frases-chat");
+    if (!caja || caja.childNodes.length) return;
+    FRASES_CHAT.forEach(function (f) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = f;
+      b.addEventListener("click", function () { enviarFrase(f); });
+      caja.appendChild(b);
+    });
+  }
+
+  function enviarFrase(frase) {
+    if (ui.modo === "online") {
+      enviarWS({ tipo: "chat", frase: frase });
+    } else {
+      const yo = ui.estado && (ui.estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+      mostrarFrase({ frase: frase, deId: ui.tuId, deNombre: yo ? yo.nombre : nombreJugador(false), deAsiento: yo ? yo.asiento : 0 });
+    }
+  }
+
+  function chatBotsOcasional(motivo) {
+    if (ui.modo !== "solo" || !ui.estado) return;
+    if (Math.random() > 0.35) return;
+    const bots = (ui.estado.jugadores || []).filter(function (j) { return j.tipo === "bot"; });
+    if (!bots.length) return;
+    const bot = bots[Math.floor(Math.random() * bots.length)];
+    const pool = motivo === "all-in"
+      ? ["¡All in!", "Sos un farol", "😎", "🔥"]
+      : (motivo === "win" ? ["¡Buena mano!", "Qué suerte", "Gg", "👏"] : ["Apúrate", "😂"]);
+    const frase = pool[Math.floor(Math.random() * pool.length)];
+    setTimeout(function () {
+      mostrarFrase({ frase: frase, deNombre: bot.nombre, deAsiento: bot.asiento, deId: bot.id });
+    }, 600 + Math.random() * 900);
   }
 
   /* ---------- Enlazar botones ---------- */
 
   function iniciarUI() {
+    cargarPreferencias();
     iniciarSelectoresFichas();
-    $("btn-solo").addEventListener("click", irSolo);
-    $("btn-online").addEventListener("click", irOnline);
+    if ($("btn-solo")) $("btn-solo").addEventListener("click", function () {
+      conNombreYAvatar(function () { irSolo(); });
+    });
+    if ($("btn-amigos")) $("btn-amigos").addEventListener("click", jugarConAmigos);
+    if ($("btn-publica")) $("btn-publica").addEventListener("click", jugarPublica);
+    if ($("btn-online")) $("btn-online").addEventListener("click", jugarConAmigos);
     if ($("btn-entrar-invitacion")) $("btn-entrar-invitacion").addEventListener("click", entrarInvitacion);
+    if ($("btn-invitar-amigo")) $("btn-invitar-amigo").addEventListener("click", invitarAmigo);
     if ($("btn-copiar-enlace")) $("btn-copiar-enlace").addEventListener("click", function () { copiarEnlaceSala(ui.codigo); });
-    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
-    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", invitarAmigo);
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", invitarAmigo);
     if ($("input-enlace-sala")) $("input-enlace-sala").addEventListener("focus", function () { this.select(); });
     $("btn-volver-solo").addEventListener("click", irMenu);
-    $("btn-volver-online").addEventListener("click", irMenu);
+    if ($("btn-volver-online")) $("btn-volver-online").addEventListener("click", irMenu);
     $("btn-empezar-solo").addEventListener("click", empezarSolo);
 
-    $("btn-crear-privada").addEventListener("click", crearPrivada);
-    $("btn-unirse-codigo").addEventListener("click", unirseCodigo);
-    $("btn-sala-publica").addEventListener("click", unirsePublica);
-    $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
-    $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
-    $("btn-salir-sala").addEventListener("click", function () {
+    if ($("btn-crear-privada")) $("btn-crear-privada").addEventListener("click", crearPrivada);
+    if ($("btn-unirse-codigo")) $("btn-unirse-codigo").addEventListener("click", function () {
+      conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
+    });
+    if ($("btn-sala-publica")) $("btn-sala-publica").addEventListener("click", jugarPublica);
+    if ($("btn-llenar-bots")) $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
+    if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
+    if ($("btn-salir-sala")) $("btn-salir-sala").addEventListener("click", function () {
       enviarWS({ tipo: "salir" });
-      cerrarWS();
+      cerrarWS(true);
+      borrarSesionSala();
       irMenu();
     });
-    $("btn-salir-mesa").addEventListener("click", irMenu);
+    $("btn-salir-mesa").addEventListener("click", function () {
+      if (ui.modo === "online") {
+        enviarWS({ tipo: "salir" });
+        cerrarWS(true);
+        borrarSesionSala();
+      }
+      irMenu();
+    });
+    if ($("btn-avatar-listo")) $("btn-avatar-listo").addEventListener("click", function () { terminarAvatar(false); });
+    if ($("btn-avatar-aleatorio")) $("btn-avatar-aleatorio").addEventListener("click", function () {
+      guardarAvatar(Avatar.aleatorio());
+      montarControlesAvatar();
+      pintarPreviewAvatar();
+    });
+    if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
+    if ($("btn-abrir-chat")) $("btn-abrir-chat").addEventListener("click", abrirChat);
+    if ($("btn-cerrar-chat")) $("btn-cerrar-chat").addEventListener("click", function () { $("panel-chat").hidden = true; });
+    if ($("nombre-jugador")) {
+      $("nombre-jugador").addEventListener("change", guardarNombre);
+      $("nombre-jugador").addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          if (codigoDesdeUbicacion()) entrarInvitacion();
+        }
+      });
+    }
 
     $("btn-retirarse").addEventListener("click", function () { enviarAccion("retirarse"); });
     $("btn-pasar").addEventListener("click", function () { enviarAccion("pasar"); });
@@ -4502,10 +5248,17 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       $("texto-subida").textContent = formatearFichas($("rango-subida").value);
     });
 
-    $("input-codigo").addEventListener("keydown", function (ev) {
+    if ($("input-codigo")) $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
     });
     mostrarInvitacionPendiente();
+    const inv = codigoDesdeUbicacion();
+    if (ui.token && ui.codigo && (!inv || inv === ui.codigo)) {
+      ui.modo = "online";
+      conectarWS().then(function () {
+        enviarWS({ tipo: "reconectar", token: ui.token, codigo: ui.codigo });
+      }).catch(function () { ui.modo = "menu"; });
+    }
 
     let timerResize = null;
     window.addEventListener("resize", function () {
@@ -4532,13 +5285,13 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
       ciegaGrande: ciegas.ciegaGrande
     });
     const nombre = opt.nombre || "Fernando";
-    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
+    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: (ui.avatar || (Avatar && Avatar.aleatorio(nombre))) });
     const usados = [nombre];
     const largos = ["Maximiliano", "Juan Esteban", "Valentina M.", "Ana-Sofía", "Roberto Carlos", "Isabel María", "Diego Armando", "Chris"];
     for (let i = 1; i < n; i++) {
       const nom = opt.nombresLargos ? (largos[i - 1] || Bots.nombreBot(usados)) : Bots.nombreBot(usados);
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
     ui.mesa = mesa;
     ui.tuId = "humano";

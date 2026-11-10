@@ -1002,3 +1002,106 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
     transition: none !important;
   }
 }
+
+/* --------- v6: online simple, avatar, chat --------- */
+.aviso { color: #f3c7c4; text-align: center; min-height: 1.2em; margin: 0.6em 0; font-weight: 600; }
+.form-error { background: #3a1c1c; border: 1px solid var(--rojo); color: #f8d4d2; padding: 0.7em 0.9em; border-radius: 10px; margin: 0 0 1em; text-align: center; }
+.opciones-extra { margin-top: 1em; border: 1px solid var(--linea); border-radius: 10px; padding: 0.2em 0.8em 0.6em; background: #111d18; }
+.opciones-extra summary { cursor: pointer; font-weight: 700; padding: 0.7em 0; color: var(--muted); }
+.opciones-extra .fila-codigo { margin-top: 0.6em; }
+.espera-amiga { text-align: center; }
+.espera-amiga .centro { text-align: center; }
+.label-codigo { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: var(--muted); margin-top: 0.4em; }
+.codigo-gigante {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: clamp(2.4rem, 10vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--oro);
+  margin: 0.15em 0 0.7em;
+}
+.enlace-espera {
+  width: 100%; margin: 0.4em 0 1em; min-height: 40px;
+  border-radius: 10px; border: 1px solid var(--linea);
+  background: #111d18; color: var(--texto); padding: 0.4em 0.7em; font-size: 0.85rem;
+}
+.lista-sala { list-style: none; margin: 0.6em 0; display: grid; gap: 0.4em; }
+.lista-sala li {
+  display: flex; align-items: center; gap: 0.55em; justify-content: center;
+  background: #111d18; border-radius: 999px; padding: 0.35em 0.8em;
+}
+.lista-sala .avatar-svg { width: 28px; height: 28px; flex: none; }
+.lista-sala .papel { color: var(--oro); font-size: 0.8rem; margin-left: 0.3em; }
+.lista-sala .desconectado { opacity: 0.55; }
+button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
+
+.ancho-avatar { max-width: 520px; }
+.preview-avatar { display: flex; justify-content: center; margin: 0.4em 0; }
+.preview-avatar .avatar-svg { width: 108px; height: 108px; }
+.controles-avatar { display: grid; gap: 0.55em; margin: 0.5em 0 0.8em; max-height: min(38vh, 320px); overflow: auto; }
+#pantalla-avatar .stack-btns { position: sticky; bottom: 0; background: var(--verde-fondo); padding-top: 0.4em; }
+.pieza-info { overflow: visible; }
+.info-jugador { overflow: visible; }
+.fila-avatar-opcion { text-align: left; }
+.fila-avatar-opcion strong { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.3em; }
+.opciones-chips { display: flex; flex-wrap: wrap; gap: 0.3em; }
+.opciones-chips button {
+  min-height: 34px; padding: 0.25em 0.6em; border-radius: 999px;
+  border: 1px solid var(--linea); background: var(--panel2); color: var(--texto);
+  font-size: 0.8rem; font-weight: 600; cursor: pointer;
+}
+.opciones-chips button.activo { background: var(--oro); color: #1f1600; border-color: transparent; }
+
+.info-jugador { padding-top: 18px; }
+.avatar-asiento {
+  position: absolute; left: 50%; top: 0;
+  transform: translate(-50%, -50%);
+  width: 30px; height: 30px; border-radius: 50%;
+  overflow: hidden; border: 2px solid var(--linea);
+  background: #163028; pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.avatar-asiento .avatar-svg { width: 100%; height: 100%; display: block; }
+.pieza-info.propio .avatar-asiento { border-color: var(--oro); }
+.pieza-info.desconectado .info-jugador { opacity: 0.7; }
+
+.pieza-globo {
+  z-index: 12; pointer-events: none; max-width: 140px;
+}
+.globo-chat {
+  background: #eef5f1; color: #122019; font-weight: 700; font-size: 0.78rem;
+  padding: 0.35em 0.55em; border-radius: 12px 12px 12px 4px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.35); line-height: 1.2;
+  animation: globo-entra 0.2s ease-out;
+}
+@keyframes globo-entra { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+#btn-abrir-chat { font-size: 1.15rem; }
+#panel-chat {
+  position: absolute; left: 8px; right: 8px; bottom: calc(var(--seguro-abajo) + 8px);
+  margin: 0 auto; max-width: 520px; z-index: 30;
+  background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
+  padding: 10px 12px 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+#pantalla-mesa { position: relative; }
+.chat-cabeza { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.frases-chat { display: flex; flex-wrap: wrap; gap: 0.35em; }
+.frases-chat button {
+  min-height: 36px; padding: 0.3em 0.7em; border-radius: 999px;
+  border: 1px solid var(--linea); background: var(--panel2); color: var(--texto);
+  font-weight: 700; cursor: pointer; font-size: 0.85rem;
+}
+.frases-chat button:hover { background: var(--oro); color: #1f1600; }
+.log-chat { list-style: none; max-height: 7em; overflow: auto; margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+.log-chat li { padding: 0.15em 0; }
+
+@media (max-width: 800px) {
+  .avatar-asiento { width: 26px; height: 26px; }
+  .codigo-gigante { font-size: 2.2rem; }
+  .preview-avatar .avatar-svg { width: 112px; height: 112px; }
+}
+@media (max-height: 600px) {
+  .avatar-asiento { width: 22px; height: 22px; }
+  .info-jugador { padding-top: 14px; }
+  .controles-avatar { max-height: 32vh; }
+}

@@ -12,6 +12,7 @@
   const Motor = window.PokerMotor;
   const Bots = window.PokerBots;
   const Ev = window.PokerEvaluador;
+  const Avatar = window.PokerAvatar;
 
   const ui = {
     modo: "menu",
@@ -27,14 +28,107 @@
     procesandoCola: false,
     timerBot: null,
     timerNuevaMano: null,
-    ultimaSecuencia: null
+    ultimaSecuencia: null,
+    token: null,
+    avatar: null,
+    reconectando: false,
+    despuesAvatar: null,
+    globos: {},
+    logChat: [],
+    timerPing: null,
+    timerSalud: null,
+    timerReconnect: null
   };
+
+  const LS_NOMBRE = "rf_nombre";
+  const LS_AVATAR = "rf_avatar";
+  const LS_TOKEN = "rf_token";
+  const LS_CODIGO = "rf_codigo";
+  const FRASES_CHAT = (Avatar && Avatar.FRASES_CHAT) ? Avatar.FRASES_CHAT : [];
 
   const $ = function (id) { return document.getElementById(id); };
 
-  function nombreJugador() {
-    const v = ($("nombre-jugador").value || "").trim();
-    return v || "Fernando";
+  function nombreJugador(exigir) {
+    const v = ($("nombre-jugador") && $("nombre-jugador").value || "").trim();
+    if (v) return v;
+    if (exigir) {
+      mostrarError("Escribí tu nombre (al menos 2 letras) para entrar.");
+      const inp = $("nombre-jugador");
+      if (inp) inp.focus();
+      return "";
+    }
+    return "Jugador";
+  }
+
+  function guardarNombre() {
+    const n = ($("nombre-jugador") && $("nombre-jugador").value || "").trim();
+    try { if (n) localStorage.setItem(LS_NOMBRE, n); } catch (e) { /* */ }
+    return n;
+  }
+
+  function cargarPreferencias() {
+    try {
+      const n = localStorage.getItem(LS_NOMBRE);
+      if (n && $("nombre-jugador") && !$("nombre-jugador").value) $("nombre-jugador").value = n;
+      const raw = localStorage.getItem(LS_AVATAR);
+      if (raw) ui.avatar = Avatar.normalizar(JSON.parse(raw));
+      const tok = localStorage.getItem(LS_TOKEN);
+      if (tok) ui.token = tok;
+      const cod = localStorage.getItem(LS_CODIGO);
+      if (cod && !ui.codigo) ui.codigo = cod;
+    } catch (e) { /* */ }
+    if (!ui.avatar) ui.avatar = Avatar.porDefecto();
+  }
+
+  function guardarAvatar(a) {
+    ui.avatar = Avatar.normalizar(a || ui.avatar || Avatar.porDefecto());
+    try { localStorage.setItem(LS_AVATAR, JSON.stringify(ui.avatar)); } catch (e) { /* */ }
+    return ui.avatar;
+  }
+
+  function guardarSesionSala(token, codigo) {
+    if (token) {
+      ui.token = token;
+      try { localStorage.setItem(LS_TOKEN, token); } catch (e) { /* */ }
+    }
+    if (codigo) {
+      ui.codigo = codigo;
+      try { localStorage.setItem(LS_CODIGO, codigo); } catch (e) { /* */ }
+    }
+  }
+
+  function borrarSesionSala() {
+    ui.token = null;
+    ui.codigo = null;
+    try {
+      localStorage.removeItem(LS_TOKEN);
+      localStorage.removeItem(LS_CODIGO);
+    } catch (e) { /* */ }
+  }
+
+  function mostrarError(msg) {
+    if (!msg) return;
+    toast(msg, "err");
+    const ids = ["aviso-menu", "aviso-sala", "aviso-online"];
+    for (let i = 0; i < ids.length; i++) {
+      const el = $(ids[i]);
+      if (el && el.closest && el.closest("section") && !el.closest("section").hidden) {
+        el.textContent = msg;
+        el.hidden = false;
+      } else if (el && !el.closest("section").hidden) {
+        el.textContent = msg;
+      }
+    }
+    const menu = $("aviso-menu");
+    if (menu && $("pantalla-menu") && !$("pantalla-menu").hidden) menu.textContent = msg;
+    const sala = $("aviso-sala");
+    if (sala && $("pantalla-sala") && !$("pantalla-sala").hidden) sala.textContent = msg;
+  }
+
+  function limpiarAvisos() {
+    ["aviso-menu", "aviso-sala", "aviso-online"].forEach(function (id) {
+      if ($(id)) $(id).textContent = "";
+    });
   }
 
   function asientosElegidos(nombre) {
@@ -100,7 +194,7 @@
   }
 
   function mostrar(idPantalla) {
-    const ids = ["pantalla-menu", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
+    const ids = ["pantalla-menu", "pantalla-avatar", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
     for (let i = 0; i < ids.length; i++) {
       const el = $(ids[i]);
       if (!el) continue;
@@ -208,26 +302,127 @@
     const caja = $("caja-entrar-invitacion");
     const texto = $("texto-codigo-invitacion");
     const normal = $("acciones-menu-normal");
+    const opciones = $("opciones-online");
+    const disc = document.querySelector("#pantalla-menu .disclaimer");
     if (codigo) {
       if (aviso) aviso.hidden = false;
       if (caja) caja.hidden = false;
       if (texto) texto.textContent = "Mesa " + codigo;
       if ($("input-codigo")) $("input-codigo").value = codigo;
       if (normal) normal.hidden = true;
+      if (opciones) opciones.hidden = true;
+      if (disc) disc.hidden = true;
       return codigo;
     }
     if (aviso) aviso.hidden = true;
     if (caja) caja.hidden = true;
     if (normal) normal.hidden = false;
+    if (opciones) opciones.hidden = false;
+    if (disc) disc.hidden = false;
     return "";
+  }
+
+  function pintarPreviewAvatar() {
+    const caja = $("preview-avatar");
+    if (!caja || !Avatar) return;
+    caja.innerHTML = Avatar.svg(ui.avatar, 132);
+    if ($("nombre-preview-avatar")) $("nombre-preview-avatar").textContent = nombreJugador(false);
+  }
+
+  function montarControlesAvatar() {
+    const caja = $("controles-avatar");
+    if (!caja || !Avatar) return;
+    caja.innerHTML = "";
+    const campos = Avatar.CAMPOS;
+    const labels = Avatar.LABELS;
+    Object.keys(campos).forEach(function (campo) {
+      const fila = document.createElement("div");
+      fila.className = "fila-avatar-opcion";
+      const tit = document.createElement("strong");
+      const nombresCampo = { cara: "Cara", piel: "Piel", pelo: "Pelo", colorPelo: "Color de pelo", ojos: "Ojos", cejas: "Cejas", boca: "Boca", barba: "Barba", lentes: "Lentes", aretes: "Aretes", camisa: "Camisa", fondo: "Fondo" };
+      tit.textContent = nombresCampo[campo] || campo;
+      fila.appendChild(tit);
+      const chips = document.createElement("div");
+      chips.className = "opciones-chips";
+      const ops = labels[campo] || [];
+      for (let i = 0; i < campos[campo]; i++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = ops[i] || String(i + 1);
+        if (ui.avatar && ui.avatar[campo] === i) b.className = "activo";
+        b.addEventListener("click", function () {
+          ui.avatar = Avatar.normalizar(ui.avatar);
+          ui.avatar[campo] = i;
+          guardarAvatar(ui.avatar);
+          montarControlesAvatar();
+          pintarPreviewAvatar();
+        });
+        chips.appendChild(b);
+      }
+      fila.appendChild(chips);
+      caja.appendChild(fila);
+    });
+  }
+
+  function abrirPersonalizar(luego) {
+    ui.despuesAvatar = luego || null;
+    if (!ui.avatar) ui.avatar = Avatar.porDefecto();
+    mostrar("pantalla-avatar");
+    montarControlesAvatar();
+    pintarPreviewAvatar();
+  }
+
+  function terminarAvatar(saltar) {
+    if (saltar && !localStorage.getItem(LS_AVATAR)) {
+      guardarAvatar(Avatar.aleatorio(nombreJugador(false)));
+    } else {
+      guardarAvatar(ui.avatar || Avatar.porDefecto());
+    }
+    const fn = ui.despuesAvatar;
+    ui.despuesAvatar = null;
+    if (typeof fn === "function") fn();
+    else irMenu();
+  }
+
+  function necesitaPersonalizar() {
+    try { return !localStorage.getItem(LS_AVATAR); } catch (e) { return true; }
+  }
+
+  function conNombreYAvatar(fn, opciones) {
+    opciones = opciones || {};
+    const n = nombreJugador(true);
+    if (!n || n.length < 2) return;
+    if (n.length < 2) { mostrarError("Escribí tu nombre (al menos 2 letras) para entrar."); return; }
+    guardarNombre();
+    if (!opciones.saltarAvatar && necesitaPersonalizar()) {
+      abrirPersonalizar(fn);
+      return;
+    }
+    if (!ui.avatar) guardarAvatar(Avatar.porDefecto());
+    fn();
+  }
+
+  function invitarAmigo() {
+    const codigo = ui.codigo;
+    const link = enlaceInvitacion(codigo);
+    if (!link) { mostrarError("Todavía no hay una sala para compartir."); return; }
+    const texto = "Sumate a mi mesa de Royal Flush. Entrá con este enlace: " + link;
+    if (navigator.share) {
+      navigator.share({ title: "Royal Flush", text: texto, url: link }).catch(function () {
+        fallbackCopy(texto, function () { toast("Enlace copiado. Mandáselo a tu amigo.", "ok"); });
+      });
+    } else {
+      fallbackCopy(texto, function () { toast("Enlace copiado. Mandáselo a tu amigo por WhatsApp o como quieras.", "ok"); });
+    }
   }
 
   /* ---------- Navegación del menú ---------- */
 
   function irMenu() {
     detenerPartidaLocal();
-    cerrarWS();
+    cerrarWS(false);
     ui.modo = "menu";
+    limpiarAvisos();
     mostrar("pantalla-menu");
     mostrarInvitacionPendiente();
   }
@@ -249,9 +444,17 @@
 
   function entrarInvitacion() {
     const codigo = codigoDesdeUbicacion() || extraerCodigo(($("input-codigo") && $("input-codigo").value) || "");
-    if (!codigo) { irOnline(); return; }
+    if (!codigo) { mostrarError("No encuentro el código de la mesa."); return; }
     if ($("input-codigo")) $("input-codigo").value = codigo;
-    unirseCodigo();
+    conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
+  }
+
+  function jugarConAmigos() {
+    conNombreYAvatar(function () { crearPrivada(); });
+  }
+
+  function jugarPublica() {
+    conNombreYAvatar(function () { unirsePublica(); });
   }
 
   /* ---------- Modo solo ---------- */
@@ -272,12 +475,12 @@
     ui.modo = "solo";
     ui.codigo = null;
 
-    mesa.sentar({ id: "humano", nombre: nombreJugador(), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
-    const usados = [nombreJugador()];
+    mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
+    const usados = [nombreJugador(false)];
     for (let i = 1; i < n; i++) {
       const nom = Bots.nombreBot(usados);
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
 
     mesa.on(alEventoLocal);
@@ -925,6 +1128,11 @@
       if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
       if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
       if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+      const globo = document.querySelector('.pieza-globo[data-asiento="' + S.i + '"]');
+      if (globo) {
+        globo.style.left = Math.round(S.info.x) + "px";
+        globo.style.top = Math.round(S.info.y - S.info.h / 2 - 16) + "px";
+      }
     }
 
     const vasos = $("porta-vasos");
@@ -1023,6 +1231,11 @@
         if (info) { info.style.left = Math.round(S.info.x) + "px"; info.style.top = Math.round(S.info.y) + "px"; }
         if (cartas) { cartas.style.left = Math.round(S.cards.x) + "px"; cartas.style.top = Math.round(S.cards.y) + "px"; }
         if (ap) { ap.style.left = Math.round(S.bet.x) + "px"; ap.style.top = Math.round(S.bet.y) + "px"; }
+        const globo = document.querySelector('.pieza-globo[data-asiento="' + S.i + '"]');
+        if (globo) {
+          globo.style.left = Math.round(S.info.x) + "px";
+          globo.style.top = Math.round(S.info.y - S.info.h / 2 - 16) + "px";
+        }
       }
     }
     escribirL();
@@ -1162,7 +1375,7 @@
       const j = (estado.jugadores || []).find(function (p) { return p.asiento === i; });
       const esPropio = !!(j && j.id === ui.tuId);
       const esGanador = !!(j && ganadores.indexOf(j.id) !== -1);
-      const clasesExtra = (j && j.esTurno ? " es-turno" : "") + (j && j.retirado ? " retirado" : "") + (esPropio ? " propio" : "") + (esGanador ? " ganador" : "");
+      const clasesExtra = (j && j.esTurno ? " es-turno" : "") + (j && j.retirado ? " retirado" : "") + (esPropio ? " propio" : "") + (esGanador ? " ganador" : "") + (j && j.conectado === false ? " desconectado" : "");
 
       let htmlCartas = '<div class="cartas-asiento">';
       if (j && j.cartas && j.cartas.length && !opciones.ocultarPrivadas) {
@@ -1174,9 +1387,11 @@
       }
       htmlCartas += "</div>";
 
+      const descon = j && j.conectado === false ? " desconectado" : "";
       let htmlInfo = '<div class="info-jugador">';
       htmlInfo += '<span class="anillo-turno" aria-hidden="true"><svg viewBox="0 0 36 36" preserveAspectRatio="none"><circle cx="18" cy="18" r="16.2" pathLength="120"></circle></svg></span>';
       if (j) {
+        if (Avatar && j.avatar) htmlInfo += '<div class="avatar-asiento">' + Avatar.svg(j.avatar, 30) + "</div>";
         htmlInfo += '<div class="insignias">';
         if (j.esBoton) htmlInfo += '<span class="insignia" title="Botón del dealer">D</span>';
         if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
@@ -1198,6 +1413,11 @@
       if (j && j.apuestaRonda > 0) {
         html += '<div class="pieza pieza-apuesta" data-asiento="' + i + '">';
         html += '<div class="apuesta-frente">' + htmlPilaFichas(j.apuestaRonda, true) + "</div></div>";
+      }
+
+      const globo = ui.globos[i];
+      if (globo && Date.now() < globo.hasta) {
+        html += '<div class="pieza pieza-globo" data-asiento="' + i + '"><div class="globo-chat">' + escapar(globo.frase) + "</div></div>";
       }
     }
     cajaAs.innerHTML = html;
@@ -1320,6 +1540,7 @@
   }
 
   function celebrar(estado) {
+    chatBotsOcasional("win");
     const capa = $("celebracion");
     if (!capa || movimientoReducido()) return;
     capa.innerHTML = "";
@@ -1405,6 +1626,7 @@
   /* ---------- Acciones del jugador ---------- */
 
   function enviarAccion(tipo, cantidad) {
+    if (tipo === "all-in") chatBotsOcasional("all-in");
     if (ui.modo === "solo" && ui.mesa) {
       const r = ui.mesa.accion(ui.tuId, tipo, cantidad);
       if (r && r.error) $("mensaje-mesa").textContent = r.error;
@@ -1425,38 +1647,73 @@
     return p + "//" + location.host + "/ws";
   }
 
-  function cerrarWS() {
+  function cerrarWS(intencional) {
+    detenerKeepAlive();
+    if (ui.timerReconnect) { clearTimeout(ui.timerReconnect); ui.timerReconnect = null; }
     if (ui.ws) {
-      try { ui.ws.close(); } catch (e) { /* nada */ }
+      try {
+        if (intencional) ui.ws.salidaIntencional = true;
+        ui.ws.onclose = null;
+        ui.ws.close();
+      } catch (e) { /* nada */ }
       ui.ws = null;
     }
   }
 
-  function conectarWS() {
+  function arrancarKeepAlive() {
+    detenerKeepAlive();
+    ui.timerPing = setInterval(function () {
+      if (ui.ws && ui.ws.readyState === 1) {
+        try { ui.ws.send(JSON.stringify({ tipo: "ping" })); } catch (e) { /* */ }
+      }
+    }, 20000);
+    ui.timerSalud = setInterval(function () {
+      if (location.protocol === "file:") return;
+      try { fetch("/salud", { cache: "no-store" }).catch(function () { /* */ }); } catch (e) { /* */ }
+    }, 4 * 60 * 1000);
+  }
+
+  function detenerKeepAlive() {
+    if (ui.timerPing) { clearInterval(ui.timerPing); ui.timerPing = null; }
+    if (ui.timerSalud) { clearInterval(ui.timerSalud); ui.timerSalud = null; }
+  }
+
+  function conectarWS(intento) {
+    intento = intento || 1;
     return new Promise(function (resolve, reject) {
       const url = urlWS();
       if (!url) {
-        reject(new Error("Hay que abrir el juego a través del servidor (http://localhost:3000)."));
+        reject(new Error("Para jugar online hay que abrir el juego en la web (no como archivo)."));
         return;
       }
       if (ui.ws && ui.ws.readyState === 1) {
         resolve(ui.ws);
         return;
       }
-      cerrarWS();
+      if (ui.ws) {
+        try { ui.ws.onclose = null; ui.ws.close(); } catch (e) { /* */ }
+        ui.ws = null;
+      }
+      if (intento > 1) toast("El servidor se está despertando, un segundo…", "ok");
       const ws = new WebSocket(url);
       ui.ws = ws;
+      const limite = intento === 1 ? 25000 : 45000;
       const timer = setTimeout(function () {
-        reject(new Error("No se pudo conectar con el servidor."));
-        try { ws.close(); } catch (e) { /* nada */ }
-      }, 6000);
+        try { ws.close(); } catch (e) { /* */ }
+        if (intento < 4) {
+          toast("El servidor se está despertando, un segundo…", "ok");
+          conectarWS(intento + 1).then(resolve, reject);
+        } else {
+          reject(new Error("No se pudo conectar con el servidor. Probá de nuevo en un momento."));
+        }
+      }, limite);
       ws.addEventListener("open", function () {
         clearTimeout(timer);
+        arrancarKeepAlive();
         resolve(ws);
       });
       ws.addEventListener("error", function () {
-        clearTimeout(timer);
-        reject(new Error("Error de conexión. ¿Está arrancado el servidor?"));
+        /* el close/timeout se encargan */
       });
       ws.addEventListener("message", function (ev) {
         let msg;
@@ -1464,31 +1721,69 @@
         alMensajeServidor(msg);
       });
       ws.addEventListener("close", function () {
-        if (ui.modo === "online") {
-          const aviso = $("aviso-online");
-          if (aviso && !$("pantalla-online").hidden) {
-            aviso.textContent = "Se ha cerrado la conexión con el servidor.";
-          }
+        if (ws !== ui.ws) return;
+        ui.ws = null;
+        detenerKeepAlive();
+        if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
+          programarReconexion();
         }
       });
     });
   }
 
+  function programarReconexion() {
+    if (ui.timerReconnect) return;
+    ui.reconectando = true;
+    toast("Se cortó la conexión. Reconectando…", "err");
+    let n = 0;
+    function tentar() {
+      n++;
+      conectarWS(Math.min(n, 3)).then(function () {
+        enviarWS({ tipo: "reconectar", token: ui.token, codigo: ui.codigo });
+        ui.reconectando = false;
+        ui.timerReconnect = null;
+      }).catch(function () {
+        if (n < 8) {
+          ui.timerReconnect = setTimeout(tentar, Math.min(12000, 1500 * n));
+        } else {
+          ui.reconectando = false;
+          ui.timerReconnect = null;
+          mostrarError("La sala ya no existe, crea una nueva");
+          borrarSesionSala();
+          irMenu();
+        }
+      });
+    }
+    ui.timerReconnect = setTimeout(tentar, 600);
+  }
+
   function enviarWS(obj) {
     if (ui.ws && ui.ws.readyState === 1) {
       ui.ws.send(JSON.stringify(obj));
+    } else if (ui.modo === "online" && ui.token) {
+      programarReconexion();
     }
   }
 
   function alMensajeServidor(msg) {
     if (msg.tuId) ui.tuId = msg.tuId;
     if (msg.codigo) ui.codigo = msg.codigo;
+    if (msg.token) guardarSesionSala(msg.token, msg.codigo || ui.codigo);
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
     if (msg.publica != null) ui.publica = !!msg.publica;
 
+    if (msg.tipo === "pong") return;
+
     if (msg.tipo === "error") {
-      const aviso = !$("pantalla-sala").hidden ? $("aviso-sala") : $("aviso-online");
-      if (aviso) aviso.textContent = msg.mensaje || "Ha ocurrido un error.";
+      mostrarError(msg.mensaje || "Ha ocurrido un error.");
+      if (msg.codigoError === "sala-inexistente") {
+        borrarSesionSala();
+      }
+      return;
+    }
+
+    if (msg.tipo === "chat") {
+      mostrarFrase(msg);
       return;
     }
 
@@ -1557,31 +1852,41 @@
 
   function pintarSalaEspera(msg) {
     const codigo = msg.codigo || ui.codigo || "";
-    $("codigo-sala").textContent = codigo;
+    if ($("codigo-sala")) $("codigo-sala").textContent = codigo;
     actualizarUrlSala(codigo);
     const link = enlaceInvitacion(codigo);
     if ($("input-enlace-sala")) $("input-enlace-sala").value = link;
-    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = !navigator.share;
-    $("tipo-sala").textContent = msg.publica
-      ? "Sala pública. Cualquiera puede unirse si queda un asiento libre. También podés compartir el enlace."
-      : "Sala privada. Compartí el enlace o el código de 5 letras con tus amigos.";
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").hidden = true;
+    if ($("tipo-sala")) {
+      $("tipo-sala").textContent = msg.publica
+        ? "Mesa pública. Puede entrar cualquiera con un asiento libre."
+        : "Mesa privada. Invitá a tus amigos con el botón de abajo.";
+    }
     const lista = $("lista-jugadores-sala");
     const jugadores = (msg.estado && msg.estado.jugadores) || msg.jugadores || [];
-    lista.innerHTML = "";
-    for (let i = 0; i < jugadores.length; i++) {
-      const j = jugadores[i];
-      const li = document.createElement("li");
-      li.innerHTML = escapar(j.nombre) +
-        (j.id === ui.tuId ? " (tú)" : "") +
-        (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
-        (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "");
-      lista.appendChild(li);
+    if (lista) {
+      lista.innerHTML = "";
+      for (let i = 0; i < jugadores.length; i++) {
+        const j = jugadores[i];
+        const li = document.createElement("li");
+        if (j.conectado === false) li.className = "desconectado";
+        const cara = (Avatar && j.avatar) ? Avatar.svg(j.avatar, 28) : "";
+        li.innerHTML = cara + "<span>" + escapar(j.nombre) +
+          (j.id === ui.tuId ? " (tú)" : "") +
+          (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
+          (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "") +
+          (j.conectado === false ? ' <span class="papel">reconectando…</span>' : "") +
+          "</span>";
+        lista.appendChild(li);
+      }
     }
     const total = (msg.estado && msg.estado.asientosTotales) || msg.asientos || 9;
     const libres = total - jugadores.length;
-    $("asientos-libres").textContent = libres === 0
-      ? "Mesa completa."
-      : "Asientos libres: " + libres + " de " + total + ".";
+    if ($("asientos-libres")) {
+      $("asientos-libres").textContent = libres === 0
+        ? "Mesa completa."
+        : (jugadores.length === 1 ? "Esperando a tu amigo…" : (jugadores.length + " jugadores · " + libres + " asientos libres."));
+    }
     const fi = msg.fichasIniciales || (msg.estado && msg.estado.fichasIniciales);
     const sb = msg.ciegaPequena != null ? msg.ciegaPequena : (msg.estado && msg.estado.ciegaPequena);
     const bb = msg.ciegaGrande != null ? msg.ciegaGrande : (msg.estado && msg.estado.ciegaGrande);
@@ -1594,84 +1899,198 @@
 
     const anfitrion = !!(msg.esAnfitrion || ui.esAnfitrion || (msg.anfitrionId && msg.anfitrionId === ui.tuId));
     if (anfitrion) ui.esAnfitrion = true;
-    $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
-    $("btn-iniciar-online").hidden = !anfitrion;
-    $("aviso-sala").textContent = anfitrion
-      ? "Eres el anfitrión. Puedes llenar con bots e iniciar la partida cuando haya al menos 2 jugadores."
-      : "Esperando a que el anfitrión inicie la partida…";
+    const humanos = jugadores.filter(function (j) { return j.tipo !== "bot"; }).length;
+    const puedeEmpezar = jugadores.filter(function (j) { return j.fichas > 0; }).length >= 2;
+    if ($("btn-llenar-bots")) $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
+    if ($("btn-iniciar-online")) {
+      $("btn-iniciar-online").hidden = !anfitrion;
+      $("btn-iniciar-online").disabled = !puedeEmpezar;
+    }
+    if ($("aviso-sala")) {
+      $("aviso-sala").textContent = anfitrion
+        ? (puedeEmpezar ? "Cuando quieras, tocá Empezar." : "Invitá a un amigo o rellená con bots para empezar.")
+        : "Esperando a que el anfitrión inicie la partida…";
+    }
   }
 
   async function crearPrivada() {
-    $("aviso-online").textContent = "";
+    limpiarAvisos();
+    ui.modo = "online";
     try {
       await conectarWS();
       enviarWS({
         tipo: "crear-privada",
-        nombre: nombreJugador(),
+        nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
-        fichasIniciales: fichasElegidas("online")
+        fichasIniciales: fichasElegidas("online"),
+        avatar: ui.avatar,
+        token: ui.token
       });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
   }
 
   async function unirseCodigo() {
-    $("aviso-online").textContent = "";
-    const codigo = extraerCodigo($("input-codigo").value);
+    limpiarAvisos();
+    const crudo = ($("input-codigo") && $("input-codigo").value) || codigoDesdeUbicacion() || "";
+    const codigo = extraerCodigo(crudo);
     if (codigo.length !== 5) {
-      $("aviso-online").textContent = "El código tiene que tener 5 letras, o pegá el enlace de la mesa.";
+      mostrarError("El código tiene que tener 5 letras, o pegá el enlace de la mesa.");
       return;
     }
+    ui.modo = "online";
     try {
       await conectarWS();
-      enviarWS({ tipo: "unirse", nombre: nombreJugador(), codigo: codigo });
+      enviarWS({ tipo: "unirse", nombre: nombreJugador(false), codigo: codigo, avatar: ui.avatar, token: ui.token });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
   }
 
   async function unirsePublica() {
-    $("aviso-online").textContent = "";
+    limpiarAvisos();
+    ui.modo = "online";
     try {
       await conectarWS();
       enviarWS({
         tipo: "unirse-publica",
-        nombre: nombreJugador(),
+        nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
-        fichasIniciales: fichasElegidas("online")
+        fichasIniciales: fichasElegidas("online"),
+        avatar: ui.avatar,
+        token: ui.token
       });
     } catch (e) {
-      $("aviso-online").textContent = e.message;
+      mostrarError(e.message);
     }
+  }
+
+  function mostrarFrase(msg) {
+    const asiento = (msg.deAsiento != null) ? msg.deAsiento : (msg.asiento);
+    const frase = msg.frase || "";
+    if (asiento == null || !frase) return;
+    ui.globos[asiento] = { frase: frase, hasta: Date.now() + 3000 };
+    ui.logChat = (ui.logChat || []).concat([{ nombre: msg.deNombre || "", frase: frase }]).slice(-20);
+    const log = $("log-chat");
+    if (log) {
+      const li = document.createElement("li");
+      li.textContent = (msg.deNombre ? msg.deNombre + ": " : "") + frase;
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+    }
+    if (ui.estado) renderMesa(ui.estado);
+    setTimeout(function () {
+      const g = ui.globos[asiento];
+      if (g && g.hasta <= Date.now() + 50) {
+        delete ui.globos[asiento];
+        if (ui.estado) renderMesa(ui.estado);
+      }
+    }, 3100);
+  }
+
+  function abrirChat() {
+    const panel = $("panel-chat");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) montarFrasesChat();
+  }
+
+  function montarFrasesChat() {
+    const caja = $("frases-chat");
+    if (!caja || caja.childNodes.length) return;
+    FRASES_CHAT.forEach(function (f) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = f;
+      b.addEventListener("click", function () { enviarFrase(f); });
+      caja.appendChild(b);
+    });
+  }
+
+  function enviarFrase(frase) {
+    if (ui.modo === "online") {
+      enviarWS({ tipo: "chat", frase: frase });
+    } else {
+      const yo = ui.estado && (ui.estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+      mostrarFrase({ frase: frase, deId: ui.tuId, deNombre: yo ? yo.nombre : nombreJugador(false), deAsiento: yo ? yo.asiento : 0 });
+    }
+  }
+
+  function chatBotsOcasional(motivo) {
+    if (ui.modo !== "solo" || !ui.estado) return;
+    if (Math.random() > 0.35) return;
+    const bots = (ui.estado.jugadores || []).filter(function (j) { return j.tipo === "bot"; });
+    if (!bots.length) return;
+    const bot = bots[Math.floor(Math.random() * bots.length)];
+    const pool = motivo === "all-in"
+      ? ["¡All in!", "Sos un farol", "😎", "🔥"]
+      : (motivo === "win" ? ["¡Buena mano!", "Qué suerte", "Gg", "👏"] : ["Apúrate", "😂"]);
+    const frase = pool[Math.floor(Math.random() * pool.length)];
+    setTimeout(function () {
+      mostrarFrase({ frase: frase, deNombre: bot.nombre, deAsiento: bot.asiento, deId: bot.id });
+    }, 600 + Math.random() * 900);
   }
 
   /* ---------- Enlazar botones ---------- */
 
   function iniciarUI() {
+    cargarPreferencias();
     iniciarSelectoresFichas();
-    $("btn-solo").addEventListener("click", irSolo);
-    $("btn-online").addEventListener("click", irOnline);
+    if ($("btn-solo")) $("btn-solo").addEventListener("click", function () {
+      conNombreYAvatar(function () { irSolo(); });
+    });
+    if ($("btn-amigos")) $("btn-amigos").addEventListener("click", jugarConAmigos);
+    if ($("btn-publica")) $("btn-publica").addEventListener("click", jugarPublica);
+    if ($("btn-online")) $("btn-online").addEventListener("click", jugarConAmigos);
     if ($("btn-entrar-invitacion")) $("btn-entrar-invitacion").addEventListener("click", entrarInvitacion);
+    if ($("btn-invitar-amigo")) $("btn-invitar-amigo").addEventListener("click", invitarAmigo);
     if ($("btn-copiar-enlace")) $("btn-copiar-enlace").addEventListener("click", function () { copiarEnlaceSala(ui.codigo); });
-    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
-    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", function () { compartirOCopiar(ui.codigo); });
+    if ($("btn-compartir-sala")) $("btn-compartir-sala").addEventListener("click", invitarAmigo);
+    if ($("btn-compartir-mesa")) $("btn-compartir-mesa").addEventListener("click", invitarAmigo);
     if ($("input-enlace-sala")) $("input-enlace-sala").addEventListener("focus", function () { this.select(); });
     $("btn-volver-solo").addEventListener("click", irMenu);
-    $("btn-volver-online").addEventListener("click", irMenu);
+    if ($("btn-volver-online")) $("btn-volver-online").addEventListener("click", irMenu);
     $("btn-empezar-solo").addEventListener("click", empezarSolo);
 
-    $("btn-crear-privada").addEventListener("click", crearPrivada);
-    $("btn-unirse-codigo").addEventListener("click", unirseCodigo);
-    $("btn-sala-publica").addEventListener("click", unirsePublica);
-    $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
-    $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
-    $("btn-salir-sala").addEventListener("click", function () {
+    if ($("btn-crear-privada")) $("btn-crear-privada").addEventListener("click", crearPrivada);
+    if ($("btn-unirse-codigo")) $("btn-unirse-codigo").addEventListener("click", function () {
+      conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
+    });
+    if ($("btn-sala-publica")) $("btn-sala-publica").addEventListener("click", jugarPublica);
+    if ($("btn-llenar-bots")) $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
+    if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
+    if ($("btn-salir-sala")) $("btn-salir-sala").addEventListener("click", function () {
       enviarWS({ tipo: "salir" });
-      cerrarWS();
+      cerrarWS(true);
+      borrarSesionSala();
       irMenu();
     });
-    $("btn-salir-mesa").addEventListener("click", irMenu);
+    $("btn-salir-mesa").addEventListener("click", function () {
+      if (ui.modo === "online") {
+        enviarWS({ tipo: "salir" });
+        cerrarWS(true);
+        borrarSesionSala();
+      }
+      irMenu();
+    });
+    if ($("btn-avatar-listo")) $("btn-avatar-listo").addEventListener("click", function () { terminarAvatar(false); });
+    if ($("btn-avatar-aleatorio")) $("btn-avatar-aleatorio").addEventListener("click", function () {
+      guardarAvatar(Avatar.aleatorio());
+      montarControlesAvatar();
+      pintarPreviewAvatar();
+    });
+    if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
+    if ($("btn-abrir-chat")) $("btn-abrir-chat").addEventListener("click", abrirChat);
+    if ($("btn-cerrar-chat")) $("btn-cerrar-chat").addEventListener("click", function () { $("panel-chat").hidden = true; });
+    if ($("nombre-jugador")) {
+      $("nombre-jugador").addEventListener("change", guardarNombre);
+      $("nombre-jugador").addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          if (codigoDesdeUbicacion()) entrarInvitacion();
+        }
+      });
+    }
 
     $("btn-retirarse").addEventListener("click", function () { enviarAccion("retirarse"); });
     $("btn-pasar").addEventListener("click", function () { enviarAccion("pasar"); });
@@ -1684,10 +2103,17 @@
       $("texto-subida").textContent = formatearFichas($("rango-subida").value);
     });
 
-    $("input-codigo").addEventListener("keydown", function (ev) {
+    if ($("input-codigo")) $("input-codigo").addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") unirseCodigo();
     });
     mostrarInvitacionPendiente();
+    const inv = codigoDesdeUbicacion();
+    if (ui.token && ui.codigo && (!inv || inv === ui.codigo)) {
+      ui.modo = "online";
+      conectarWS().then(function () {
+        enviarWS({ tipo: "reconectar", token: ui.token, codigo: ui.codigo });
+      }).catch(function () { ui.modo = "menu"; });
+    }
 
     let timerResize = null;
     window.addEventListener("resize", function () {
@@ -1714,13 +2140,13 @@
       ciegaGrande: ciegas.ciegaGrande
     });
     const nombre = opt.nombre || "Fernando";
-    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
+    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: (ui.avatar || (Avatar && Avatar.aleatorio(nombre))) });
     const usados = [nombre];
     const largos = ["Maximiliano", "Juan Esteban", "Valentina M.", "Ana-Sofía", "Roberto Carlos", "Isabel María", "Diego Armando", "Chris"];
     for (let i = 1; i < n; i++) {
       const nom = opt.nombresLargos ? (largos[i - 1] || Bots.nombreBot(usados)) : Bots.nombreBot(usados);
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
     ui.mesa = mesa;
     ui.tuId = "humano";

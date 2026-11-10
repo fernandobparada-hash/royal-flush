@@ -15,11 +15,13 @@
 
 const http = require("http");
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const { WebSocketServer } = require("ws");
 
 const Motor = require("./public/js/motor.js");
 const Bots = require("./public/js/bots.js");
+const Avatar = require("./public/js/avatar.js");
 
 const PORT = process.env.PORT || 3000;
 const RAPIDO = process.env.POKER_RAPIDO === "1";
@@ -27,6 +29,10 @@ const DELAY_REPARTO = RAPIDO ? 0 : 2800;
 const DELAY_BOT_MIN = RAPIDO ? 0 : 700;
 const DELAY_BOT_MAX = RAPIDO ? 0 : 1400;
 const DELAY_ENTRE_MANOS = RAPIDO ? 80 : 5500;
+const GRACE_MS = RAPIDO ? 30000 : 12 * 60 * 1000;
+const FOLD_DESCONEXION_MS = RAPIDO ? 400 : 25000;
+const CHAT_COOLDOWN_MS = 2000;
+const FRASES_CHAT = Avatar.FRASES_CHAT;
 
 const app = express();
 app.use(express.static(path.join(__dirname, "public")));
@@ -35,6 +41,22 @@ app.get("/salud", function (req, res) {
 });
 app.get("/m/:codigo", function (req, res) {
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+app.get("/api/sala/:codigo", function (req, res) {
+  const codigo = normalizarCodigo(req.params.codigo);
+  const sala = salas.get(codigo);
+  if (!sala) {
+    res.status(404).json({ ok: false, mensaje: "La sala ya no existe, crea una nueva" });
+    return;
+  }
+  res.json({
+    ok: true,
+    codigo: sala.codigo,
+    publica: sala.publica,
+    partidaIniciada: sala.partidaIniciada,
+    jugadores: sala.mesa.jugadores().length,
+    asientos: sala.mesa.asientosTotales
+  });
 });
 
 const server = http.createServer(app);
@@ -54,8 +76,19 @@ function codigoUnico() {
   return codigo;
 }
 
+function normalizarCodigo(crudo) {
+  const raw = String(crudo || "").trim().toUpperCase();
+  const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
+  const letras = fromPath ? fromPath[1] : raw.replace(/[^A-Z0-9]/g, "");
+  return letras.slice(0, 5);
+}
+
 function nuevoId() {
-  return "j-" + Math.random().toString(36).slice(2, 10);
+  return "j-" + crypto.randomBytes(6).toString("hex");
+}
+
+function nuevoToken() {
+  return crypto.randomBytes(16).toString("hex");
 }
 
 function enviar(ws, obj) {
@@ -69,7 +102,7 @@ function meta(sala) {
     codigo: sala.codigo,
     publica: sala.publica,
     anfitrionId: sala.anfitrionId,
-    esAnfitrion: false, // se completa por cliente
+    esAnfitrion: false,
     partidaIniciada: sala.partidaIniciada,
     asientos: sala.mesa.asientosTotales,
     fichasIniciales: sala.mesa.fichasIniciales,
@@ -85,17 +118,37 @@ function leerCiegas(msg) {
   return Motor.ciegasPara(norm.fichas);
 }
 
+function leerNombre(msg) {
+  const n = String((msg && msg.nombre) || "").trim().replace(/\s+/g, " ").slice(0, 20);
+  if (n.length < 2) return { error: "Escribí tu nombre (al menos 2 letras) para entrar." };
+  return { nombre: n };
+}
+
+function nombreLibre(sala, nombre, exceptoId) {
+  const usados = sala.mesa.jugadores()
+    .filter(function (j) { return j.id !== exceptoId; })
+    .map(function (j) { return String(j.nombre || "").toLowerCase(); });
+  if (usados.indexOf(nombre.toLowerCase()) < 0) return nombre;
+  for (let i = 2; i <= 20; i++) {
+    const cand = (nombre.length > 16 ? nombre.slice(0, 16) : nombre) + " " + i;
+    if (usados.indexOf(cand.toLowerCase()) < 0) return cand;
+  }
+  return nombre + " *";
+}
+
 function transmitir(sala, tipo, extra) {
   extra = extra || {};
   for (const [id, ws] of sala.clientes) {
     const payload = Object.assign({
       tipo: tipo,
       tuId: id,
+      token: ws && ws.token,
       estado: sala.mesa.estadoPublico(id),
       esAnfitrion: sala.anfitrionId === id
     }, meta(sala), extra);
     payload.esAnfitrion = sala.anfitrionId === id;
     payload.tuId = id;
+    if (ws && ws.token) payload.token = ws.token;
     enviar(ws, payload);
   }
 }
@@ -109,6 +162,10 @@ function enviarCartasPrivadas(sala) {
 function limpiarTimers(sala) {
   for (let i = 0; i < sala.timers.length; i++) clearTimeout(sala.timers[i]);
   sala.timers = [];
+  if (sala.timerLimpieza) {
+    clearTimeout(sala.timerLimpieza);
+    sala.timerLimpieza = null;
+  }
 }
 
 function luego(sala, ms, fn) {
@@ -117,6 +174,7 @@ function luego(sala, ms, fn) {
     try { fn(); } catch (e) { console.error("timer:", e); }
   }, ms);
   sala.timers.push(t);
+  return t;
 }
 
 function crearSala(opciones) {
@@ -133,10 +191,12 @@ function crearSala(opciones) {
     }),
     clientes: new Map(),
     partidaIniciada: false,
-    timers: []
+    timers: [],
+    timerLimpieza: null
   };
   engancharMesa(sala);
   salas.set(codigo, sala);
+  console.log("Sala creada", codigo, sala.publica ? "pública" : "privada");
   return sala;
 }
 
@@ -181,8 +241,14 @@ function programarBots(sala) {
   const j = sala.mesa.jugadorPorId(id);
   if (!j) return;
   if (j.tipo === "humano" && j.conectado === false) {
-    sala.mesa.accion(id, "retirarse");
-    programarBots(sala);
+    if (j.timerFold) return;
+    j.timerFold = luego(sala, FOLD_DESCONEXION_MS, function () {
+      j.timerFold = null;
+      if (j.conectado === false && sala.mesa.turnoId === id) {
+        sala.mesa.accion(id, "retirarse");
+        programarBots(sala);
+      }
+    });
     return;
   }
   if (j.tipo !== "bot") return;
@@ -196,13 +262,66 @@ function programarBots(sala) {
   });
 }
 
-function sentarEnSala(sala, ws, nombre, tipo) {
+function humanosConectados(sala) {
+  let n = 0;
+  for (const ws of sala.clientes.values()) {
+    if (ws && ws.readyState === 1) n++;
+  }
+  return n;
+}
+
+function humanosEnMesa(sala) {
+  return sala.mesa.jugadores().filter(function (j) { return j.tipo === "humano"; }).length;
+}
+
+function programarLimpieza(sala) {
+  if (sala.timerLimpieza) {
+    clearTimeout(sala.timerLimpieza);
+    sala.timerLimpieza = null;
+  }
+  if (humanosEnMesa(sala) === 0) {
+    limpiarTimers(sala);
+    salas.delete(sala.codigo);
+    console.log("Sala borrada (sin humanos)", sala.codigo);
+    return;
+  }
+  if (humanosConectados(sala) === 0) {
+    sala.timerLimpieza = setTimeout(function () {
+      sala.timerLimpieza = null;
+      if (humanosConectados(sala) === 0) {
+        limpiarTimers(sala);
+        salas.delete(sala.codigo);
+        console.log("Sala caducada", sala.codigo);
+      }
+    }, GRACE_MS);
+  }
+}
+
+function buscarPorToken(token) {
+  if (!token) return null;
+  for (const sala of salas.values()) {
+    const jugadores = sala.mesa.jugadores();
+    for (let i = 0; i < jugadores.length; i++) {
+      if (jugadores[i].token && jugadores[i].token === token) {
+        return { sala: sala, jugador: jugadores[i] };
+      }
+    }
+  }
+  return null;
+}
+
+function sentarEnSala(sala, ws, nombre, tipo, avatar) {
   const resultado = sala.mesa.sentar({
     id: ws.jugadorId,
     nombre: nombre || "Jugador",
-    tipo: tipo || "humano"
+    tipo: tipo || "humano",
+    avatar: avatar ? Avatar.normalizar(avatar) : Avatar.aleatorio(nombre || ws.jugadorId),
+    token: ws.token
   });
   if (resultado.error) return resultado;
+  const j = resultado.jugador;
+  j.token = ws.token;
+  j.conectado = true;
   sala.clientes.set(ws.jugadorId, ws);
   ws.codigoSala = sala.codigo;
   return resultado;
@@ -219,28 +338,100 @@ function payloadSala(sala, ws) {
   const payload = Object.assign({
     tipo: "en-sala",
     tuId: ws.jugadorId,
+    token: ws.token,
     estado: sala.mesa.estadoPublico(ws.jugadorId)
   }, meta(sala));
   payload.tuId = ws.jugadorId;
+  payload.token = ws.token;
   payload.esAnfitrion = sala.anfitrionId === ws.jugadorId;
   return payload;
 }
 
+function entregarEstado(sala, ws) {
+  const enJuego = sala.partidaIniciada && sala.mesa.fase !== "esperando";
+  if (enJuego) {
+    enviar(ws, Object.assign(payloadSala(sala, ws), {
+      tipo: "sala-actualizada",
+      partidaIniciada: true
+    }));
+    const cartas = sala.mesa.cartasDe(ws.jugadorId);
+    if (cartas && cartas.length) {
+      enviar(ws, { tipo: "tus-cartas", cartas: cartas, tuId: ws.jugadorId });
+    }
+  } else {
+    enviar(ws, payloadSala(sala, ws));
+  }
+}
+
+function recostar(ws, hallado) {
+  const sala = hallado.sala;
+  const jugador = hallado.jugador;
+  const viejo = sala.clientes.get(jugador.id);
+  if (viejo && viejo !== ws) {
+    viejo.salidaIntencional = false;
+    viejo.reemplazado = true;
+    try { viejo.close(); } catch (e) { /* */ }
+  }
+  ws.jugadorId = jugador.id;
+  ws.token = jugador.token;
+  ws.codigoSala = sala.codigo;
+  jugador.conectado = true;
+  if (jugador.timerFold) {
+    /* el timer se ignora al ver conectado */
+  }
+  sala.clientes.set(jugador.id, ws);
+  programarLimpieza(sala);
+  console.log("Reconexión", jugador.nombre, "en", sala.codigo);
+  entregarEstado(sala, ws);
+  transmitir(sala, "sala-actualizada");
+  return true;
+}
+
+function errorSalaInexistente(ws, codigo) {
+  const c = codigo ? (" " + codigo) : "";
+  console.log("Unión fallida: sala inexistente" + c);
+  enviar(ws, {
+    tipo: "error",
+    codigoError: "sala-inexistente",
+    mensaje: "La sala ya no existe, crea una nueva"
+  });
+}
+
 function manejar(ws, msg) {
   const tipo = msg && msg.tipo;
+
+  if (tipo === "ping") {
+    enviar(ws, { tipo: "pong", t: Date.now() });
+    return;
+  }
+
+  if (tipo === "reconectar") {
+    const token = String(msg.token || "");
+    const hallado = buscarPorToken(token);
+    if (!hallado) {
+      errorSalaInexistente(ws, msg.codigo);
+      return;
+    }
+    recostar(ws, hallado);
+    return;
+  }
+
   if (tipo === "crear-privada") {
+    const nom = leerNombre(msg);
+    if (nom.error) { enviar(ws, { tipo: "error", mensaje: nom.error }); return; }
     const ciegas = leerCiegas(msg);
     if (ciegas.error) {
       enviar(ws, { tipo: "error", mensaje: ciegas.error });
       return;
     }
+    if (!ws.token) ws.token = nuevoToken();
     const sala = crearSala({
       publica: false,
       asientos: msg.asientos === 10 ? 10 : 9,
       anfitrionId: ws.jugadorId,
       ciegas: ciegas
     });
-    const r = sentarEnSala(sala, ws, msg.nombre, "humano");
+    const r = sentarEnSala(sala, ws, nom.nombre, "humano", msg.avatar);
     if (r.error) {
       salas.delete(sala.codigo);
       enviar(ws, { tipo: "error", mensaje: r.error });
@@ -251,26 +442,54 @@ function manejar(ws, msg) {
   }
 
   if (tipo === "unirse") {
-    const codigo = String(msg.codigo || "").trim().toUpperCase();
+    const nom = leerNombre(msg);
+    if (nom.error) { enviar(ws, { tipo: "error", mensaje: nom.error }); return; }
+    const codigo = normalizarCodigo(msg.codigo);
+    if (codigo.length !== 5) {
+      enviar(ws, { tipo: "error", mensaje: "El código tiene que tener 5 letras, o pegá el enlace de la mesa." });
+      return;
+    }
     const sala = salas.get(codigo);
     if (!sala) {
-      enviar(ws, { tipo: "error", mensaje: "No hay ninguna sala con el código " + codigo + "." });
+      errorSalaInexistente(ws, codigo);
       return;
+    }
+    if (msg.token) {
+      const hallado = buscarPorToken(String(msg.token));
+      if (hallado && hallado.sala.codigo === sala.codigo) {
+        recostar(ws, hallado);
+        return;
+      }
     }
     if (sala.mesa.asientoLibre() < 0) {
-      enviar(ws, { tipo: "error", mensaje: "Esa mesa está completa." });
+      enviar(ws, { tipo: "error", codigoError: "mesa-llena", mensaje: "Esa mesa está completa. Pedile al anfitrión que te avise cuando haya un asiento." });
       return;
     }
-    const r = sentarEnSala(sala, ws, msg.nombre, "humano");
+    if (!ws.token) ws.token = nuevoToken();
+    const r = sentarEnSala(sala, ws, nombreLibre(sala, nom.nombre), "humano", msg.avatar);
     if (r.error) {
       enviar(ws, { tipo: "error", mensaje: r.error });
       return;
     }
+    console.log("Se unió", nom.nombre, "a", codigo, sala.partidaIniciada ? "(en juego, próxima mano)" : "");
+    programarLimpieza(sala);
     transmitir(sala, "sala-actualizada");
+    if (sala.partidaIniciada && sala.mesa.fase !== "esperando") {
+      entregarEstado(sala, ws);
+    }
     return;
   }
 
   if (tipo === "unirse-publica") {
+    const nom = leerNombre(msg);
+    if (nom.error) { enviar(ws, { tipo: "error", mensaje: nom.error }); return; }
+    if (msg.token) {
+      const hallado = buscarPorToken(String(msg.token));
+      if (hallado && hallado.sala.publica) {
+        recostar(ws, hallado);
+        return;
+      }
+    }
     let sala = buscarSalaPublica();
     if (!sala) {
       const ciegas = leerCiegas(msg);
@@ -278,6 +497,7 @@ function manejar(ws, msg) {
         enviar(ws, { tipo: "error", mensaje: ciegas.error });
         return;
       }
+      if (!ws.token) ws.token = nuevoToken();
       sala = crearSala({
         publica: true,
         asientos: msg.asientos === 10 ? 10 : 9,
@@ -285,19 +505,24 @@ function manejar(ws, msg) {
         ciegas: ciegas
       });
     }
-    const r = sentarEnSala(sala, ws, msg.nombre, "humano");
+    if (!ws.token) ws.token = nuevoToken();
+    const r = sentarEnSala(sala, ws, nombreLibre(sala, nom.nombre), "humano", msg.avatar);
     if (r.error) {
       enviar(ws, { tipo: "error", mensaje: r.error });
       return;
     }
     if (!sala.anfitrionId) sala.anfitrionId = ws.jugadorId;
+    programarLimpieza(sala);
     transmitir(sala, "sala-actualizada");
+    if (sala.partidaIniciada && sala.mesa.fase !== "esperando") {
+      entregarEstado(sala, ws);
+    }
     return;
   }
 
   const sala = salas.get(ws.codigoSala);
   if (!sala) {
-    enviar(ws, { tipo: "error", mensaje: "No estás en ninguna sala." });
+    enviar(ws, { tipo: "error", codigoError: "sala-inexistente", mensaje: "La sala ya no existe, crea una nueva" });
     return;
   }
 
@@ -315,7 +540,8 @@ function manejar(ws, msg) {
         id: "bot-" + sala.codigo + "-" + asiento,
         nombre: nom,
         tipo: "bot",
-        asiento: asiento
+        asiento: asiento,
+        avatar: Avatar.aleatorio(nom)
       });
     }
     transmitir(sala, "sala-actualizada");
@@ -329,7 +555,7 @@ function manejar(ws, msg) {
     }
     const conFichas = sala.mesa.jugadores().filter(function (j) { return j.fichas > 0; });
     if (conFichas.length < 2) {
-      enviar(ws, { tipo: "error", mensaje: "Se necesitan al menos 2 jugadores para empezar." });
+      enviar(ws, { tipo: "error", mensaje: "Se necesitan al menos 2 jugadores para empezar. Invitá a un amigo o rellená con bots." });
       return;
     }
     if (sala.partidaIniciada && sala.mesa.fase !== "esperando" && sala.mesa.fase !== "entre-manos") {
@@ -351,54 +577,93 @@ function manejar(ws, msg) {
     return;
   }
 
+  if (tipo === "chat") {
+    const frase = String(msg.frase || "");
+    if (FRASES_CHAT.indexOf(frase) < 0) {
+      enviar(ws, { tipo: "error", mensaje: "Esa frase no está permitida." });
+      return;
+    }
+    const ahora = Date.now();
+    if (ws.ultimoChat && ahora - ws.ultimoChat < CHAT_COOLDOWN_MS) {
+      enviar(ws, { tipo: "error", codigoError: "chat-rapido", mensaje: "Esperá un segundo antes de mandar otra frase." });
+      return;
+    }
+    ws.ultimoChat = ahora;
+    const j = sala.mesa.jugadorPorId(ws.jugadorId);
+    transmitir(sala, "chat", {
+      frase: frase,
+      deId: ws.jugadorId,
+      deNombre: j ? j.nombre : "",
+      deAsiento: j ? j.asiento : null
+    });
+    return;
+  }
+
+  if (tipo === "avatar" && msg.avatar) {
+    const j = sala.mesa.jugadorPorId(ws.jugadorId);
+    if (j) {
+      j.avatar = Avatar.normalizar(msg.avatar);
+      transmitir(sala, "sala-actualizada");
+    }
+    return;
+  }
+
   if (tipo === "salir") {
-    alSalir(ws);
+    alSalir(ws, true);
   }
 }
 
-function alSalir(ws) {
+function alSalir(ws, intencional) {
+  if (ws.reemplazado) return;
   const codigo = ws.codigoSala;
   const sala = salas.get(codigo);
   if (!sala) return;
 
-  sala.clientes.delete(ws.jugadorId);
+  if (sala.clientes.get(ws.jugadorId) === ws) {
+    sala.clientes.delete(ws.jugadorId);
+  }
   ws.codigoSala = null;
 
   const j = sala.mesa.jugadorPorId(ws.jugadorId);
   if (j) {
-    const enCurso = sala.partidaIniciada &&
-      sala.mesa.fase !== "esperando" &&
-      sala.mesa.fase !== "entre-manos";
-    if (enCurso && j.enMano && !j.retirado) {
-      j.conectado = false;
-      if (sala.mesa.turnoId === j.id) {
-        sala.mesa.accion(j.id, "retirarse");
-        programarBots(sala);
+    if (intencional) {
+      const enCurso = sala.partidaIniciada &&
+        sala.mesa.fase !== "esperando" &&
+        sala.mesa.fase !== "entre-manos";
+      if (enCurso && j.enMano && !j.retirado) {
+        j.conectado = false;
+        if (sala.mesa.turnoId === j.id) {
+          sala.mesa.accion(j.id, "retirarse");
+          programarBots(sala);
+        }
+        sala.mesa.levantar(ws.jugadorId);
+      } else {
+        sala.mesa.levantar(ws.jugadorId);
       }
     } else {
-      sala.mesa.levantar(ws.jugadorId);
+      j.conectado = false;
     }
   }
 
-  if (sala.anfitrionId === ws.jugadorId) {
+  if (intencional && sala.anfitrionId === ws.jugadorId) {
     const otro = sala.mesa.jugadores().find(function (x) {
       return x.tipo === "humano" && x.conectado !== false && x.id !== ws.jugadorId;
     });
     sala.anfitrionId = otro ? otro.id : null;
   }
 
-  const humanos = [...sala.clientes.keys()].length;
-  if (humanos === 0) {
-    limpiarTimers(sala);
-    salas.delete(sala.codigo);
-    return;
-  }
-  transmitir(sala, "sala-actualizada");
+  programarLimpieza(sala);
+  if (salas.has(sala.codigo)) transmitir(sala, "sala-actualizada");
 }
 
 wss.on("connection", function (ws) {
   ws.jugadorId = nuevoId();
   ws.codigoSala = null;
+  ws.token = null;
+  ws.isAlive = true;
+  ws.salidaIntencional = false;
+
+  ws.on("pong", function () { ws.isAlive = true; });
 
   ws.on("message", function (raw) {
     let msg;
@@ -416,8 +681,22 @@ wss.on("connection", function (ws) {
     }
   });
 
-  ws.on("close", function () { alSalir(ws); });
+  ws.on("close", function () {
+    alSalir(ws, !!ws.salidaIntencional);
+  });
 });
+
+const pulso = setInterval(function () {
+  wss.clients.forEach(function (ws) {
+    if (ws.isAlive === false) {
+      try { ws.terminate(); } catch (e) { /* */ }
+      return;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch (e) { /* */ }
+  });
+}, 20000);
+server.on("close", function () { clearInterval(pulso); });
 
 server.listen(PORT, "0.0.0.0", function () {
   console.log("Royal Flush listo en http://localhost:" + PORT);

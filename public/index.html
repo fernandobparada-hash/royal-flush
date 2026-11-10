@@ -11,6 +11,9 @@
   <title>Royal Flush — Texas Hold'em</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
@@ -20,6 +23,25 @@
     <section id="pantalla-menu" class="pantalla">
       <div class="marco-menu">
         <p class="etiqueta-casa">Casa de cartas</p>
+        <div class="logo-royal" aria-hidden="true">
+          <svg viewBox="0 0 160 92" role="img" aria-label="Royal Flush">
+            <defs>
+              <linearGradient id="oroLogo" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffe9a0"/>
+                <stop offset="50%" stop-color="#f4d35e"/>
+                <stop offset="100%" stop-color="#c9a227"/>
+              </linearGradient>
+            </defs>
+            <g transform="translate(80,50)">
+              <g transform="rotate(-28) translate(-38,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="11" fill="#c41e3a" font-weight="700">10</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
+              <g transform="rotate(-14) translate(-20,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">J</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♠</text></g>
+              <g transform="rotate(0) translate(-2,-34)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">Q</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♦</text></g>
+              <g transform="rotate(14) translate(16,-32)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#1a1a1a" font-weight="700">K</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#1a1a1a">♣</text></g>
+              <g transform="rotate(28) translate(34,-28)"><rect width="28" height="40" rx="3" fill="#fffaf0" stroke="#c9a227"/><text x="14" y="16" text-anchor="middle" font-size="12" fill="#c41e3a" font-weight="700">A</text><text x="14" y="30" text-anchor="middle" font-size="12" fill="#c41e3a">♥</text></g>
+            </g>
+            <path d="M62 14 L68 6 L74 12 L80 4 L86 12 L92 6 L98 14 L80 18 Z" fill="url(#oroLogo)" stroke="#8a7d55" stroke-width="0.6"/>
+          </svg>
+        </div>
         <h1>Royal Flush</h1>
         <p class="subtitulo">Texas Hold'em · No Limit</p>
 
@@ -40,7 +62,7 @@
             <span class="desc-btn">Con amigos en una sala privada, o en una mesa pública.</span>
           </button>
         </div>
-        <p class="pie-menu">Ciegas 5 / 10 · 1000 fichas iniciales</p>
+        <p class="pie-menu">Elige con cuántas fichas jugar al empezar · de 10 a 50.000</p>
       </div>
     </section>
 
@@ -53,6 +75,25 @@
           <legend>Tamaño de la mesa</legend>
           <label><input type="radio" name="asientos-solo" value="9" checked> 9 asientos</label>
           <label><input type="radio" name="asientos-solo" value="10"> 10 asientos</label>
+        </fieldset>
+
+        <fieldset class="selector-fichas" data-grupo="solo">
+          <legend>Fichas iniciales</legend>
+          <div class="fichas-controles">
+            <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
+            <div class="fichas-numero-fila">
+              <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
+              <span class="fichas-formato">1.000 fichas</span>
+            </div>
+          </div>
+          <p class="ciegas-preview">Ciegas 5 / 10</p>
+          <div class="presets-fichas">
+            <button type="button" data-fichas="100">100</button>
+            <button type="button" data-fichas="1000">1.000</button>
+            <button type="button" data-fichas="5000">5.000</button>
+            <button type="button" data-fichas="10000">10.000</button>
+            <button type="button" data-fichas="50000">50.000</button>
+          </div>
         </fieldset>
         <button type="button" id="btn-empezar-solo" class="principal">Sentarme a la mesa</button>
         <button type="button" id="btn-volver-solo" class="secundario">Volver</button>
@@ -69,6 +110,25 @@
           <legend>Tamaño de la mesa (al crear una sala)</legend>
           <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
           <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+        </fieldset>
+
+        <fieldset class="selector-fichas" data-grupo="online">
+          <legend>Fichas iniciales</legend>
+          <div class="fichas-controles">
+            <input type="range" class="rango-fichas" min="10" max="50000" step="10" value="1000" aria-label="Fichas iniciales">
+            <div class="fichas-numero-fila">
+              <input type="number" class="input-fichas" min="10" max="50000" step="1" value="1000" inputmode="numeric" aria-label="Cantidad de fichas">
+              <span class="fichas-formato">1.000 fichas</span>
+            </div>
+          </div>
+          <p class="ciegas-preview">Ciegas 5 / 10</p>
+          <div class="presets-fichas">
+            <button type="button" data-fichas="100">100</button>
+            <button type="button" data-fichas="1000">1.000</button>
+            <button type="button" data-fichas="5000">5.000</button>
+            <button type="button" data-fichas="10000">10.000</button>
+            <button type="button" data-fichas="50000">50.000</button>
+          </div>
         </fieldset>
 
         <button type="button" id="btn-crear-privada" class="principal">Crear sala privada</button>
@@ -94,6 +154,7 @@
         <p id="tipo-sala" class="texto"></p>
         <ul id="lista-jugadores-sala" class="lista-sala"></ul>
         <p id="asientos-libres" class="texto"></p>
+        <p id="info-fichas-sala" class="texto destacada"></p>
         <div class="botones-sala">
           <button type="button" id="btn-llenar-bots" class="principal" hidden>Llenar asientos vacíos con bots</button>
           <button type="button" id="btn-iniciar-online" class="principal" hidden>Iniciar partida</button>
@@ -113,6 +174,119 @@
 
       <div id="escenario">
         <div id="mesa-oval">
+          <div id="mesa-fondo">
+            <svg class="mesa-svg mesa-svg-h" viewBox="0 0 1200 720" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs><pattern id="feltMotivoh" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M28 2 L54 28 L28 54 L2 28 Z" fill="none" stroke="#064a20" stroke-width="0.8" opacity="0.55"/>
+      <path d="M28 10 L46 28 L28 46 L10 28 Z" fill="none" stroke="#086b2d" stroke-width="0.6" opacity="0.35"/>
+      <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
+    </pattern>
+    <radialGradient id="feltLuzh" cx="50%" cy="46%" r="58%">
+      <stop offset="0%" stop-color="#22c45e"/>
+      <stop offset="38%" stop-color="#14a04a"/>
+      <stop offset="78%" stop-color="#0b7a36"/>
+      <stop offset="100%" stop-color="#055a26"/>
+    </radialGradient>
+    <linearGradient id="cueroh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a2a2c"/>
+      <stop offset="18%" stop-color="#121214"/>
+      <stop offset="50%" stop-color="#0a0a0b"/>
+      <stop offset="82%" stop-color="#121214"/>
+      <stop offset="100%" stop-color="#2a2a2c"/>
+    </linearGradient>
+    <linearGradient id="maderah" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7a3420"/>
+      <stop offset="22%" stop-color="#4a1a12"/>
+      <stop offset="45%" stop-color="#8a4030"/>
+      <stop offset="62%" stop-color="#3a120c"/>
+      <stop offset="80%" stop-color="#6b2b1c"/>
+      <stop offset="100%" stop-color="#4a1a12"/>
+    </linearGradient>
+    <linearGradient id="maderaBrilloh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4875a" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#c4875a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="sombraMesah" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <linearGradient id="aceroh" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f2f4f6"/>
+      <stop offset="40%" stop-color="#b8bec4"/>
+      <stop offset="100%" stop-color="#7a8086"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="22" width="1168" height="688" rx="346.0" ry="346.0" fill="#000" opacity="0.28"/>
+  <rect x="12" y="12" width="1176" height="696" rx="348.0" ry="348.0" fill="url(#cueroh)" filter="url(#sombraMesah)"/>
+  <rect x="18" y="18" width="1164" height="684" rx="342.0" ry="342.0" fill="none" stroke="#3a3a3c" stroke-width="3" opacity="0.45"/>
+  <rect x="28" y="28" width="1144" height="664" rx="332.0" ry="332.0" fill="none" stroke="#1a1a1a" stroke-width="1.2" stroke-dasharray="4 6" opacity="0.65"/>
+  <rect x="50" y="50" width="1100" height="620" rx="310.0" ry="310.0" fill="url(#maderah)"/>
+  <rect x="52" y="52" width="1096" height="616" rx="308.0" ry="308.0" fill="url(#maderaBrilloh)"/>
+  <rect x="51" y="51" width="1098" height="618" rx="309.0" ry="309.0" fill="none" stroke="#c49a6c" stroke-width="1.4" opacity="0.35"/>
+  <rect x="78" y="78" width="1044" height="564" rx="282.0" ry="282.0" fill="url(#feltLuzh)"/>
+  <rect x="78" y="78" width="1044" height="564" rx="282.0" ry="282.0" fill="url(#feltMotivoh)" opacity="0.45"/>
+  <rect x="78" y="78" width="1044" height="564" rx="282.0" ry="282.0" fill="none" stroke="#043616" stroke-width="7" opacity="0.3"/>
+  <rect x="506.0" y="69" width="188" height="48" rx="10" ry="10" fill="#1a0c08"/>
+  <rect x="510.0" y="72" width="180" height="40" rx="8" ry="8" fill="#0a0a0a" stroke="#3a3a3a" stroke-width="1.5"/>
+  <rect x="520.0" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="547.3" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="574.7" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="602.0" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="629.3" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="656.7" y="79" width="23.3" height="26" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/>
+</svg>
+            <svg class="mesa-svg mesa-svg-v" viewBox="0 0 720 1200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+  <defs><pattern id="feltMotivov" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M28 2 L54 28 L28 54 L2 28 Z" fill="none" stroke="#064a20" stroke-width="0.8" opacity="0.55"/>
+      <path d="M28 10 L46 28 L28 46 L10 28 Z" fill="none" stroke="#086b2d" stroke-width="0.6" opacity="0.35"/>
+      <text x="28" y="32" text-anchor="middle" font-size="9" fill="#053a19" opacity="0.28" font-family="serif">♠</text>
+    </pattern>
+    <radialGradient id="feltLuzv" cx="50%" cy="46%" r="58%">
+      <stop offset="0%" stop-color="#22c45e"/>
+      <stop offset="38%" stop-color="#14a04a"/>
+      <stop offset="78%" stop-color="#0b7a36"/>
+      <stop offset="100%" stop-color="#055a26"/>
+    </radialGradient>
+    <linearGradient id="cuerov" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a2a2c"/>
+      <stop offset="18%" stop-color="#121214"/>
+      <stop offset="50%" stop-color="#0a0a0b"/>
+      <stop offset="82%" stop-color="#121214"/>
+      <stop offset="100%" stop-color="#2a2a2c"/>
+    </linearGradient>
+    <linearGradient id="maderav" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7a3420"/>
+      <stop offset="22%" stop-color="#4a1a12"/>
+      <stop offset="45%" stop-color="#8a4030"/>
+      <stop offset="62%" stop-color="#3a120c"/>
+      <stop offset="80%" stop-color="#6b2b1c"/>
+      <stop offset="100%" stop-color="#4a1a12"/>
+    </linearGradient>
+    <linearGradient id="maderaBrillov" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c4875a" stop-opacity="0.35"/>
+      <stop offset="50%" stop-color="#c4875a" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.25"/>
+    </linearGradient>
+    <filter id="sombraMesav" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+    <linearGradient id="acerov" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f2f4f6"/>
+      <stop offset="40%" stop-color="#b8bec4"/>
+      <stop offset="100%" stop-color="#7a8086"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="22" width="688" height="1168" rx="346.0" ry="346.0" fill="#000" opacity="0.28"/>
+  <rect x="12" y="12" width="696" height="1176" rx="348.0" ry="348.0" fill="url(#cuerov)" filter="url(#sombraMesav)"/>
+  <rect x="18" y="18" width="684" height="1164" rx="342.0" ry="342.0" fill="none" stroke="#3a3a3c" stroke-width="3" opacity="0.45"/>
+  <rect x="28" y="28" width="664" height="1144" rx="332.0" ry="332.0" fill="none" stroke="#1a1a1a" stroke-width="1.2" stroke-dasharray="4 6" opacity="0.65"/>
+  <rect x="50" y="50" width="620" height="1100" rx="310.0" ry="310.0" fill="url(#maderav)"/>
+  <rect x="52" y="52" width="616" height="1096" rx="308.0" ry="308.0" fill="url(#maderaBrillov)"/>
+  <rect x="51" y="51" width="618" height="1098" rx="309.0" ry="309.0" fill="none" stroke="#c49a6c" stroke-width="1.4" opacity="0.35"/>
+  <rect x="78" y="78" width="564" height="1044" rx="282.0" ry="282.0" fill="url(#feltLuzv)"/>
+  <rect x="78" y="78" width="564" height="1044" rx="282.0" ry="282.0" fill="url(#feltMotivov)" opacity="0.45"/>
+  <rect x="78" y="78" width="564" height="1044" rx="282.0" ry="282.0" fill="none" stroke="#043616" stroke-width="7" opacity="0.3"/>
+  <rect x="291.0" y="69" width="138" height="56" rx="10" ry="10" fill="#1a0c08"/>
+  <rect x="295.0" y="72" width="130" height="48" rx="8" ry="8" fill="#0a0a0a" stroke="#3a3a3a" stroke-width="1.5"/>
+  <rect x="305.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="324.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="343.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="362.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="381.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/><rect x="400.0" y="79" width="15.0" height="34" rx="3" ry="3" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/>
+</svg>
+          </div>
+          <div id="porta-vasos" aria-hidden="true"></div>
           <div id="crupier">
             <div class="crupier-figura" aria-hidden="true">
               <svg viewBox="0 0 160 150" role="img" aria-label="El crupier, Don Luis">
@@ -162,6 +336,8 @@
 
           <div id="asientos"></div>
           <div id="cartas-volando" aria-hidden="true"></div>
+          <div id="fichas-volando" aria-hidden="true"></div>
+          <div id="celebracion" aria-hidden="true"></div>
         </div>
       </div>
 

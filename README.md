@@ -10,6 +10,8 @@ Puedes jugar **solo** (contra bots) o **online** (sala privada con código, o sa
 Hay una sola página: se adapta sola al celular (en vertical y en horizontal) y al ordenador.
 En el celular puedes añadirla a la pantalla de inicio.
 
+Al empezar (solo, o al crear una sala) puedes elegir con cuántas fichas jugar, de 10 a 50.000. Las ciegas se ajustan solas (la grande es 1/100 del stack, mínimo 2).
+
 ## Cómo ejecutarlo
 
 Necesitas [Node.js](https://nodejs.org/) 18 o superior.

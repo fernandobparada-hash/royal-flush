@@ -68,8 +68,18 @@ function meta(sala) {
     anfitrionId: sala.anfitrionId,
     esAnfitrion: false, // se completa por cliente
     partidaIniciada: sala.partidaIniciada,
-    asientos: sala.mesa.asientosTotales
+    asientos: sala.mesa.asientosTotales,
+    fichasIniciales: sala.mesa.fichasIniciales,
+    ciegaPequena: sala.mesa.ciegaPequena,
+    ciegaGrande: sala.mesa.ciegaGrande
   };
+}
+
+function leerCiegas(msg) {
+  const crudo = (msg && msg.fichasIniciales != null) ? msg.fichasIniciales : Motor.FICHAS_INICIALES;
+  const norm = Motor.normalizarFichas(crudo);
+  if (norm.error) return norm;
+  return Motor.ciegasPara(norm.fichas);
 }
 
 function transmitir(sala, tipo, extra) {
@@ -112,7 +122,12 @@ function crearSala(opciones) {
     codigo: codigo,
     publica: !!opciones.publica,
     anfitrionId: opciones.anfitrionId,
-    mesa: new Motor.Mesa({ asientos: opciones.asientos || 9 }),
+    mesa: new Motor.Mesa({
+      asientos: opciones.asientos || 9,
+      fichasIniciales: (opciones.ciegas && opciones.ciegas.fichasIniciales) || Motor.FICHAS_INICIALES,
+      ciegaPequena: opciones.ciegas && opciones.ciegas.ciegaPequena,
+      ciegaGrande: opciones.ciegas && opciones.ciegas.ciegaGrande
+    }),
     clientes: new Map(),
     partidaIniciada: false,
     timers: []
@@ -209,10 +224,16 @@ function payloadSala(sala, ws) {
 function manejar(ws, msg) {
   const tipo = msg && msg.tipo;
   if (tipo === "crear-privada") {
+    const ciegas = leerCiegas(msg);
+    if (ciegas.error) {
+      enviar(ws, { tipo: "error", mensaje: ciegas.error });
+      return;
+    }
     const sala = crearSala({
       publica: false,
       asientos: msg.asientos === 10 ? 10 : 9,
-      anfitrionId: ws.jugadorId
+      anfitrionId: ws.jugadorId,
+      ciegas: ciegas
     });
     const r = sentarEnSala(sala, ws, msg.nombre, "humano");
     if (r.error) {
@@ -247,10 +268,16 @@ function manejar(ws, msg) {
   if (tipo === "unirse-publica") {
     let sala = buscarSalaPublica();
     if (!sala) {
+      const ciegas = leerCiegas(msg);
+      if (ciegas.error) {
+        enviar(ws, { tipo: "error", mensaje: ciegas.error });
+        return;
+      }
       sala = crearSala({
         publica: true,
         asientos: msg.asientos === 10 ? 10 : 9,
-        anfitrionId: ws.jugadorId
+        anfitrionId: ws.jugadorId,
+        ciegas: ciegas
       });
     }
     const r = sentarEnSala(sala, ws, msg.nombre, "humano");

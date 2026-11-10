@@ -1,107 +1,92 @@
 /* =========================================================
-   Estilos de la mesa de Texas Hold'em.
-   Colores de casino: paño verde, madera y detalles dorados.
-   Una sola hoja: se adapta sola al escritorio y al celular.
+   Royal Flush — una sola hoja para escritorio y celular.
+   Mesa tipo óvalo de casino: cuero negro, madera y paño verde.
    ========================================================= */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --verde-fondo: #052616;
+  --verde-fondo: #04180e;
   --verde-mesa: #0c6b3c;
-  --verde-oscuro: #084e2c;
-  --madera: #6b3e16;
-  --madera-clara: #8a5424;
   --oro: #f4d35e;
   --oro-oscuro: #c9a227;
   --crema: #f7f1e1;
   --rojo: #c41e3a;
   --texto: #f4f0e4;
+  --cuero: #0c0c0d;
+  --madera: #5a2418;
   --alto-pantalla: 100vh;
   --alto-pantalla: 100dvh;
   --seguro-arriba: env(safe-area-inset-top, 0px);
   --seguro-abajo: env(safe-area-inset-bottom, 0px);
   --seguro-izq: env(safe-area-inset-left, 0px);
   --seguro-der: env(safe-area-inset-right, 0px);
+  --fuente-titulo: "Cinzel", Palatino, "Palatino Linotype", Georgia, serif;
+  --fuente-cuerpo: "Source Sans 3", "Segoe UI", "Trebuchet MS", sans-serif;
 }
 
 html, body {
   min-height: 100%;
   background:
-    radial-gradient(ellipse at top, #0a3d24 0%, var(--verde-fondo) 70%);
+    radial-gradient(ellipse at 50% 0%, #0b3a20 0%, var(--verde-fondo) 62%);
   color: var(--texto);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: var(--fuente-cuerpo);
 }
 
-html {
-  overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
+html { overflow-x: hidden; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { min-height: var(--alto-pantalla); overflow-x: hidden; }
 
-body {
-  min-height: var(--alto-pantalla);
-  overflow-x: hidden;
-}
-
-/* El atributo hidden debe ganar a display:flex de las pantallas */
 [hidden] { display: none !important; }
 
-button,
-label,
-input[type="radio"],
-a {
-  touch-action: manipulation;
-}
-
-/* Evita el zoom automático de iOS al enfocar un campo */
-input, select, textarea {
-  font-size: 16px;
-}
+button, label, input[type="radio"], a { touch-action: manipulation; }
+input, select, textarea { font-size: 16px; }
 
 .pantalla {
   min-height: var(--alto-pantalla);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: max(24px, var(--seguro-arriba)) max(16px, var(--seguro-der)) max(24px, var(--seguro-abajo)) max(16px, var(--seguro-izq));
+  padding: max(20px, var(--seguro-arriba)) max(14px, var(--seguro-der)) max(20px, var(--seguro-abajo)) max(14px, var(--seguro-izq));
 }
 
 .marco-menu {
-  width: min(720px, 100%);
-  background: linear-gradient(180deg, #0d5a32, #083f23);
-  border: 4px solid var(--oro-oscuro);
+  width: min(740px, 100%);
+  background:
+    linear-gradient(180deg, rgba(16, 80, 42, 0.96), rgba(6, 40, 22, 0.96));
+  border: 3px solid var(--oro-oscuro);
   border-radius: 24px;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.45), inset 0 0 80px rgba(0,0,0,0.2);
-  padding: 36px 40px 28px;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.25);
+  padding: 32px 36px 26px;
   text-align: center;
 }
+.marco-menu.estrecho { width: min(540px, 100%); }
 
-.marco-menu.estrecho { width: min(520px, 100%); }
+.logo-royal { width: min(220px, 70vw); margin: 0 auto 4px; }
+.logo-royal svg { width: 100%; height: auto; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)); }
 
 .etiqueta-casa {
-  letter-spacing: 0.28em;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #d7ecc8;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 h1, h2 {
+  font-family: var(--fuente-titulo);
   color: var(--oro);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  text-shadow: 0 2px 0 #5a4308, 0 4px 12px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 0 #5a4308, 0 6px 16px rgba(0,0,0,0.45);
 }
-
-h1 { font-size: clamp(2.2rem, 6.5vw, 3.4rem); letter-spacing: 0.12em; }
-h2 { font-size: 1.8rem; margin-bottom: 12px; }
+h1 { font-size: clamp(2.1rem, 6.5vw, 3.5rem); letter-spacing: 0.14em; }
+h2 { font-size: 1.7rem; margin-bottom: 10px; }
 
 .subtitulo {
-  margin: 6px 0 28px;
-  letter-spacing: 0.14em;
+  margin: 4px 0 22px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #d7ecc8;
 }
 
@@ -109,15 +94,16 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #d7ecc8;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .campo-nombre input,
-#input-codigo {
+#input-codigo,
+.input-fichas {
   font-family: inherit;
   font-size: 1.15rem;
   text-align: center;
@@ -126,11 +112,9 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   border: 2px solid var(--oro-oscuro);
   background: #f7f1e1;
   color: #1c2a16;
-  text-transform: none;
   letter-spacing: 0.04em;
   min-height: 44px;
 }
-
 #input-codigo {
   width: 130px;
   text-transform: uppercase;
@@ -138,15 +122,11 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   letter-spacing: 0.2em;
 }
 
-.opciones-menu {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
+.opciones-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 .btn-grande {
   font-family: inherit;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.28);
   border: 2px solid var(--oro-oscuro);
   border-radius: 16px;
   color: var(--crema);
@@ -154,73 +134,76 @@ h2 { font-size: 1.8rem; margin-bottom: 12px; }
   cursor: pointer;
   text-align: center;
   min-height: 44px;
-  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-
-.btn-grande:hover {
-  background: rgba(244, 211, 94, 0.14);
+.btn-grande:hover, .btn-grande:focus-visible {
+  background: rgba(244, 211, 94, 0.16);
   transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(0,0,0,0.3);
 }
-
-.icono-btn {
-  display: block;
-  font-size: 2rem;
-  color: var(--oro);
-  margin-bottom: 6px;
-}
-
+.icono-btn { display: block; font-size: 2rem; color: var(--oro); margin-bottom: 6px; }
 .titulo-btn {
   display: block;
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-family: var(--fuente-titulo);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--oro);
   margin-bottom: 6px;
 }
+.desc-btn { display: block; font-size: 0.88rem; color: #d7ecc8; line-height: 1.35; }
+.pie-menu { margin-top: 20px; color: #cfe8c4; font-size: 0.9rem; }
 
-.desc-btn {
-  display: block;
-  font-size: 0.88rem;
-  color: #d7ecc8;
-  line-height: 1.35;
-}
-
-.pie-menu { margin-top: 22px; color: #cfe8c4; font-size: 0.9rem; }
-
-.texto, .ayuda-opcion { color: #d7ecc8; line-height: 1.45; margin: 8px 0 14px; }
+.texto, .ayuda-opcion { color: #d7ecc8; line-height: 1.45; margin: 8px 0 12px; }
 .ayuda-opcion { font-size: 0.85rem; }
+.texto.destacada { color: var(--oro); font-weight: 700; }
 
-.selector-asientos {
+.selector-asientos, .selector-fichas {
   border: 1px solid rgba(244,211,94,0.35);
   border-radius: 12px;
   padding: 12px;
-  margin: 16px 0;
+  margin: 14px 0;
   color: #d7ecc8;
+  text-align: center;
 }
-
-.selector-asientos legend { padding: 0 8px; color: var(--oro); }
+.selector-asientos legend, .selector-fichas legend { padding: 0 8px; color: var(--oro); font-family: var(--fuente-titulo); letter-spacing: 0.06em; }
 .selector-asientos label {
   margin: 0 12px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 44px;
+  min-height: 40px;
 }
 
-.fila-codigo {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 8px 0 18px;
+.fichas-controles { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.rango-fichas, #rango-subida { width: 100%; height: 32px; accent-color: var(--oro); }
+.fichas-numero-fila { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.input-fichas { width: 140px; }
+.fichas-formato { color: var(--oro); font-weight: 700; min-width: 8em; }
+.ciegas-preview { margin: 6px 0 4px; color: #d7ecc8; font-size: 0.92rem; }
+.presets-fichas { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+.presets-fichas button {
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  border: 1px solid var(--oro-oscuro);
+  background: rgba(0,0,0,0.28);
+  color: var(--crema);
+  border-radius: 999px;
+  padding: 8px 12px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.presets-fichas button:hover, .presets-fichas button.activo {
+  background: var(--oro);
+  color: #3b2d00;
 }
 
-button.principal, button.secundario, button.peligro,
-#panel-acciones button {
+.fila-codigo { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
+
+button.principal, button.secundario, button.peligro, #panel-acciones button {
   font-family: inherit;
   font-weight: 700;
   font-size: 1rem;
@@ -231,63 +214,23 @@ button.principal, button.secundario, button.peligro,
   cursor: pointer;
   margin: 6px 4px;
 }
-
-button.principal {
-  background: var(--oro);
-  color: #3b2d00;
-  box-shadow: 0 3px 0 #8a7d55;
-}
-
-button.secundario {
-  background: #e8e0c8;
-  color: #1c2a16;
-  box-shadow: 0 3px 0 #8a7d55;
-}
-
-button.peligro { background: #c41e3a; color: #fff; box-shadow: 0 3px 0 #7a1020; }
-
+button.principal { background: linear-gradient(180deg, #ffe28a, var(--oro)); color: #3b2d00; box-shadow: 0 3px 0 #8a7d55; }
+button.secundario { background: #e8e0c8; color: #1c2a16; box-shadow: 0 3px 0 #8a7d55; }
+button.peligro { background: linear-gradient(180deg, #e0455c, #c41e3a); color: #fff; box-shadow: 0 3px 0 #7a1020; }
 button.compacto { padding: 8px 12px; font-size: 0.92rem; }
-
 button:hover:not(:disabled) { filter: brightness(1.07); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.aviso {
-  min-height: 1.4em;
-  color: #ffd0d0;
-  margin: 10px 0;
-}
-
+.aviso { min-height: 1.4em; color: #ffd0d0; margin: 10px 0; }
 .codigo {
-  display: inline-block;
-  margin-left: 8px;
-  background: rgba(0,0,0,0.35);
-  border: 1px solid var(--oro);
-  border-radius: 8px;
-  padding: 2px 10px;
-  letter-spacing: 0.25em;
+  display: inline-block; margin-left: 8px;
+  background: rgba(0,0,0,0.35); border: 1px solid var(--oro);
+  border-radius: 8px; padding: 2px 10px; letter-spacing: 0.25em;
 }
-
-.lista-sala {
-  list-style: none;
-  text-align: left;
-  margin: 12px auto;
-  width: min(360px, 100%);
-}
-
-.lista-sala li {
-  background: rgba(0,0,0,0.25);
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 6px;
-}
-
+.lista-sala { list-style: none; text-align: left; margin: 12px auto; width: min(360px, 100%); }
+.lista-sala li { background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; }
 .lista-sala li .papel { color: var(--oro); font-size: 0.8rem; margin-left: 8px; }
-
-.botones-sala {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-}
+.botones-sala { display: flex; flex-direction: column; align-items: stretch; }
 
 /* ========== MESA ========== */
 #pantalla-mesa {
@@ -296,32 +239,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding:
-    max(8px, var(--seguro-arriba))
-    max(8px, var(--seguro-der))
-    max(8px, var(--seguro-abajo))
-    max(8px, var(--seguro-izq));
+  padding: max(6px, var(--seguro-arriba)) max(6px, var(--seguro-der)) max(6px, var(--seguro-abajo)) max(6px, var(--seguro-izq));
 }
-
 .barra-mesa {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  color: #d7ecc8;
-  font-size: 0.9rem;
-  flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; padding: 2px 8px; color: #d7ecc8; font-size: 0.88rem; flex-shrink: 0;
 }
-
-.barra-mesa span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.barra-mesa span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #escenario {
-  width: min(1180px, 100%);
+  width: min(1240px, 100%);
   margin: 0 auto;
   flex: 1 1 auto;
   min-height: 0;
@@ -336,217 +263,283 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   width: auto;
   max-width: 100%;
   max-height: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 1200 / 720;
   min-height: 0;
-  background:
-    radial-gradient(ellipse at center, #149354 0%, var(--verde-mesa) 55%, var(--verde-oscuro) 100%);
-  border: 14px solid var(--madera);
-  outline: 4px solid var(--oro-oscuro);
-  border-radius: 50% / 50%;
-  box-shadow:
-    0 20px 40px rgba(0,0,0,0.45),
-    inset 0 0 80px rgba(0,0,0,0.25),
-    inset 0 0 0 8px var(--madera-clara);
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+#mesa-oval.vertical { aspect-ratio: 720 / 1200; }
+#mesa-oval.vertical .mesa-svg-h { display: none !important; }
+#mesa-oval.vertical .mesa-svg-v { display: block !important; }
+#mesa-oval:not(.vertical) .mesa-svg-v { display: none !important; }
+
+#mesa-fondo { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+#mesa-fondo svg, .mesa-svg { width: 100%; height: 100%; display: block; }
+.mesa-svg-v { display: none; }
+
+#porta-vasos { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.porta-vaso {
+  position: absolute;
+  width: clamp(12px, 2.2cqi, 26px);
+  height: clamp(12px, 2.2cqi, 26px);
+  width: clamp(12px, 2.2vw, 26px);
+  height: clamp(12px, 2.2vw, 26px);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 32% 28%, #f7f8f9, #9aa2aa 55%, #5a6066);
+  box-shadow: inset 0 0 0 2px #d5d8dc, inset 0 2px 6px #111, 0 1px 2px rgba(0,0,0,0.45);
+}
+.porta-vaso::after {
+  content: "";
+  position: absolute;
+  inset: 24%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #1a1a1a, #050505);
+  box-shadow: inset 0 2px 3px #000;
 }
 
-/* Crupier en la parte superior central de la mesa */
 #crupier {
   position: absolute;
-  top: -8%;
+  top: 1%;
   left: 50%;
-  transform: translateX(-50%);
-  width: 150px;
+  transform: translate(-50%, -12%);
+  width: clamp(72px, 12vw, 130px);
   z-index: 6;
   text-align: center;
   pointer-events: none;
 }
-
-.crupier-figura svg { width: 140px; height: auto; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.45)); }
-
+.crupier-figura svg { width: 100%; height: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
 .crupier-nombre {
   margin-top: -8px;
-  font-size: 0.72rem;
+  font-size: clamp(0.5rem, 1.2vw, 0.72rem);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--oro);
   text-shadow: 0 1px 2px #000;
   white-space: nowrap;
+  font-family: var(--fuente-titulo);
 }
 
 #centro-mesa {
   position: absolute;
-  top: 46%;
+  top: 48%;
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
   z-index: 3;
-  width: min(92%, 520px);
+  width: max-content;
+  max-width: min(70%, 460px);
   min-width: 0;
+  pointer-events: none;
 }
 
 #bote {
-  display: inline-block;
-  background: rgba(0,0,0,0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.45);
   border: 1px solid var(--oro-oscuro);
   border-radius: 999px;
-  padding: 6px 18px;
+  padding: 4px 14px;
   color: var(--oro);
-  font-size: 1.05rem;
-  margin-bottom: 10px;
+  font-size: clamp(0.75rem, 1.6vw, 1.05rem);
+  margin-bottom: 6px;
+  font-weight: 700;
 }
 
 #comunitarias {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  min-height: 104px;
+  align-items: center;
+  gap: clamp(3px, 0.8vw, 8px);
+  min-height: 0;
 }
-
 #etiqueta-calle {
-  margin-top: 6px;
+  margin-top: 4px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: clamp(0.58rem, 1.2vw, 0.75rem);
   color: #d7ecc8;
   min-height: 1em;
+  font-family: var(--fuente-titulo);
 }
 
 .hueco-carta {
-  width: 70px;
-  height: 100px;
-  border-radius: 8px;
+  width: var(--carta-c, 70px);
+  height: var(--carta-c-h, 100px);
+  border-radius: 7px;
   border: 2px dashed rgba(255,255,255,0.22);
-  background: rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.14);
 }
 
-#asientos { position: absolute; inset: 0; z-index: 4; }
+#asientos { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+#asientos * { pointer-events: auto; }
 
-.asiento {
+/* Piezas de asiento posicionadas por separado (evita solapes) */
+.pieza {
   position: absolute;
-  width: 150px;
   transform: translate(-50%, -50%);
   text-align: center;
 }
-
-.asiento.es-turno .info-jugador {
-  box-shadow: 0 0 0 3px var(--oro), 0 6px 16px rgba(0,0,0,0.4);
-}
-
-.asiento.retirado { opacity: 0.55; }
-.asiento.retirado .cartas-asiento { filter: grayscale(0.6); }
-
-.cartas-asiento {
-  display: flex;
-  justify-content: center;
-  height: 78px;
-  margin-bottom: 4px;
-}
-
-.cartas-asiento .carta,
-.cartas-asiento .carta-dorso {
-  width: 52px;
-  height: 74px;
-  margin: 0 -6px;
-}
+.pieza-info { z-index: 5; width: var(--ancho-info, 132px); }
+.pieza-cartas { z-index: 5; pointer-events: none; }
+.pieza-apuesta { z-index: 6; }
 
 .info-jugador {
-  background: rgba(0,0,0,0.55);
+  background: rgba(8, 16, 10, 0.82);
   border-radius: 12px;
-  padding: 6px 8px 7px;
-  border: 1px solid rgba(244,211,94,0.35);
+  padding: 5px 8px 6px;
+  border: 1px solid rgba(244,211,94,0.4);
   position: relative;
+  backdrop-filter: blur(2px);
+}
+.pieza-info.es-turno .info-jugador,
+.asiento.es-turno .info-jugador {
+  box-shadow: 0 0 0 2px var(--oro), 0 0 16px rgba(244,211,94,0.45);
+}
+.pieza-info.retirado, .pieza-cartas.retirado { opacity: 0.55; }
+.pieza-cartas.retirado { filter: grayscale(0.6); }
+
+.anillo-turno {
+  position: absolute;
+  inset: -7px;
+  pointer-events: none;
+  display: none;
+}
+.pieza-info.es-turno .anillo-turno { display: block; }
+.anillo-turno svg { width: 100%; height: 100%; }
+.anillo-turno circle {
+  fill: none;
+  stroke: var(--oro);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 0;
+  animation: cuenta-turno 16s linear forwards;
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+}
+@keyframes cuenta-turno {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: 120; }
 }
 
 .nombre-jugador {
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: clamp(0.62rem, 1.3vw, 0.88rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.fichas-jugador { color: var(--oro); font-size: clamp(0.58rem, 1.2vw, 0.84rem); font-variant-numeric: tabular-nums; }
+.estado-jugador {
+  font-size: clamp(0.5rem, 1vw, 0.68rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffd0d0;
+  min-height: 0.85em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.fichas-jugador { color: var(--oro); font-size: 0.85rem; }
-
-.apuesta-frente {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #7a1f2b;
-  color: #fff;
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  min-width: 28px;
-}
-
-.asiento.abajo .apuesta-frente { top: -12px; }
-.asiento.arriba .apuesta-frente { bottom: -12px; }
-.asiento.lado .apuesta-frente { top: -12px; }
-
 .insignias {
-  position: absolute;
-  top: -10px;
-  right: -8px;
   display: flex;
+  justify-content: center;
   gap: 3px;
+  margin-bottom: 2px;
+  min-height: 0;
 }
-
 .insignia {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  font-size: 0.7rem;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 0.58rem;
   font-weight: 800;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #1c1000;
   background: var(--oro);
   border: 1px solid #5a4308;
+  line-height: 1;
+}
+.insignia.sb, .insignia.bb { background: #e8e0c8; font-size: 0.5rem; }
+
+.cartas-asiento { display: flex; justify-content: center; }
+.cartas-asiento .carta,
+.cartas-asiento .carta-dorso {
+  width: var(--carta-j, 52px);
+  height: var(--carta-j-h, 74px);
+  margin: 0 -5px;
+}
+.pieza-cartas.propio .cartas-asiento .carta,
+.pieza-cartas.propio .cartas-asiento .carta-dorso {
+  width: var(--carta-p, 64px);
+  height: var(--carta-p-h, 90px);
+  margin: 0 -6px;
+}
+.pieza-info.propio { width: var(--ancho-propio, 150px); z-index: 7; }
+.pieza-info.propio .nombre-jugador { font-size: clamp(0.75rem, 1.6vw, 0.98rem); }
+.pieza-cartas.propio { z-index: 7; }
+
+.pieza-propio-grupo {
+  z-index: 7;
+  width: var(--ancho-propio, 150px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  left: 50% !important;
+  top: auto !important;
+  bottom: 6.5%;
+  transform: translate(-50%, 0);
+}
+.pieza-propio-grupo .cartas-asiento .carta,
+.pieza-propio-grupo .cartas-asiento .carta-dorso {
+  width: var(--carta-p, 64px);
+  height: var(--carta-p-h, 90px);
+  margin: 0 -6px;
+}
+.pieza-propio-grupo .nombre-jugador { font-size: clamp(0.75rem, 1.6vw, 0.98rem); }
+.pieza-propio-grupo .info-jugador { width: 100%; }
+
+#mesa-oval.asientos-10 {
+  --carta-j: 44px; --carta-j-h: 62px;
+  --ancho-info: 118px;
+}
+@media (max-width: 800px) {
+  #mesa-oval.asientos-10 {
+    --carta-j: 26px; --carta-j-h: 36px;
+    --ancho-info: 72px;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  #mesa-oval.asientos-10 {
+    --carta-j: 18px; --carta-j-h: 26px;
+    --ancho-info: 68px;
+  }
+  .pieza-propio-grupo { gap: 2px; }
 }
 
-.insignia.sb, .insignia.bb { background: #e8e0c8; font-size: 0.55rem; }
-
-.estado-jugador {
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #ffd0d0;
-  min-height: 0.9em;
-}
-
-/* El asiento propio, abajo, un poco más grande y legible */
-.asiento.propio {
-  width: 170px;
-  z-index: 5;
-}
-
-.asiento.propio .cartas-asiento { height: 90px; }
-
-.asiento.propio .cartas-asiento .carta,
-.asiento.propio .cartas-asiento .carta-dorso {
-  width: 60px;
-  height: 86px;
-}
-
-.asiento.propio .nombre-jugador { font-size: 0.95rem; }
-.asiento.propio .fichas-jugador { font-size: 0.92rem; }
-
-/* Cartas (privadas, comunitarias y volando) */
+/* Cartas */
 .carta, .carta-dorso {
   position: relative;
-  width: 70px;
-  height: 100px;
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-  background: #fffaf0;
+  width: var(--carta-c, 70px);
+  height: var(--carta-c-h, 100px);
+  border-radius: 7px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.4);
+  background: linear-gradient(180deg, #fffef9 0%, #f4efe2 100%);
   color: #1a1a1a;
   flex-shrink: 0;
+  border: 1px solid #d8cdae;
 }
-
 .carta.roja { color: var(--rojo); }
-
 .carta .esquina {
   position: absolute;
   display: flex;
@@ -554,55 +547,135 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   align-items: center;
   line-height: 1;
   font-weight: 800;
+  font-family: var(--fuente-titulo);
 }
-
-.carta .esquina .rango { font-size: 0.85rem; }
-.carta .esquina .mini-palo { font-size: 0.7rem; }
-.carta .esquina.arriba { top: 4px; left: 5px; }
-.carta .esquina.abajo { bottom: 4px; right: 5px; transform: rotate(180deg); }
+.carta .esquina .rango { font-size: 0.82em; }
+.carta .esquina .mini-palo { font-size: 0.7em; }
+.carta .esquina.arriba { top: 3px; left: 4px; }
+.carta .esquina.abajo { bottom: 3px; right: 4px; transform: rotate(180deg); }
 .carta .palo-centro {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1.8rem;
+  font-size: 1.7em;
 }
 
 .carta-dorso, .carta.dorso {
   background:
-    repeating-linear-gradient(45deg, #1b4e89, #1b4e89 6px, #163e6d 6px, #163e6d 12px);
+    radial-gradient(circle at 50% 50%, rgba(244,211,94,0.22), transparent 58%),
+    repeating-linear-gradient(45deg, #16325f 0 7px, #0f2348 7px 14px);
   border: 2px solid #f4d35e;
+  color: transparent;
+}
+.carta-dorso::after, .carta.dorso::after {
+  content: "♦";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+  color: #f4d35e;
+  text-shadow: 0 1px 2px #000;
+  opacity: 0.9;
 }
 
-.carta.ganadora { box-shadow: 0 0 0 3px var(--oro), 0 4px 14px rgba(0,0,0,0.5); }
+.carta.volteando { animation: voltear 0.42s ease; }
+@keyframes voltear {
+  0% { transform: rotateY(90deg); }
+  100% { transform: rotateY(0deg); }
+}
+.carta.ganadora { box-shadow: 0 0 0 3px var(--oro), 0 0 18px rgba(244,211,94,0.75); }
 
-#cartas-volando { position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: visible; }
-
+#cartas-volando, #fichas-volando, #celebracion {
+  position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: visible;
+}
 .carta-voladora {
   position: absolute;
-  width: 52px;
-  height: 74px;
+  width: var(--carta-j, 52px);
+  height: var(--carta-j-h, 74px);
   margin: 0;
   transition: left 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), top 0.45s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.45s ease;
   transform: rotate(-18deg);
   z-index: 21;
 }
+.carta-voladora.al-centro { width: var(--carta-c, 70px); height: var(--carta-c-h, 100px); }
 
-.carta-voladora.al-centro {
-  width: 70px;
-  height: 100px;
+/* Pilas de fichas */
+.pila-fichas {
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+  min-width: 28px;
+  height: 18px;
+}
+.disco-ficha {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.55);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(0,0,0,0.18);
+  margin-left: -5px;
+}
+.disco-ficha:first-child { margin-left: 0; }
+.pila-valor {
+  margin-left: 4px;
+  font-weight: 800;
+  font-size: 0.72rem;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+  font-variant-numeric: tabular-nums;
+}
+.apuesta-frente {
+  background: rgba(80, 12, 22, 0.92);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 7px 3px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  min-width: 32px;
+  border: 1px solid rgba(244,211,94,0.35);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.apuesta-frente .pila-valor { margin-left: 2px; font-size: 0.72rem; }
+.ficha-voladora {
+  position: absolute;
+  z-index: 22;
+  transition: left 0.5s cubic-bezier(0.2, 0.7, 0.3, 1), top 0.5s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.4s ease 0.15s;
+}
+
+.pieza-info.ganador .info-jugador {
+  box-shadow: 0 0 0 2px var(--oro), 0 0 22px rgba(244,211,94,0.85);
+  animation: pulso-premio 1.1s ease-in-out 3;
+}
+@keyframes pulso-premio {
+  50% { box-shadow: 0 0 0 3px #fff3c4, 0 0 28px rgba(244,211,94,1); }
+}
+.chispa {
+  position: absolute;
+  width: 8px; height: 8px;
+  background: var(--oro);
+  border-radius: 50%;
+  animation: chispa 0.9s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes chispa {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
 }
 
 #mensaje-mesa {
   text-align: center;
-  min-height: 2em;
-  padding: 8px 12px 4px;
-  font-size: 1.1rem;
+  min-height: 1.6em;
+  padding: 4px 10px 2px;
+  font-size: clamp(0.85rem, 2vw, 1.1rem);
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
   flex-shrink: 0;
 }
-
-#mensaje-mesa.premio { color: var(--oro); font-weight: 700; }
+#mensaje-mesa.premio { color: var(--oro); font-weight: 700; font-family: var(--fuente-titulo); }
 
 #panel-acciones {
   display: flex;
@@ -611,385 +684,153 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0,0,0,0.4);
   border-radius: 14px;
   margin: 0 auto;
   width: min(920px, 100%);
   flex-shrink: 0;
+  z-index: 8;
 }
-
 #panel-acciones[hidden] { display: none !important; }
-
-#panel-acciones button {
-  background: #e8e0c8;
-  color: #1c2a16;
-  box-shadow: 0 3px 0 #8a7d55;
-}
-
+#panel-acciones button { background: #e8e0c8; color: #1c2a16; box-shadow: 0 3px 0 #8a7d55; }
 #btn-retirarse { background: #8a3040; color: #fff; box-shadow: 0 3px 0 #4a1520; }
-#btn-subir, #btn-pasar, #btn-igualar { background: var(--oro); color: #3b2d00; }
-
+#btn-subir, #btn-pasar, #btn-igualar { background: linear-gradient(180deg, #ffe28a, var(--oro)); color: #3b2d00; }
 .grupo-subida {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 10px;
-  padding: 4px 8px;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.06); border-radius: 10px; padding: 4px 8px;
+}
+#rango-subida { width: 140px; height: 32px; }
+#texto-subida { min-width: 48px; color: var(--oro); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Tamaños de carta por defecto (escritorio) */
+#mesa-oval {
+  --carta-c: 68px; --carta-c-h: 96px;
+  --carta-j: 48px; --carta-j-h: 68px;
+  --carta-p: 62px; --carta-p-h: 88px;
+  --ancho-info: 128px; --ancho-propio: 150px;
 }
 
-#rango-subida {
-  width: 140px;
-  height: 32px;
-  accent-color: var(--oro);
-}
-
-#texto-subida { min-width: 48px; color: var(--oro); font-weight: 700; }
-
-/* ---- Tableta y celular en general ---- */
+/* Tableta y celular */
 @media (max-width: 800px) {
-  .pantalla {
-    align-items: flex-start;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
+  .pantalla { align-items: flex-start; overflow-y: auto; overflow-x: hidden; }
   .opciones-menu { grid-template-columns: 1fr; }
-
-  .marco-menu { padding: 24px 18px; }
-
-  h2 { font-size: clamp(1.35rem, 7vw, 1.8rem); }
-
-  .fila-codigo {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
+  .marco-menu { padding: 22px 16px; }
+  h2 { font-size: clamp(1.3rem, 6vw, 1.7rem); }
+  .fila-codigo { flex-direction: column; align-items: stretch; }
   #input-codigo { width: 100%; }
-
-  .botones-sala button,
-  .marco-menu button.principal,
-  .marco-menu button.secundario {
-    width: 100%;
-    margin: 6px 0;
-  }
+  .botones-sala button, .marco-menu button.principal, .marco-menu button.secundario { width: 100%; margin: 6px 0; }
+  .presets-fichas button { flex: 1 1 auto; }
 
   #mesa-oval {
-    aspect-ratio: 3 / 4;
-    border-width: 8px;
-    outline-width: 3px;
-    box-shadow:
-      0 12px 24px rgba(0,0,0,0.45),
-      inset 0 0 48px rgba(0,0,0,0.25),
-      inset 0 0 0 5px var(--madera-clara);
+    --carta-c: 44px; --carta-c-h: 62px;
+    --carta-j: 30px; --carta-j-h: 42px;
+    --carta-p: 48px; --carta-p-h: 68px;
+    --ancho-info: 86px; --ancho-propio: 120px;
   }
-
-  .asiento { width: clamp(72px, 22vw, 118px); }
-
-  .cartas-asiento { height: clamp(44px, 12vw, 60px); }
-
-  .cartas-asiento .carta,
-  .cartas-asiento .carta-dorso {
-    width: clamp(30px, 10vw, 42px);
-    height: clamp(44px, 14vw, 60px);
-    margin: 0 -4px;
-  }
-
-  .hueco-carta,
-  #comunitarias .carta,
-  #comunitarias .carta-dorso {
-    width: clamp(36px, 11vw, 52px);
-    height: clamp(52px, 16vw, 74px);
-  }
-
-  #comunitarias { gap: 4px; min-height: 0; }
-
-  .carta .esquina .rango { font-size: 0.65rem; }
-  .carta .esquina .mini-palo { font-size: 0.55rem; }
-  .carta .palo-centro { font-size: 1.15rem; }
-
-  #centro-mesa { width: min(96%, 420px); top: 44%; }
-
-  #bote { font-size: 0.85rem; padding: 4px 12px; margin-bottom: 6px; }
-
-  #crupier { width: 88px; top: -4%; }
-  .crupier-figura svg { width: 80px; }
-  .crupier-nombre { font-size: 0.58rem; }
-
-  .nombre-jugador { font-size: 0.7rem; }
-  .fichas-jugador { font-size: 0.68rem; }
-  .estado-jugador { font-size: 0.58rem; }
-  .info-jugador { padding: 4px 5px 5px; border-radius: 8px; }
-
-  .insignia { width: 16px; height: 16px; font-size: 0.55rem; }
-  .insignia.sb, .insignia.bb { font-size: 0.42rem; }
-
-  .asiento.propio,
-  .asiento.abajo {
-    width: clamp(110px, 36vw, 160px);
-    z-index: 5;
-  }
-
-  .asiento.propio .cartas-asiento,
-  .asiento.abajo .cartas-asiento { height: clamp(62px, 18vw, 86px); }
-
-  .asiento.propio .cartas-asiento .carta,
-  .asiento.propio .cartas-asiento .carta-dorso,
-  .asiento.abajo .cartas-asiento .carta,
-  .asiento.abajo .cartas-asiento .carta-dorso {
-    width: clamp(44px, 14vw, 58px);
-    height: clamp(62px, 20vw, 84px);
-  }
-
-  .asiento.propio .nombre-jugador,
-  .asiento.abajo .nombre-jugador { font-size: 0.85rem; }
-
-  #mensaje-mesa { font-size: 0.95rem; padding: 4px 8px; min-height: 1.6em; }
-
-  #panel-acciones {
-    width: 100%;
-    gap: 6px;
-    padding: 8px 8px max(8px, var(--seguro-abajo));
-    border-radius: 14px 14px 0 0;
-  }
-
-  #panel-acciones button {
-    min-height: 48px;
-    min-width: 72px;
-    margin: 2px;
-    font-size: 0.95rem;
-  }
-
-  .grupo-subida {
-    flex: 1 1 100%;
-    justify-content: space-between;
-    padding: 6px 8px;
-  }
-
-  #rango-subida {
-    flex: 1;
-    width: auto;
-    min-width: 0;
-    height: 44px;
-  }
+  #centro-mesa { width: max-content; max-width: min(68%, 320px); }
+  #bote { padding: 3px 10px; margin-bottom: 4px; }
+  #crupier { width: clamp(64px, 18vw, 96px); top: 1.5%; }
+  #mensaje-mesa { font-size: 0.92rem; }
+  #panel-acciones { width: 100%; gap: 6px; padding: 8px 8px max(8px, var(--seguro-abajo)); border-radius: 14px 14px 0 0; }
+  #panel-acciones button { min-height: 48px; min-width: 72px; margin: 2px; font-size: 0.95rem; }
+  .grupo-subida { flex: 1 1 100%; justify-content: space-between; padding: 6px 8px; }
+  #rango-subida { flex: 1; width: auto; min-width: 0; height: 44px; }
+  .nombre-jugador { font-size: 0.68rem; }
+  .fichas-jugador { font-size: 0.64rem; }
+  .info-jugador { padding: 3px 5px 4px; border-radius: 8px; }
+  .insignia { min-width: 16px; height: 14px; font-size: 0.5rem; }
 }
 
 @media (max-width: 700px) {
-  .marco-menu { padding: 20px 14px; border-width: 3px; }
+  .marco-menu { padding: 18px 12px; border-width: 3px; }
 }
 
-/* Celular en vertical: mesa ovalada de pie, que quepa en la pantalla */
-@media (max-width: 480px) and (orientation: portrait) {
-  .barra-mesa {
-    padding: 2px 4px;
-    font-size: 0.75rem;
-  }
-
-  .barra-mesa button.compacto {
-    min-height: 40px;
-    padding: 6px 10px;
-  }
-
+/* Celular en vertical: mesa de pie */
+@media (orientation: portrait) and (max-width: 800px) {
+  #mesa-oval { aspect-ratio: 720 / 1200; }
+  .mesa-svg-h { display: none; }
+  .mesa-svg-v { display: block; }
   #mesa-oval {
-    aspect-ratio: 9 / 14;
-    border-width: 7px;
+    --carta-c: 40px; --carta-c-h: 56px;
+    --carta-j: 28px; --carta-j-h: 40px;
+    --carta-p: 46px; --carta-p-h: 64px;
+    --ancho-info: 78px; --ancho-propio: 118px;
   }
+  #crupier { width: 78px; top: 1%; transform: translate(-50%, -8%); }
+  .crupier-nombre { font-size: 0.52rem; }
+  #centro-mesa { width: max-content; max-width: min(72%, 280px); top: 47%; }
+  .barra-mesa { padding: 2px 4px; font-size: 0.75rem; }
+  .barra-mesa button.compacto { min-height: 40px; }
+}
 
-  #crupier { width: 86px; top: -2%; }
-  .crupier-figura svg { width: 64px; }
-  .crupier-nombre { font-size: 0.55rem; margin-top: -4px; letter-spacing: 0.04em; }
-
-  .asiento { width: clamp(64px, 20vw, 96px); }
-
-  .cartas-asiento { height: 40px; }
-  .cartas-asiento .carta,
-  .cartas-asiento .carta-dorso {
-    width: 28px;
-    height: 40px;
-    margin: 0 -5px;
-    border-radius: 4px;
-  }
-
-  .hueco-carta,
-  #comunitarias .carta,
-  #comunitarias .carta-dorso,
-  .carta-voladora.al-centro {
-    width: 38px;
-    height: 54px;
-    border-radius: 5px;
-  }
-
-  .carta-voladora { width: 28px; height: 40px; }
-
-  .carta .esquina.arriba { top: 2px; left: 2px; }
-  .carta .esquina.abajo { bottom: 2px; right: 2px; }
-  .carta .esquina .rango { font-size: 0.52rem; }
-  .carta .palo-centro { font-size: 0.95rem; }
-
-  .asiento.propio,
-  .asiento.abajo {
-    width: clamp(108px, 36vw, 136px);
-  }
-
-  .asiento.propio .cartas-asiento,
-  .asiento.abajo .cartas-asiento { height: 62px; }
-
-  .asiento.propio .cartas-asiento .carta,
-  .asiento.propio .cartas-asiento .carta-dorso,
-  .asiento.abajo .cartas-asiento .carta,
-  .asiento.abajo .cartas-asiento .carta-dorso {
-    width: 44px;
-    height: 62px;
-    margin: 0 -5px;
-    border-radius: 6px;
+@media (max-width: 380px) and (orientation: portrait) {
+  #mesa-oval {
+    --carta-c: 34px; --carta-c-h: 48px;
+    --carta-j: 24px; --carta-j-h: 34px;
+    --carta-p: 38px; --carta-p-h: 54px;
+    --ancho-info: 68px; --ancho-propio: 100px;
   }
 }
 
-/* Celular en horizontal: poco alto, mesa a lo ancho y barra de acciones compacta */
+/* Horizontal bajo */
 @media (orientation: landscape) and (max-height: 500px) {
   .pantalla {
-    align-items: center;
-    overflow-y: auto;
-    overflow-x: hidden;
+    align-items: center; overflow-y: auto; overflow-x: hidden;
     padding: max(6px, var(--seguro-arriba)) max(12px, var(--seguro-der)) max(6px, var(--seguro-abajo)) max(12px, var(--seguro-izq));
   }
-
-  .marco-menu {
-    padding: 10px 16px 8px;
-    border-width: 3px;
-  }
-
-  .marco-menu.estrecho { width: min(680px, 100%); }
-
-  h1 { font-size: clamp(1.5rem, 5vh, 2rem); }
-  h2 { font-size: 1.25rem; margin-bottom: 4px; }
+  .marco-menu { padding: 10px 16px 8px; border-width: 3px; }
+  .marco-menu.estrecho { width: min(720px, 100%); }
+  .logo-royal { width: 140px; margin-bottom: 0; }
+  h1 { font-size: clamp(1.4rem, 5vh, 2rem); }
+  h2 { font-size: 1.2rem; margin-bottom: 4px; }
   .subtitulo { margin: 2px 0 8px; }
   .campo-nombre { margin-bottom: 8px; }
-  .campo-nombre input { min-height: 40px; padding: 6px 12px; }
   .opciones-menu { grid-template-columns: 1fr 1fr; gap: 10px; }
   .btn-grande { padding: 10px 12px 8px; }
-  .icono-btn { font-size: 1.4rem; margin-bottom: 2px; }
-  .titulo-btn { font-size: 1.05rem; margin-bottom: 2px; }
-  .desc-btn { font-size: 0.78rem; }
-  .pie-menu { margin-top: 8px; font-size: 0.8rem; }
-  .texto, .ayuda-opcion { margin: 2px 0 6px; font-size: 0.8rem; }
+  .icono-btn { font-size: 1.3rem; margin-bottom: 2px; }
   .ayuda-opcion { display: none; }
-  .aviso { margin: 4px 0; min-height: 0; }
-  .selector-asientos { margin: 6px 0; padding: 4px 10px; }
-  .selector-asientos label { min-height: 36px; }
-  .fila-codigo { flex-direction: row; flex-wrap: wrap; margin: 4px 0 8px; }
+  .selector-asientos, .selector-fichas { margin: 6px 0; padding: 6px 8px; }
+  .selector-asientos label { min-height: 32px; }
+  .presets-fichas button { min-height: 34px; padding: 4px 10px; }
+  .rango-fichas { height: 28px; }
+  .ciegas-preview { font-size: 0.8rem; margin: 2px 0; }
+  .fila-codigo { flex-direction: row; margin: 4px 0 8px; }
   #input-codigo { width: 140px; }
-  .marco-menu button.principal,
-  .marco-menu button.secundario,
-  .botones-sala button {
-    width: auto;
-    margin: 4px 6px;
-    min-height: 40px;
+  .marco-menu button.principal, .marco-menu button.secundario, .botones-sala button {
+    width: auto; margin: 4px 6px; min-height: 40px;
   }
   .botones-sala { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 
   #pantalla-mesa {
-    padding:
-      max(2px, var(--seguro-arriba))
-      max(6px, var(--seguro-der))
-      max(2px, var(--seguro-abajo))
-      max(6px, var(--seguro-izq));
+    padding: max(2px, var(--seguro-arriba)) max(6px, var(--seguro-der)) max(2px, var(--seguro-abajo)) max(6px, var(--seguro-izq));
   }
-
-  .barra-mesa {
-    padding: 0 6px;
-    font-size: 0.75rem;
-  }
-
-  .barra-mesa button.compacto {
-    min-height: 40px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    margin: 2px;
-  }
-
+  .barra-mesa { padding: 0 6px; font-size: 0.75rem; }
+  .barra-mesa button.compacto { min-height: 40px; padding: 6px 12px; }
+  #mesa-oval { aspect-ratio: 1200 / 720; }
+  .mesa-svg-v { display: none; }
+  .mesa-svg-h { display: block; }
   #mesa-oval {
-    aspect-ratio: 16 / 9;
-    border-width: 6px;
-    outline-width: 2px;
+    --carta-c: 32px; --carta-c-h: 46px;
+    --carta-j: 20px; --carta-j-h: 28px;
+    --carta-p: 28px; --carta-p-h: 40px;
+    --ancho-info: 72px; --ancho-propio: 96px;
   }
-
-  #crupier { width: 56px; top: -6%; }
-  .crupier-figura svg { width: 52px; }
+  #crupier { width: 56px; top: 0; transform: translate(-50%, -6%); }
   .crupier-nombre { display: none; }
-
-  .asiento { width: 72px; }
-
-  .cartas-asiento { height: 28px; margin-bottom: 1px; }
-  .cartas-asiento .carta,
-  .cartas-asiento .carta-dorso {
-    width: 20px;
-    height: 28px;
-    margin: 0 -3px;
-    border-radius: 3px;
-  }
-
-  .asiento.propio,
-  .asiento.abajo {
-    width: 108px;
-  }
-
-  .asiento.propio .cartas-asiento,
-  .asiento.abajo .cartas-asiento { height: 46px; }
-
-  .asiento.propio .cartas-asiento .carta,
-  .asiento.propio .cartas-asiento .carta-dorso,
-  .asiento.abajo .cartas-asiento .carta,
-  .asiento.abajo .cartas-asiento .carta-dorso {
-    width: 32px;
-    height: 46px;
-  }
-
-  #centro-mesa { top: 48%; }
-  #bote { font-size: 0.75rem; padding: 2px 10px; margin-bottom: 4px; }
-  #comunitarias { gap: 4px; min-height: 0; }
-
-  .hueco-carta,
-  #comunitarias .carta,
-  #comunitarias .carta-dorso,
-  .carta-voladora.al-centro {
-    width: 32px;
-    height: 46px;
-  }
-
-  .carta .esquina .rango { font-size: 0.48rem; }
-  .carta .palo-centro { font-size: 0.8rem; }
-
-  .nombre-jugador { font-size: 0.58rem; }
-  .fichas-jugador { font-size: 0.55rem; }
+  #centro-mesa { width: max-content; max-width: min(50%, 340px); top: 50%; }
   .estado-jugador { display: none; }
-  .info-jugador { padding: 1px 3px 2px; }
-  .apuesta-frente { font-size: 0.62rem; padding: 0 5px; }
-  .asiento.propio .estado-jugador,
-  .asiento.abajo .estado-jugador { display: block; font-size: 0.5rem; min-height: 0; }
-
+  .pieza-info.propio .estado-jugador { display: block; font-size: 0.5rem; }
   #mensaje-mesa { font-size: 0.8rem; padding: 2px 8px; min-height: 1.2em; }
-
-  #panel-acciones {
-    gap: 4px;
-    padding: 4px 6px max(4px, var(--seguro-abajo));
-    flex-wrap: nowrap;
-    overflow-x: auto;
-  }
-
-  #panel-acciones button {
-    min-height: 40px;
-    min-width: 64px;
-    margin: 0;
-    font-size: 0.82rem;
-    padding: 6px 10px;
-    flex-shrink: 0;
-  }
-
-  .grupo-subida {
-    flex: 1 1 auto;
-    padding: 2px 6px;
-  }
-
+  #panel-acciones { gap: 4px; padding: 4px 6px max(4px, var(--seguro-abajo)); flex-wrap: nowrap; overflow-x: auto; }
+  #panel-acciones button { min-height: 40px; min-width: 64px; margin: 0; font-size: 0.82rem; padding: 6px 10px; flex-shrink: 0; }
+  .grupo-subida { flex: 1 1 auto; padding: 2px 6px; }
   #rango-subida { width: 120px; height: 36px; flex: 1; }
+  .info-jugador { padding: 2px 4px 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

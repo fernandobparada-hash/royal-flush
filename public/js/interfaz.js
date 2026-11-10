@@ -42,6 +42,63 @@
     return marcado ? Number(marcado.value) : 9;
   }
 
+  function formatearFichas(n) {
+    n = Math.round(Number(n) || 0);
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function movimientoReducido() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  function fichasElegidas(grupo) {
+    const caja = document.querySelector('.selector-fichas[data-grupo="' + grupo + '"]');
+    const input = caja ? caja.querySelector(".input-fichas") : null;
+    const r = Motor.normalizarFichas(input ? input.value : Motor.FICHAS_INICIALES);
+    return r.error ? Motor.FICHAS_INICIALES : r.fichas;
+  }
+
+  function actualizarSelectorFichas(caja, valor) {
+    const r = Motor.normalizarFichas(valor);
+    const fichas = r.error ? Motor.FICHAS_INICIALES : r.fichas;
+    const ciegas = Motor.ciegasPara(fichas);
+    const rango = caja.querySelector(".rango-fichas");
+    const input = caja.querySelector(".input-fichas");
+    const formato = caja.querySelector(".fichas-formato");
+    const preview = caja.querySelector(".ciegas-preview");
+    if (rango) rango.value = String(fichas);
+    if (input && document.activeElement !== input) input.value = String(fichas);
+    if (formato) formato.textContent = formatearFichas(fichas) + " fichas";
+    if (preview) preview.textContent = "Ciegas " + ciegas.ciegaPequena + " / " + ciegas.ciegaGrande;
+    const bots = caja.querySelectorAll(".presets-fichas button");
+    for (let i = 0; i < bots.length; i++) {
+      bots[i].classList.toggle("activo", Number(bots[i].getAttribute("data-fichas")) === fichas);
+    }
+  }
+
+  function iniciarSelectoresFichas() {
+    const cajas = document.querySelectorAll(".selector-fichas");
+    for (let c = 0; c < cajas.length; c++) {
+      (function (caja) {
+        const rango = caja.querySelector(".rango-fichas");
+        const input = caja.querySelector(".input-fichas");
+        if (rango) rango.addEventListener("input", function () { actualizarSelectorFichas(caja, rango.value); });
+        if (input) {
+          input.addEventListener("input", function () { actualizarSelectorFichas(caja, input.value); });
+          input.addEventListener("change", function () {
+            const r = Motor.normalizarFichas(input.value);
+            actualizarSelectorFichas(caja, r.error ? Motor.FICHAS_INICIALES : r.fichas);
+          });
+        }
+        const bots = caja.querySelectorAll(".presets-fichas button");
+        for (let i = 0; i < bots.length; i++) {
+          bots[i].addEventListener("click", function () { actualizarSelectorFichas(caja, bots[i].getAttribute("data-fichas")); });
+        }
+        actualizarSelectorFichas(caja, (input && input.value) || 1000);
+      })(cajas[c]);
+    }
+  }
+
   function mostrar(idPantalla) {
     const ids = ["pantalla-menu", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
     for (let i = 0; i < ids.length; i++) {
@@ -79,18 +136,25 @@
   function empezarSolo() {
     detenerPartidaLocal();
     const n = asientosElegidos("asientos-solo");
-    const mesa = new Motor.Mesa({ asientos: n });
+    const fichas = fichasElegidas("solo");
+    const ciegas = Motor.ciegasPara(fichas);
+    const mesa = new Motor.Mesa({
+      asientos: n,
+      fichasIniciales: ciegas.fichasIniciales,
+      ciegaPequena: ciegas.ciegaPequena,
+      ciegaGrande: ciegas.ciegaGrande
+    });
     ui.mesa = mesa;
     ui.tuId = "humano";
     ui.modo = "solo";
     ui.codigo = null;
 
-    mesa.sentar({ id: "humano", nombre: nombreJugador(), tipo: "humano", asiento: 0 });
+    mesa.sentar({ id: "humano", nombre: nombreJugador(), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
     const usados = [nombreJugador()];
     for (let i = 1; i < n; i++) {
       const nom = Bots.nombreBot(usados);
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
     }
 
     mesa.on(alEventoLocal);
@@ -149,9 +213,10 @@
       ui.animando = true;
       const etiqueta = ev.calle === "flop" ? "Flop" : ev.calle === "turn" ? "Turn" : "River";
       $("mensaje-mesa").textContent = etiqueta + "…";
+      await animarFichasAlBote();
       await animarComunitarias(ev.nuevas);
       ui.animando = false;
-      renderMesa(ui.mesa.estadoPublico(ui.tuId));
+      renderMesa(ui.mesa.estadoPublico(ui.tuId), { voltear: true, voltearDesde: (ui.mesa.comunitarias.length - (ev.nuevas ? ev.nuevas.length : 0)) });
       return;
     }
 
@@ -166,10 +231,12 @@
     }
 
     if (ev.tipo === "showdown" || ev.tipo === "ganador-sin-showdown") {
+      if (ev.tipo === "showdown") await animarFichasAlBote();
       renderMesa(estado);
       const msg = $("mensaje-mesa");
       msg.textContent = estado.mensaje || "";
       msg.className = "premio";
+      celebrar(estado);
       programarNuevaMano();
       return;
     }
@@ -231,34 +298,43 @@
     return window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
   }
 
-  function posicionAsiento(indice, total) {
-    const ang = (indice / total) * Math.PI * 2;
-    // i=0 queda abajo, en el centro (nuestro asiento)
-    let rx = 40, ry = 36, cy = 54;
+  function geometriaMesa() {
     if (esVerticalEstrecho()) {
-      rx = 33;
-      ry = 36;
-      cy = 51;
-    } else if (esHorizontalBajo()) {
-      rx = 41;
-      ry = 31;
-      cy = 53;
+      return { gap: 1.05, info: [37, 38.2], cartas: [28, 30.6], apuesta: [22.2, 24], vaso: [42.6, 43.2], cy: 50.5 };
     }
-    let x = 50 + Math.sin(ang) * rx;
-    let y = cy + Math.cos(ang) * ry;
-    // Los vecinos del asiento propio se apartan un poco para no tapar las cartas grandes de abajo
-    if (esVerticalEstrecho() && (indice === 1 || indice === total - 1)) {
-      x = 50 + Math.sin(ang) * 42;
-      y = cy + Math.cos(ang) * 30;
+    if (esHorizontalBajo()) {
+      return { gap: 0.88, info: [41.5, 34.5], cartas: [36, 28.5], apuesta: [30.5, 22.5], vaso: [45, 38], cy: 50 };
     }
-    if (esHorizontalBajo() && (indice === 1 || indice === total - 1)) {
-      x = 50 + Math.sin(ang) * 44;
-      y = cy + Math.cos(ang) * 26;
-    }
-    let zona = "lado";
-    if (indice === 0) zona = "abajo";
-    else if (y < 40) zona = "arriba";
-    return { x: x, y: y, zona: zona };
+    return { gap: 0.8, info: [41.5, 36], cartas: [34.2, 29], apuesta: [28.5, 23], vaso: [45.2, 40.5], cy: 50 };
+  }
+
+  function actualizarOrientacionMesa() {
+    const mesa = $("mesa-oval");
+    if (!mesa) return;
+    mesa.classList.toggle("vertical", esVerticalEstrecho());
+  }
+
+  function indiceCercanoAlJugador(i, total) {
+    return i === 1 || i === total - 1;
+  }
+
+  function anguloAsiento(indice, total, gap) {
+    const available = Math.PI * 2 - gap;
+    const u = (indice / total) * available;
+    const mid = Math.PI - gap / 2;
+    return u <= mid ? u : u + gap;
+  }
+
+  function puntoEn(ang, rx, ry, cy) {
+    return { x: 50 + Math.sin(ang) * rx, y: cy + Math.cos(ang) * ry };
+  }
+
+  function zonaDeAngulo(ang, indice) {
+    if (indice === 0) return "abajo";
+    const c = Math.cos(ang);
+    if (c > 0.45) return "abajo";
+    if (c < -0.35) return "arriba";
+    return "lado";
   }
 
   function textoAccion(accion) {
@@ -275,55 +351,195 @@
     return mapa[accion] || "";
   }
 
+  function colorFicha(i, cantidad) {
+    if (cantidad >= 10000) {
+      const c = ["#f4d35e", "#1a1a1a", "#c41e3a", "#2b6bb0"];
+      return c[i % c.length];
+    }
+    if (cantidad >= 1000) {
+      const c = ["#1a1a1a", "#c41e3a", "#2b6bb0", "#e8e0c8"];
+      return c[i % c.length];
+    }
+    const c = ["#c41e3a", "#e8e0c8", "#2b6bb0"];
+    return c[i % c.length];
+  }
+
+  function htmlPilaFichas(cantidad, conValor) {
+    if (!cantidad) return "";
+    const n = Math.min(5, Math.max(2, 1 + Math.round(Math.log10(cantidad + 1))));
+    let d = '<span class="pila-fichas">';
+    for (let i = 0; i < n; i++) {
+      d += '<span class="disco-ficha" style="background:' + colorFicha(i, cantidad) + '"></span>';
+    }
+    if (conValor) d += '<span class="pila-valor">' + formatearFichas(cantidad) + "</span>";
+    d += "</span>";
+    return d;
+  }
+
+  function estiloPunto(p) {
+    return "left:" + p.x.toFixed(2) + "%;top:" + p.y.toFixed(2) + "%;";
+  }
+
+  function rectsSeSolapan(a, b, holgura) {
+    holgura = holgura == null ? 2 : holgura;
+    return !(a.right + holgura <= b.left || b.right + holgura <= a.left || a.bottom + holgura <= b.top || b.bottom + holgura <= a.top);
+  }
+
+  function separarSolapes() {
+    const mesa = $("mesa-oval");
+    if (!mesa) return;
+    const mr = mesa.getBoundingClientRect();
+    if (mr.width < 10 || mr.height < 10) return;
+    const grupos = [];
+    function add(sel, prio, fijo) {
+      const els = document.querySelectorAll(sel);
+      for (let i = 0; i < els.length; i++) {
+        const r = els[i].getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) continue;
+        grupos.push({ el: els[i], prio: prio, fijo: !!fijo });
+      }
+    }
+    add("#centro-mesa", 0, true);
+    add("#crupier", 1, true);
+    add(".pieza-info", 3, false);
+    add(".pieza-cartas", 4, false);
+    add(".pieza-propio-grupo", 3, false);
+    add(".pieza-apuesta", 5, false);
+
+    for (let iter = 0; iter < 10; iter++) {
+      let movio = false;
+      for (let i = 0; i < grupos.length; i++) {
+        for (let j = i + 1; j < grupos.length; j++) {
+          const A = grupos[i], B = grupos[j];
+          const ra = A.el.getBoundingClientRect();
+          const rb = B.el.getBoundingClientRect();
+          if (!rectsSeSolapan(ra, rb, 3)) continue;
+          const movible = A.fijo ? B : (B.fijo ? A : (A.prio >= B.prio ? A : B));
+          const otro = movible === A ? B : A;
+          if (movible.fijo) continue;
+          const rm = movible.el.getBoundingClientRect();
+          const ro = otro.el.getBoundingClientRect();
+          const cxm = (rm.left + rm.right) / 2;
+          const cym = (rm.top + rm.bottom) / 2;
+          const cxo = (ro.left + ro.right) / 2;
+          const cyo = (ro.top + ro.bottom) / 2;
+          let dx = cxm - cxo;
+          let dy = cym - cyo;
+          if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) { dx = 0.6; dy = 0.3; }
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const step = 5;
+          const nx = cxm + (dx / len) * step;
+          const ny = cym + (dy / len) * step;
+          let px = ((nx - mr.left) / mr.width) * 100;
+          let py = ((ny - mr.top) / mr.height) * 100;
+          px = Math.max(7, Math.min(93, px));
+          py = Math.max(8, Math.min(93, py));
+          movible.el.style.left = px.toFixed(2) + "%";
+          movible.el.style.top = py.toFixed(2) + "%";
+          movio = true;
+        }
+      }
+      if (!movio) break;
+    }
+  }
+
+  function pintarPortaVasos(total, geo) {
+    const caja = $("porta-vasos");
+    if (!caja) return;
+    let html = "";
+    for (let i = 0; i < total; i++) {
+      const ang = anguloAsiento(i, total, geo.gap);
+      const p = puntoEn(ang, geo.vaso[0], geo.vaso[1], geo.cy);
+      html += '<div class="porta-vaso" style="' + estiloPunto(p) + '"></div>';
+    }
+    caja.innerHTML = html;
+  }
+
   function renderMesa(estado, opciones) {
     opciones = opciones || {};
     ui.estado = estado;
     if (!estado) return;
 
+    actualizarOrientacionMesa();
     const total = estado.asientosTotales;
+    const oval = $("mesa-oval");
+    if (oval) oval.classList.toggle("asientos-10", total === 10);
     const ganadores = (estado.resultadoShowdown && estado.resultadoShowdown.ganadores)
       ? estado.resultadoShowdown.ganadores.map(function (g) { return g.id; })
       : [];
 
+    if (estado.ciegaPequena && estado.ciegaGrande && $("info-ciegas")) {
+      $("info-ciegas").textContent = "Ciegas " + estado.ciegaPequena + " / " + estado.ciegaGrande;
+    }
+
+    const geo = geometriaMesa();
+    pintarPortaVasos(total, geo);
+
     const caja = $("asientos");
     let html = "";
     for (let i = 0; i < total; i++) {
-      const pos = posicionAsiento(i, total);
+      const ang = anguloAsiento(i, total, geo.gap);
+      let ri = geo.info.slice();
+      let rc = geo.cartas.slice();
+      let ra = geo.apuesta.slice();
+      if (indiceCercanoAlJugador(i, total)) {
+        ri = [Math.min(46, ri[0] + 3.2), ri[1] - 2.2];
+        rc = [rc[0] + 2.4, rc[1] - 1.6];
+        ra = [ra[0] + 1.6, ra[1] - 1.2];
+      }
+      if (i === 0) {
+        ri = [ri[0], Math.min(45.5, ri[1] + 2.6)];
+        rc = [rc[0], rc[1] + 0.4];
+      }
+      const pInfo = puntoEn(ang, ri[0], ri[1], geo.cy);
+      const pCartas = puntoEn(ang, rc[0], rc[1], geo.cy);
+      const pAp = puntoEn(ang, ra[0], ra[1], geo.cy);
+      const zona = zonaDeAngulo(ang, i);
       const j = (estado.jugadores || []).find(function (p) { return p.asiento === i; });
-      html += '<div class="asiento ' + pos.zona;
-      if (j && j.esTurno) html += " es-turno";
-      if (j && j.retirado) html += " retirado";
-      if (j && j.id === ui.tuId) html += " propio";
-      html += '" data-asiento="' + i + '" style="left:' + pos.x + "%;top:" + pos.y + '%;">';
+      const esPropio = !!(j && j.id === ui.tuId);
+      const esGanador = !!(j && ganadores.indexOf(j.id) !== -1);
+      const clasesExtra = (j && j.esTurno ? " es-turno" : "") + (j && j.retirado ? " retirado" : "") + (esPropio ? " propio" : "") + (esGanador ? " ganador" : "");
 
-      html += '<div class="cartas-asiento">';
+      let htmlCartas = '<div class="cartas-asiento">';
       if (j && j.cartas && j.cartas.length && !opciones.ocultarPrivadas) {
         for (let c = 0; c < j.cartas.length; c++) {
-          const extra = ganadores.indexOf(j.id) !== -1 ? "ganadora" : "";
-          html += htmlCarta(j.cartas[c], extra);
+          htmlCartas += htmlCarta(j.cartas[c], esGanador ? "ganadora" : "");
         }
       } else if (j && j.enMano && opciones.ocultarPrivadas) {
-        html += htmlDorso() + htmlDorso();
+        htmlCartas += htmlDorso() + htmlDorso();
       }
-      html += "</div>";
+      htmlCartas += "</div>";
 
-      html += '<div class="info-jugador">';
+      let htmlInfo = '<div class="info-jugador">';
+      htmlInfo += '<span class="anillo-turno" aria-hidden="true"><svg viewBox="0 0 36 36" preserveAspectRatio="none"><circle cx="18" cy="18" r="16.2" pathLength="120"></circle></svg></span>';
       if (j) {
-        html += '<div class="insignias">';
-        if (j.esBoton) html += '<span class="insignia" title="Botón del dealer">D</span>';
-        if (j.esSB) html += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
-        if (j.esBB) html += '<span class="insignia bb" title="Ciega grande">BB</span>';
-        html += "</div>";
-        html += '<div class="nombre-jugador">' + escapar(j.nombre) + (j.id === ui.tuId ? " (tú)" : "") + "</div>";
-        html += '<div class="fichas-jugador">' + j.fichas + " fichas</div>";
-        html += '<div class="estado-jugador">' + (j.allIn && j.ultimaAccion !== "all-in" ? "All-in" : textoAccion(j.ultimaAccion)) + "</div>";
-        if (j.apuestaRonda > 0) {
-          html += '<div class="apuesta-frente">' + j.apuestaRonda + "</div>";
-        }
+        htmlInfo += '<div class="insignias">';
+        if (j.esBoton) htmlInfo += '<span class="insignia" title="Botón del dealer">D</span>';
+        if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
+        if (j.esBB) htmlInfo += '<span class="insignia bb" title="Ciega grande">BB</span>';
+        htmlInfo += "</div>";
+        htmlInfo += '<div class="nombre-jugador">' + escapar(j.nombre) + (esPropio ? " (tú)" : "") + "</div>";
+        htmlInfo += '<div class="fichas-jugador">' + formatearFichas(j.fichas) + "</div>";
+        htmlInfo += '<div class="estado-jugador">' + (j.allIn && j.ultimaAccion !== "all-in" ? "All-in" : textoAccion(j.ultimaAccion)) + "</div>";
       } else {
-        html += '<div class="nombre-jugador">Asiento vacío</div>';
+        htmlInfo += '<div class="nombre-jugador">Vacío</div>';
       }
-      html += "</div></div>";
+      htmlInfo += "</div>";
+
+      if (i === 0) {
+        html += '<div class="pieza pieza-propio-grupo ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pInfo) + '">';
+        html += htmlCartas + htmlInfo + "</div>";
+      } else {
+        html += '<div class="pieza pieza-cartas ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pCartas) + '">';
+        html += htmlCartas + "</div>";
+        html += '<div class="pieza pieza-info ' + zona + clasesExtra + '" data-asiento="' + i + '" style="' + estiloPunto(pInfo) + '">';
+        html += htmlInfo + "</div>";
+      }
+
+      if (j && j.apuestaRonda > 0) {
+        html += '<div class="pieza pieza-apuesta ' + zona + '" data-asiento="' + i + '" style="' + estiloPunto(pAp) + '">';
+        html += '<div class="apuesta-frente">' + htmlPilaFichas(j.apuestaRonda, true) + "</div></div>";
+      }
     }
     caja.innerHTML = html;
 
@@ -331,12 +547,12 @@
     let hcom = "";
     const cartasCom = opciones.vaciarComunitarias ? [] : (estado.comunitarias || []);
     for (let i = 0; i < 5; i++) {
-      if (cartasCom[i]) hcom += htmlCarta(cartasCom[i]);
+      if (cartasCom[i]) hcom += htmlCarta(cartasCom[i], opciones.voltear && i >= (opciones.voltearDesde || 0) ? "volteando" : "");
       else hcom += '<div class="hueco-carta"></div>';
     }
     com.innerHTML = hcom;
 
-    $("bote").innerHTML = "Bote <strong>" + (estado.boteTotal || 0) + "</strong>";
+    $("bote").innerHTML = htmlPilaFichas(estado.boteTotal || 0, false) + " Bote <strong>" + formatearFichas(estado.boteTotal || 0) + "</strong>";
     const calle = { preflop: "Preflop", flop: "Flop", turn: "Turn", river: "River", "entre-manos": "", showdown: "Showdown", esperando: "" };
     $("etiqueta-calle").textContent = calle[estado.fase] || "";
 
@@ -345,7 +561,12 @@
     }
 
     actualizarPanelAcciones(estado);
+    requestAnimationFrame(function () {
+      separarSolapes();
+      requestAnimationFrame(separarSolapes);
+    });
   }
+
 
   function actualizarPanelAcciones(estado) {
     const panel = $("panel-acciones");
@@ -358,7 +579,7 @@
     $("btn-pasar").hidden = !acciones.puedePasar;
     $("btn-igualar").hidden = !acciones.puedeIgualar;
     $("btn-igualar").textContent = acciones.puedeIgualar
-      ? (acciones.porIgualar >= (infoFichasPropias(estado) || acciones.porIgualar) ? "All-in " + infoFichasPropias(estado) : "Igualar " + acciones.porIgualar)
+      ? (acciones.porIgualar >= (infoFichasPropias(estado) || acciones.porIgualar) ? "All-in " + formatearFichas(infoFichasPropias(estado)) : "Igualar " + formatearFichas(acciones.porIgualar))
       : "Igualar";
 
     const puedeAgredir = acciones.puedeApostar || acciones.puedeSubir;
@@ -377,7 +598,7 @@
       if (Number(rango.value) < min || Number(rango.value) > max) {
         rango.value = String(Math.min(max, Math.max(min, min)));
       }
-      $("texto-subida").textContent = rango.value;
+      $("texto-subida").textContent = formatearFichas(rango.value);
     }
   }
 
@@ -403,7 +624,62 @@
   }
 
   function esperar(ms) {
+    if (movimientoReducido()) ms = 0;
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  async function animarFichasAlBote() {
+    if (movimientoReducido()) return;
+    const mesa = $("mesa-oval");
+    const capa = $("fichas-volando");
+    const destEl = $("bote");
+    if (!mesa || !capa || !destEl) return;
+    const dest = rectRelativo(destEl, mesa);
+    const origenes = document.querySelectorAll(".pieza-apuesta");
+    if (!origenes.length) return;
+    capa.innerHTML = "";
+    for (let i = 0; i < origenes.length; i++) {
+      const el = origenes[i];
+      const o = rectRelativo(el, mesa);
+      const clone = el.cloneNode(true);
+      clone.classList.add("ficha-voladora");
+      clone.style.left = (o.x - el.offsetWidth / 2) + "px";
+      clone.style.top = (o.y - el.offsetHeight / 2) + "px";
+      capa.appendChild(clone);
+    }
+    void capa.offsetWidth;
+    const clones = capa.querySelectorAll(".ficha-voladora");
+    for (let i = 0; i < clones.length; i++) {
+      clones[i].style.left = (dest.x - 16) + "px";
+      clones[i].style.top = (dest.y - 8) + "px";
+      clones[i].style.opacity = "0";
+    }
+    await esperar(520);
+    capa.innerHTML = "";
+  }
+
+  function celebrar(estado) {
+    const capa = $("celebracion");
+    if (!capa || movimientoReducido()) return;
+    capa.innerHTML = "";
+    const mesa = $("mesa-oval");
+    if (!mesa) return;
+    const winners = document.querySelectorAll(".pieza-info.ganador");
+    for (let w = 0; w < winners.length; w++) {
+      const r = rectRelativo(winners[w], mesa);
+      for (let i = 0; i < 14; i++) {
+        const s = document.createElement("span");
+        s.className = "chispa";
+        const ang = (i / 14) * Math.PI * 2;
+        const dist = 28 + (i % 3) * 12;
+        s.style.left = r.x + "px";
+        s.style.top = r.y + "px";
+        s.style.setProperty("--dx", (Math.cos(ang) * dist) + "px");
+        s.style.setProperty("--dy", (Math.sin(ang) * dist) + "px");
+        capa.appendChild(s);
+      }
+    }
+    setTimeout(function () { if (capa) capa.innerHTML = ""; }, 1100);
   }
 
   async function animarReparto(secuencia) {
@@ -417,7 +693,7 @@
 
     for (let i = 0; i < secuencia.length; i++) {
       const paso = secuencia[i];
-      const destinoEl = document.querySelector('.asiento[data-asiento="' + paso.asiento + '"] .cartas-asiento');
+      const destinoEl = document.querySelector('.pieza[data-asiento="' + paso.asiento + '"] .cartas-asiento');
       if (!destinoEl) continue;
       const dest = rectRelativo(destinoEl, mesa);
       const cartaEl = document.createElement("div");
@@ -584,9 +860,9 @@
 
     if (msg.tipo === "calle" && msg.nuevas) {
       ui.animando = true;
-      animarComunitarias(msg.nuevas).then(function () {
+      animarFichasAlBote().then(function () { return animarComunitarias(msg.nuevas); }).then(function () {
         ui.animando = false;
-        if (msg.estado) renderMesa(msg.estado);
+        if (msg.estado) renderMesa(msg.estado, { voltear: true });
       });
       if (msg.estado) {
         // Mientras vuelan, ya podemos ir actualizando el bote
@@ -603,6 +879,7 @@
       if (msg.estado.mensaje && (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown" || msg.estado.fase === "entre-manos")) {
         $("mensaje-mesa").textContent = msg.estado.mensaje;
         $("mensaje-mesa").className = "premio";
+        if (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown") celebrar(msg.estado);
       }
     }
   }
@@ -638,6 +915,15 @@
     $("asientos-libres").textContent = libres === 0
       ? "Mesa completa."
       : "Asientos libres: " + libres + " de " + total + ".";
+    const fi = msg.fichasIniciales || (msg.estado && msg.estado.fichasIniciales);
+    const sb = msg.ciegaPequena != null ? msg.ciegaPequena : (msg.estado && msg.estado.ciegaPequena);
+    const bb = msg.ciegaGrande != null ? msg.ciegaGrande : (msg.estado && msg.estado.ciegaGrande);
+    const infoF = $("info-fichas-sala");
+    if (infoF) {
+      infoF.textContent = fi
+        ? ("Fichas iniciales: " + formatearFichas(fi) + (sb != null && bb != null ? " · Ciegas " + sb + " / " + bb : ""))
+        : "";
+    }
 
     const anfitrion = !!msg.esAnfitrion || ui.esAnfitrion;
     $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
@@ -654,7 +940,8 @@
       enviarWS({
         tipo: "crear-privada",
         nombre: nombreJugador(),
-        asientos: asientosElegidos("asientos-online")
+        asientos: asientosElegidos("asientos-online"),
+        fichasIniciales: fichasElegidas("online")
       });
     } catch (e) {
       $("aviso-online").textContent = e.message;
@@ -683,7 +970,8 @@
       enviarWS({
         tipo: "unirse-publica",
         nombre: nombreJugador(),
-        asientos: asientosElegidos("asientos-online")
+        asientos: asientosElegidos("asientos-online"),
+        fichasIniciales: fichasElegidas("online")
       });
     } catch (e) {
       $("aviso-online").textContent = e.message;
@@ -693,6 +981,7 @@
   /* ---------- Enlazar botones ---------- */
 
   function iniciarUI() {
+    iniciarSelectoresFichas();
     $("btn-solo").addEventListener("click", irSolo);
     $("btn-online").addEventListener("click", irOnline);
     $("btn-volver-solo").addEventListener("click", irMenu);
@@ -719,7 +1008,7 @@
     });
     $("btn-allin").addEventListener("click", function () { enviarAccion("all-in"); });
     $("rango-subida").addEventListener("input", function () {
-      $("texto-subida").textContent = $("rango-subida").value;
+      $("texto-subida").textContent = formatearFichas($("rango-subida").value);
     });
 
     $("input-codigo").addEventListener("keydown", function (ev) {
@@ -737,6 +1026,68 @@
       }, 150);
     });
   }
+
+  function montarDemo(opt) {
+    opt = opt || {};
+    detenerPartidaLocal();
+    const fichas = opt.fichas || 1000;
+    const ciegas = Motor.ciegasPara(fichas);
+    const n = opt.asientos || 9;
+    const mesa = new Motor.Mesa({
+      asientos: n,
+      fichasIniciales: ciegas.fichasIniciales,
+      ciegaPequena: ciegas.ciegaPequena,
+      ciegaGrande: ciegas.ciegaGrande
+    });
+    const nombre = opt.nombre || "Fernando";
+    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales });
+    const usados = [nombre];
+    const largos = ["Maximiliano", "Juan Esteban", "Valentina M.", "Ana-Sofía", "Roberto Carlos", "Isabel María", "Diego Armando", "Chris"];
+    for (let i = 1; i < n; i++) {
+      const nom = opt.nombresLargos ? (largos[i - 1] || Bots.nombreBot(usados)) : Bots.nombreBot(usados);
+      usados.push(nom);
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales });
+    }
+    ui.mesa = mesa;
+    ui.tuId = "humano";
+    ui.modo = "solo";
+    ui.animando = false;
+    mesa.iniciarMano();
+    mesa.empezarApuestas();
+    const objetivo = opt.fase || "flop";
+    let guard = 0;
+    while (guard++ < 220) {
+      if (objetivo === "preflop" && mesa.fase === "preflop") break;
+      if (objetivo === "flop" && mesa.fase === "flop") break;
+      if (objetivo === "turn" && mesa.fase === "turn") break;
+      if (objetivo === "river" && mesa.fase === "river") break;
+      if (objetivo === "showdown" && (mesa.fase === "entre-manos" || mesa.fase === "showdown" || mesa.resultadoShowdown)) break;
+      if (mesa.fase === "entre-manos" && objetivo !== "showdown") break;
+      const id = mesa.turnoId;
+      if (!id) break;
+      const legales = mesa.accionesLegales(id);
+      if (legales.puedePasar) mesa.accion(id, "pasar");
+      else if (legales.puedeIgualar) mesa.accion(id, "igualar");
+      else if (legales.puedeAllIn) mesa.accion(id, "all-in");
+      else mesa.accion(id, "retirarse");
+    }
+    $("info-sala").textContent = "Modo solo · " + n + " asientos";
+    $("info-ciegas").textContent = "Ciegas " + mesa.ciegaPequena + " / " + mesa.ciegaGrande;
+    $("mensaje-mesa").className = (objetivo === "showdown") ? "premio" : "";
+    $("mensaje-mesa").textContent = mesa.mensaje || (objetivo === "flop" ? "Flop" : "");
+    mostrar("pantalla-mesa");
+    renderMesa(mesa.estadoPublico(ui.tuId));
+    if (objetivo === "showdown") celebrar(mesa.estadoPublico(ui.tuId));
+    return mesa;
+  }
+
+  window.__RF = {
+    montarDemo: montarDemo,
+    renderMesa: renderMesa,
+    separarSolapes: separarSolapes,
+    formatearFichas: formatearFichas,
+    ui: ui
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", iniciarUI);

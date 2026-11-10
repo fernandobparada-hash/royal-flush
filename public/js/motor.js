@@ -24,8 +24,39 @@
     : raiz.PokerEvaluador;
 
   const FICHAS_INICIALES = 1000;
+  const FICHAS_MIN = 10;
+  const FICHAS_MAX = 50000;
   const CIEGA_PEQUENA = 5;
   const CIEGA_GRANDE = 10;
+
+  /**
+   * Comprueba que las fichas iniciales estén entre 10 y 50.000.
+   * Devuelve { fichas } o { error }.
+   */
+  function normalizarFichas(n) {
+    n = Number(n);
+    if (!Number.isFinite(n)) {
+      return { error: "Elige un número de fichas válido." };
+    }
+    n = Math.round(n);
+    if (n < FICHAS_MIN || n > FICHAS_MAX) {
+      return { error: "Las fichas iniciales tienen que estar entre " + FICHAS_MIN + " y " + FICHAS_MAX + "." };
+    }
+    return { fichas: n };
+  }
+
+  /**
+   * Ciegas a partir del stack inicial: la ciega grande es 1/100
+   * de las fichas (mínimo 2) y la pequeña es la mitad, siempre
+   * en números enteros. Con 10 fichas queda 1 / 2.
+   */
+  function ciegasPara(fichas) {
+    const v = normalizarFichas(fichas);
+    if (v.error) return v;
+    const bb = Math.max(2, Math.round(v.fichas / 100));
+    const sb = Math.max(1, Math.floor(bb / 2));
+    return { fichasIniciales: v.fichas, ciegaPequena: sb, ciegaGrande: bb };
+  }
 
   function crearJugador(datos) {
     return {
@@ -55,9 +86,16 @@
   function Mesa(opciones) {
     opciones = opciones || {};
     this.asientosTotales = opciones.asientos || 9;
-    this.fichasIniciales = opciones.fichasIniciales || FICHAS_INICIALES;
-    this.ciegaPequena = opciones.ciegaPequena || CIEGA_PEQUENA;
-    this.ciegaGrande = opciones.ciegaGrande || CIEGA_GRANDE;
+    const fichasNorm = normalizarFichas(opciones.fichasIniciales != null ? opciones.fichasIniciales : FICHAS_INICIALES);
+    this.fichasIniciales = fichasNorm.error ? FICHAS_INICIALES : fichasNorm.fichas;
+    if (opciones.ciegaPequena && opciones.ciegaGrande) {
+      this.ciegaPequena = opciones.ciegaPequena;
+      this.ciegaGrande = opciones.ciegaGrande;
+    } else {
+      const ciegas = ciegasPara(this.fichasIniciales);
+      this.ciegaPequena = ciegas.ciegaPequena;
+      this.ciegaGrande = ciegas.ciegaGrande;
+    }
     this.porAsiento = new Array(this.asientosTotales).fill(null);
     this.fase = "esperando";
     this.mazo = [];
@@ -796,6 +834,7 @@
       subidaMinima: this.subidaMinima,
       ciegaPequena: this.ciegaPequena,
       ciegaGrande: this.ciegaGrande,
+      fichasIniciales: this.fichasIniciales,
       turnoId: this.turnoId,
       manosJugadas: this.manosJugadas,
       mensaje: this.mensaje,
@@ -814,8 +853,12 @@
     Mesa: Mesa,
     crearJugador: crearJugador,
     FICHAS_INICIALES: FICHAS_INICIALES,
+    FICHAS_MIN: FICHAS_MIN,
+    FICHAS_MAX: FICHAS_MAX,
     CIEGA_PEQUENA: CIEGA_PEQUENA,
-    CIEGA_GRANDE: CIEGA_GRANDE
+    CIEGA_GRANDE: CIEGA_GRANDE,
+    normalizarFichas: normalizarFichas,
+    ciegasPara: ciegasPara
   };
 
   raiz.PokerMotor = api;

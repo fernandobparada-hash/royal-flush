@@ -133,6 +133,38 @@ igual("Corto no gana más de 150 (límite del bote principal)", premioCorto <= 1
 console.log("  botes:", JSON.stringify(mesa3.resultadoShowdown.botes));
 console.log("  ganadores:", JSON.stringify(mesa3.resultadoShowdown.ganadores));
 
+console.log("\n=== Fichas iniciales y ciegas ===\n");
+
+function ciegasOk(fichas, sb, bb) {
+  const c = Motor.ciegasPara(fichas);
+  igual("Ciegas para " + fichas + " fichas", [c.ciegaPequena, c.ciegaGrande, c.fichasIniciales], [sb, bb, fichas]);
+}
+ciegasOk(10, 1, 2);
+ciegasOk(100, 1, 2);
+ciegasOk(1000, 5, 10);
+ciegasOk(5000, 25, 50);
+ciegasOk(10000, 50, 100);
+ciegasOk(50000, 250, 500);
+
+igual("Rechaza menos de 10", !!Motor.normalizarFichas(9).error, true);
+igual("Rechaza más de 50.000", !!Motor.normalizarFichas(50001).error, true);
+igual("Acepta 10", Motor.normalizarFichas(10).fichas, 10);
+igual("Redondea 1000.4 a 1000", Motor.normalizarFichas(1000.4).fichas, 1000);
+
+const mesa10 = new Motor.Mesa({ asientos: 6, fichasIniciales: 10 });
+mesa10.sentar({ id: "a", nombre: "Ana", asiento: 0 });
+mesa10.sentar({ id: "b", nombre: "Bruno", asiento: 1 });
+igual("Con 10 fichas, cada uno empieza con 10", mesa10.jugadorPorId("a").fichas, 10);
+igual("Ciega pequeña 1 en la mesa de 10", mesa10.ciegaPequena, 1);
+igual("Ciega grande 2 en la mesa de 10", mesa10.ciegaGrande, 2);
+const ini10 = mesa10.iniciarMano();
+igual("La mano arranca con 10 fichas", !!(ini10 && ini10.ok), true);
+igual("El bote de ciegas es 3", mesa10.boteTotal, 3);
+mesa10.empezarApuestas();
+jugarSiempreCall(mesa10);
+igual("Se puede terminar una mano con 10 fichas", mesa10.fase, "entre-manos");
+igual("Las 20 fichas se conservan", mesa10.jugadorPorId("a").fichas + mesa10.jugadorPorId("b").fichas, 20);
+
 console.log("\n========================================");
 console.log("Aciertos: " + aciertos + "   Fallos: " + fallos);
 console.log("========================================\n");

@@ -13,6 +13,23 @@
   const Bots = window.PokerBots;
   const Ev = window.PokerEvaluador;
   const Avatar = window.PokerAvatar;
+  const Historial = window.PokerHistorial;
+  const ModuloSonidos = window.PokerSonidos;
+  const Util = window.PokerUtilidades;
+  // Funciones puras (no tocan la pantalla) que viven en utilidades.js
+  const formatearFichas = Util.formatearFichas;
+  const formatearBs = Util.formatearBs;
+  const escapar = Util.escapar;
+  const clamp = Util.clamp;
+  const rectsSeSolapan = Util.rectsSeSolapan;
+  const caja = Util.caja;
+  const sePisan = Util.sePisan;
+  const textoAccion = Util.textoAccion;
+  const colorFicha = Util.colorFicha;
+  const primerNombre = Util.primerNombre;
+  const extraerCodigo = Util.extraerCodigo;
+  const anguloAsiento = Util.anguloAsiento;
+  const textoCiegas = Util.textoCiegas;
 
   const ui = {
     modo: "menu",
@@ -38,13 +55,18 @@
     timerPing: null,
     timerSalud: null,
     timerReconnect: null,
-    cuentas: null
+    cuentas: null,
+    historial: Historial ? Historial.crearHistorial(50) : null,
+    historialSala: null,
+    ultimaCiegaGrande: null,
+    espectador: false
   };
 
   const LS_NOMBRE = "rf_nombre";
   const LS_AVATAR = "rf_avatar";
   const LS_TOKEN = "rf_token";
   const LS_CODIGO = "rf_codigo";
+  const LS_SONIDO = "rf_sonido";
   const FRASES_CHAT = (Avatar && Avatar.FRASES_CHAT) ? Avatar.FRASES_CHAT : [];
 
   const $ = function (id) { return document.getElementById(id); };
@@ -137,10 +159,128 @@
     return marcado ? Number(marcado.value) : 9;
   }
 
-  function formatearFichas(n) {
-    n = Math.round(Number(n) || 0);
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  /* ---------- Sonido ---------- */
+
+  function leerSonidoGuardado() {
+    try { return localStorage.getItem(LS_SONIDO) !== "0"; } catch (e) { return true; }
   }
+
+  const sonidos = ModuloSonidos ? ModuloSonidos.crearSonidos({ activo: leerSonidoGuardado() }) : null;
+
+  function sonar(nombre, opciones) {
+    if (sonidos) sonidos.reproducir(nombre, opciones);
+  }
+
+  function pintarBotonSonido() {
+    const b = $("btn-sonido");
+    if (!b || !sonidos) return;
+    const activo = sonidos.estaActivo();
+    b.textContent = activo ? "🔊" : "🔇";
+    b.setAttribute("aria-pressed", activo ? "true" : "false");
+    b.title = activo ? "Silenciar el sonido" : "Activar el sonido";
+  }
+
+  function alternarSonido() {
+    if (!sonidos) return;
+    const activo = sonidos.alternar();
+    try { localStorage.setItem(LS_SONIDO, activo ? "1" : "0"); } catch (e) { /* */ }
+    pintarBotonSonido();
+    if (activo) sonar("ficha");
+  }
+
+  /** Suena según lo que pasa en la mesa (sirve tanto para el modo solo como para el online). */
+  function sonarEvento(ev) {
+    if (!sonidos || !ev) return;
+    if (ev.tipo === "accion") {
+      const a = ev.accion;
+      if (a === "retirarse") sonar("retirarse");
+      else if (a === "pasar") sonar("pasar");
+      else if (a === "igualar" || a === "apostar" || a === "subir" || a === "all-in") sonar("ficha");
+    } else if (ev.tipo === "turno") {
+      if (ev.jugadorId && ev.jugadorId === ui.tuId) sonar("turno");
+    } else if (ev.tipo === "calle") {
+      sonar("carta", { veces: (ev.nuevas && ev.nuevas.length) || 1, cada: 0.15 });
+    } else if (ev.tipo === "mano-iniciada") {
+      sonar("carta", { veces: (ev.secuenciaReparto && ev.secuenciaReparto.length) || 4, cada: 0.13 });
+      if (ev.ciegasSubieron) setTimeout(function () { sonar("ciegas"); }, 700);
+    }
+  }
+
+  function sonarResultado(estado) {
+    const r = estado && estado.resultadoShowdown;
+    if (!r || !sonidos) return;
+    const gane = (r.ganadores || []).some(function (g) { return g.id === ui.tuId; });
+    sonar(gane ? "ganar" : "fin");
+  }
+
+  /* ---------- Historial de manos ---------- */
+
+  function registrarHistorial(estado) {
+    if (!ui.historial || !estado) return;
+    const entrada = ui.historial.registrar(estado, ui.tuId);
+    if (entrada && $("panel-historial") && !$("panel-historial").hidden) pintarHistorial();
+  }
+
+  function pintarHistorial() {
+    const caja = $("lista-historial");
+    if (!caja) return;
+    caja.textContent = "";
+    const lista = ui.historial ? ui.historial.lista() : [];
+    if (!lista.length) {
+      const p = document.createElement("p");
+      p.className = "historial-vacio";
+      p.textContent = "Todavía no ha terminado ninguna mano.";
+      caja.appendChild(p);
+      return;
+    }
+    function linea(clase, texto) {
+      const d = document.createElement("div");
+      d.className = clase;
+      d.textContent = texto;
+      return d;
+    }
+    for (let i = 0; i < lista.length; i++) {
+      const e = lista[i];
+      const fila = document.createElement("div");
+      fila.className = "fila-historial" + (e.gane ? " gane" : "");
+      const cab = document.createElement("header");
+      const a = document.createElement("span");
+      a.textContent = "Mano " + e.mano + (e.gane ? " · ¡Ganaste!" : "");
+      const b = document.createElement("span");
+      b.textContent = "Bote " + formatearFichas(e.bote);
+      cab.appendChild(a);
+      cab.appendChild(b);
+      fila.appendChild(cab);
+      for (let g = 0; g < e.ganadores.length; g++) {
+        const gan = e.ganadores[g];
+        let t = gan.nombre + " se lleva " + formatearFichas(gan.premio);
+        if (gan.descripcion && !e.sinShowdown) t += " con " + gan.descripcion;
+        if (e.sinShowdown) t += " (todos se retiraron)";
+        fila.appendChild(linea("ganador-linea", t));
+      }
+      if (e.comunitarias.length) fila.appendChild(linea("detalle cartas-texto", "Mesa: " + e.comunitarias.join("  ")));
+      for (let r = 0; r < e.reveladas.length; r++) {
+        const rev = e.reveladas[r];
+        fila.appendChild(linea("detalle", rev.nombre + ": " + rev.cartas.join(" ") + " · " + rev.descripcion));
+      }
+      fila.appendChild(linea("detalle", "Ciegas " + e.ciegas));
+      caja.appendChild(fila);
+    }
+  }
+
+  function abrirHistorial() {
+    const panel = $("panel-historial");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) pintarHistorial();
+  }
+
+  function torneoElegido(grupo) {
+    const el = $("torneo-" + grupo);
+    return !!(el && el.checked);
+  }
+
+  /** "Ciegas 5 / 10" y, en modo torneo, cuántas manos faltan para que suban. */
 
   function movimientoReducido() {
     return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -203,7 +343,8 @@
       else el.hidden = true;
     }
     document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
-    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = idPantalla !== "pantalla-mesa" || ui.modo !== "online";
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = idPantalla !== "pantalla-mesa" || ui.modo !== "online" || ui.espectador;
+    if ($("btn-abrir-chat")) $("btn-abrir-chat").hidden = idPantalla === "pantalla-mesa" && ui.espectador;
     if (idPantalla !== "pantalla-mesa" && idPantalla !== "pantalla-sala") {
       if ($("panel-cuentas")) $("panel-cuentas").hidden = true;
     }
@@ -220,15 +361,6 @@
     while (box.children.length >= 2) box.firstChild.remove();
     box.appendChild(el);
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "err" ? 5000 : 2800);
-  }
-
-  function extraerCodigo(texto) {
-    const raw = String(texto || "").trim().toUpperCase();
-    const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
-    if (fromPath) return fromPath[1].slice(0, 5);
-    const letras = raw.replace(/[^A-Z0-9]/g, "");
-    if (letras.length >= 5) return letras.slice(0, 5);
-    return letras;
   }
 
   function codigoDesdeUbicacion() {
@@ -427,6 +559,9 @@
     detenerPartidaLocal();
     cerrarWS(false);
     ui.modo = "menu";
+    ui.espectador = false;
+    ui.ultimaCiegaGrande = null;
+    if ($("panel-historial")) $("panel-historial").hidden = true;
     limpiarAvisos();
     mostrar("pantalla-menu");
     mostrarInvitacionPendiente();
@@ -473,12 +608,15 @@
       asientos: n,
       fichasIniciales: ciegas.fichasIniciales,
       ciegaPequena: ciegas.ciegaPequena,
-      ciegaGrande: ciegas.ciegaGrande
+      ciegaGrande: ciegas.ciegaGrande,
+      subirCiegasCada: torneoElegido("solo") ? Motor.MANOS_POR_NIVEL : 0
     });
     ui.mesa = mesa;
     ui.tuId = "humano";
     ui.modo = "solo";
     ui.codigo = null;
+    ui.ultimaCiegaGrande = null;
+    if (ui.historial) ui.historial.limpiar();
 
     mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
     const usados = [nombreJugador(false)];
@@ -527,6 +665,7 @@
   async function manejarEvento(ev) {
     if (!ui.mesa) return;
     const estado = ui.mesa.estadoPublico(ui.tuId);
+    sonarEvento(ev);
 
     if (ev.tipo === "mano-iniciada") {
       ui.animando = true;
@@ -568,6 +707,7 @@
       const msg = $("mensaje-mesa");
       msg.textContent = estado.mensaje || "";
       msg.className = "premio";
+      registrarHistorial(estado);
       celebrar(estado);
       programarNuevaMano();
       return;
@@ -652,46 +792,12 @@
     mesa.classList.toggle("vertical", esVerticalEstrecho());
   }
 
-  function anguloAsiento(indice, total, gap) {
-    const available = Math.PI * 2 - gap;
-    const u = (indice / total) * available;
-    const mid = Math.PI - gap / 2;
-    return u <= mid ? u : u + gap;
-  }
-
   function zonaDeAngulo(ang, indice) {
     if (indice === 0) return "abajo";
     const c = Math.cos(ang);
     if (c > 0.45) return "abajo";
     if (c < -0.35) return "arriba";
     return "lado";
-  }
-
-  function textoAccion(accion) {
-    const mapa = {
-      "retirarse": "Retirado",
-      "pasar": "Pasa",
-      "igualar": "Iguala",
-      "apostar": "Apuesta",
-      "subir": "Sube",
-      "all-in": "All-in",
-      "ciega-pequena": "Ciega chica",
-      "ciega-grande": "Ciega grande"
-    };
-    return mapa[accion] || "";
-  }
-
-  function colorFicha(i, cantidad) {
-    if (cantidad >= 10000) {
-      const c = ["#f4d35e", "#1a1a1a", "#c41e3a", "#2b6bb0"];
-      return c[i % c.length];
-    }
-    if (cantidad >= 1000) {
-      const c = ["#1a1a1a", "#c41e3a", "#2b6bb0", "#e8e0c8"];
-      return c[i % c.length];
-    }
-    const c = ["#c41e3a", "#e8e0c8", "#2b6bb0"];
-    return c[i % c.length];
   }
 
   function htmlPilaFichas(cantidad, conValor) {
@@ -708,24 +814,6 @@
 
   function estiloPx(x, y) {
     return "left:" + Math.round(x) + "px;top:" + Math.round(y) + "px;";
-  }
-
-  function rectsSeSolapan(a, b, holgura) {
-    holgura = holgura == null ? 2 : holgura;
-    return !(a.right + holgura <= b.left || b.right + holgura <= a.left || a.bottom + holgura <= b.top || b.bottom + holgura <= a.top);
-  }
-
-  function clamp(n, a, b) {
-    return Math.max(a, Math.min(b, n));
-  }
-
-  function caja(x, y, w, h) {
-    return { x: x, y: y, w: w, h: h, left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 };
-  }
-
-  function sePisan(a, b, g) {
-    g = g == null ? 3 : g;
-    return !(a.right + g <= b.left || b.right + g <= a.left || a.bottom + g <= b.top || b.bottom + g <= a.top);
   }
 
   function instalarObservadorMesa() {
@@ -1264,12 +1352,6 @@
     ajustarNombres();
   }
 
-  function primerNombre(nombre) {
-    const txt = String(nombre || "").trim();
-    if (!txt) return "";
-    return txt.split(/\s+/)[0];
-  }
-
   function ajustarNombres() {
     const nombres = document.querySelectorAll(".pieza-info .nombre-jugador");
     for (let i = 0; i < nombres.length; i++) {
@@ -1369,7 +1451,11 @@
       : [];
 
     if (estado.ciegaPequena && estado.ciegaGrande && $("info-ciegas")) {
-      $("info-ciegas").textContent = "Ciegas " + estado.ciegaPequena + " / " + estado.ciegaGrande;
+      if (ui.ultimaCiegaGrande && estado.ciegaGrande > ui.ultimaCiegaGrande) {
+        toast("¡Las ciegas suben a " + estado.ciegaPequena + " / " + estado.ciegaGrande + "!");
+      }
+      ui.ultimaCiegaGrande = estado.ciegaGrande;
+      $("info-ciegas").textContent = textoCiegas(estado);
     }
 
     pintarPortaVasos(total);
@@ -1452,7 +1538,6 @@
     });
   }
 
-
   function actualizarPanelAcciones(estado) {
     const panel = $("panel-acciones");
     const acciones = estado.acciones;
@@ -1491,14 +1576,6 @@
   function infoFichasPropias(estado) {
     const j = (estado.jugadores || []).find(function (p) { return p.id === ui.tuId; });
     return j ? j.fichas : 0;
-  }
-
-  function escapar(texto) {
-    return String(texto)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
   }
 
   /* ---------- Animación: cartas que vuelan ---------- */
@@ -1545,6 +1622,7 @@
   }
 
   function celebrar(estado) {
+    sonarResultado(estado);
     chatBotsOcasional("win");
     const capa = $("celebracion");
     if (!capa || movimientoReducido()) return;
@@ -1729,7 +1807,10 @@
         if (ws !== ui.ws) return;
         ui.ws = null;
         detenerKeepAlive();
-        if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
+        if (ui.modo === "online" && ui.espectador) {
+          toast("Se cortó la conexión.", "err");
+          irMenu();
+        } else if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
           programarReconexion();
         }
       });
@@ -1771,7 +1852,10 @@
   }
 
   function alMensajeServidor(msg) {
-    if (msg.tuId) ui.tuId = msg.tuId;
+    if (msg.tuId) {
+      ui.tuId = msg.tuId;
+      ui.espectador = !!msg.esEspectador;
+    }
     if (msg.codigo) ui.codigo = msg.codigo;
     if (msg.token) guardarSesionSala(msg.token, msg.codigo || ui.codigo);
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
@@ -1781,6 +1865,12 @@
     if (msg.tipo === "pong") return;
 
     if (msg.tipo === "error") {
+      if (ui.espectador && msg.codigoError === "sala-inexistente") {
+        borrarSesionSala();
+        irMenu();
+        mostrarError(msg.mensaje || "La mesa se cerró.");
+        return;
+      }
       mostrarError(msg.mensaje || "Ha ocurrido un error.");
       if (msg.codigoError === "sala-inexistente") {
         borrarSesionSala();
@@ -1793,6 +1883,20 @@
 
     if (msg.tipo === "chat") {
       mostrarFrase(msg);
+      return;
+    }
+
+    // Modo espectador: se ve la mesa, sin cartas privadas y sin poder jugar
+    if (msg.tipo === "mirando") {
+      ui.modo = "online";
+      ui.espectador = true;
+      entrarEnMesaOnline(msg);
+      if ($("info-sala")) $("info-sala").textContent = "👁 " + (msg.codigo || ui.codigo || "");
+      if ($("mensaje-mesa")) $("mensaje-mesa").textContent = "Estás mirando la partida.";
+      return;
+    }
+    if (ui.espectador && msg.tipo === "partida-terminada") {
+      toast("La partida terminó.");
       return;
     }
 
@@ -1825,6 +1929,8 @@
       }
       return;
     }
+
+    if (msg.tipo === "accion" || msg.tipo === "turno" || msg.tipo === "calle" || msg.tipo === "mano-iniciada") sonarEvento(msg);
 
     if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
       entrarEnMesaOnline(msg);
@@ -1860,6 +1966,7 @@
       if ($("pantalla-mesa").hidden && msg.estado.fase !== "esperando") {
         entrarEnMesaOnline(msg);
       }
+      if (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown") registrarHistorial(msg.estado);
       renderMesa(msg.estado);
       if (msg.estado.mensaje && (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown" || msg.estado.fase === "entre-manos")) {
         $("mensaje-mesa").textContent = msg.estado.mensaje;
@@ -1870,10 +1977,16 @@
   }
 
   function entrarEnMesaOnline(msg) {
+    if ($("pantalla-mesa").hidden) ui.ultimaCiegaGrande = null;
+    const salaActual = msg.codigo || ui.codigo || "";
+    if (ui.historialSala !== salaActual) {
+      ui.historialSala = salaActual;
+      if (ui.historial) ui.historial.limpiar();
+    }
     ui.modo = "online";
-    $("info-sala").textContent = (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
+    $("info-sala").textContent = (ui.espectador ? "👁 " : "") + (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
     if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = !ui.codigo;
-    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = false;
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = !!ui.espectador;
     if (ui.codigo) actualizarUrlSala(ui.codigo);
     $("info-ciegas").textContent = "Ciegas 5 / 10";
     mostrar("pantalla-mesa");
@@ -1953,6 +2066,7 @@
         nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
         fichasIniciales: fichasElegidas("online"),
+        torneo: torneoElegido("online"),
         avatar: ui.avatar,
         token: ui.token
       });
@@ -1978,6 +2092,23 @@
     }
   }
 
+  async function mirarCodigo() {
+    limpiarAvisos();
+    const crudo = ($("input-codigo") && $("input-codigo").value) || codigoDesdeUbicacion() || "";
+    const codigo = extraerCodigo(crudo);
+    if (codigo.length !== 5) {
+      mostrarError("El código tiene que tener 5 letras, o pega el enlace de la mesa.");
+      return;
+    }
+    ui.modo = "online";
+    try {
+      await conectarWS();
+      enviarWS({ tipo: "mirar", codigo: codigo });
+    } catch (e) {
+      mostrarError(e.message);
+    }
+  }
+
   async function unirsePublica() {
     limpiarAvisos();
     ui.modo = "online";
@@ -1988,6 +2119,7 @@
         nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
         fichasIniciales: fichasElegidas("online"),
+        torneo: torneoElegido("online"),
         avatar: ui.avatar,
         token: ui.token
       });
@@ -2060,13 +2192,6 @@
     setTimeout(function () {
       mostrarFrase({ frase: frase, deNombre: bot.nombre, deAsiento: bot.asiento, deId: bot.id });
     }, 600 + Math.random() * 900);
-  }
-
-
-  function formatearBs(n) {
-    const v = Math.round((Number(n) || 0) * 100) / 100;
-    const s = (v % 1 === 0) ? String(v) : String(v).replace(".", ",");
-    return s + " Bs";
   }
 
   function fichasPorBs() {
@@ -2244,7 +2369,6 @@
 
   /* ---------- Enlazar botones ---------- */
 
-
   function iniciarUI() {
     cargarPreferencias();
     iniciarSelectoresFichas();
@@ -2268,6 +2392,7 @@
     if ($("btn-unirse-codigo")) $("btn-unirse-codigo").addEventListener("click", function () {
       conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
     });
+    if ($("btn-mirar-codigo")) $("btn-mirar-codigo").addEventListener("click", mirarCodigo);
     if ($("btn-sala-publica")) $("btn-sala-publica").addEventListener("click", jugarPublica);
     if ($("btn-llenar-bots")) $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
     if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
@@ -2292,6 +2417,12 @@
       pintarPreviewAvatar();
     });
     if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
+    if ($("btn-abrir-historial")) $("btn-abrir-historial").addEventListener("click", abrirHistorial);
+    if ($("btn-cerrar-historial")) $("btn-cerrar-historial").addEventListener("click", function () { $("panel-historial").hidden = true; });
+    if ($("btn-sonido")) {
+      $("btn-sonido").addEventListener("click", alternarSonido);
+      pintarBotonSonido();
+    }
     if ($("btn-abrir-chat")) $("btn-abrir-chat").addEventListener("click", abrirChat);
     if ($("btn-cerrar-chat")) $("btn-cerrar-chat").addEventListener("click", function () { $("panel-chat").hidden = true; });
     if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").addEventListener("click", function () { abrirCuentas("recargar"); });

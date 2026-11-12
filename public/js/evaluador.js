@@ -84,9 +84,34 @@
     return mazo;
   }
 
+  /**
+   * Devuelve un número en [0, 1) con aleatoriedad criptográfica.
+   * Math.random es predecible: si alguien observa varias manos podría
+   * deducir las cartas que vienen. crypto.getRandomValues no lo es.
+   * Funciona en el navegador y en Node.js 18+. Si por algún motivo
+   * no hubiera crypto, se usa Math.random como último recurso.
+   */
+  function crearAleatorioSeguro() {
+    let c = (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.getRandomValues === "function")
+      ? globalThis.crypto
+      : null;
+    if (!c && typeof require === "function") {
+      try { c = require("crypto").webcrypto || null; } catch (e) { c = null; }
+    }
+    if (!c || typeof c.getRandomValues !== "function") return Math.random;
+    const buffer = new Uint32Array(2);
+    return function () {
+      c.getRandomValues(buffer);
+      // 53 bits de aleatoriedad, igual que un double de Math.random
+      return (buffer[0] * 2097152 + (buffer[1] >>> 11)) / 9007199254740992;
+    };
+  }
+
+  const aleatorioSeguro = crearAleatorioSeguro();
+
   /** Baraja una copia del mazo (algoritmo de Fisher-Yates). */
   function barajar(mazo, aleatorio) {
-    const rnd = aleatorio || Math.random;
+    const rnd = aleatorio || aleatorioSeguro;
     const mezclado = mazo.slice();
     for (let i = mezclado.length - 1; i > 0; i--) {
       const j = Math.floor(rnd() * (i + 1));
@@ -385,6 +410,7 @@
     NOMBRES_CATEGORIA: NOMBRES_CATEGORIA,
     crearMazo: crearMazo,
     barajar: barajar,
+    aleatorioSeguro: aleatorioSeguro,
     puntuarCinco: puntuarCinco,
     compararPuntuaciones: compararPuntuaciones,
     mejorMano: mejorMano,

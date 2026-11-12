@@ -22,6 +22,7 @@ const { WebSocketServer } = require("ws");
 const Motor = require("./public/js/motor.js");
 const Bots = require("./public/js/bots.js");
 const Avatar = require("./public/js/avatar.js");
+const Limites = require("./servidor/limites.js");
 
 const PORT = process.env.PORT || 3000;
 const RAPIDO = process.env.POKER_RAPIDO === "1";
@@ -36,7 +37,24 @@ const FICHAS_POR_BS = 10;
 const MIN_RECARGA_BS = 10;
 const FRASES_CHAT = Avatar.FRASES_CHAT;
 
+/* ---- Límites de protección (ver servidor/limites.js) ---- */
+const CONFIAR_PROXY = process.env.TRUST_PROXY === "1" || !!process.env.RENDER;
+const MAX_MENSAJE_BYTES = 8 * 1024;        // ningún mensaje legítimo pesa tanto
+const MAX_MENSAJES_VENTANA = 60;           // por conexión...
+const VENTANA_MENSAJES_MS = 10000;         // ...cada 10 segundos
+const MAX_CONEXIONES_POR_IP = 20;
+const MAX_SALAS = 300;
+const MAX_ESPECTADORES = 20;               // por sala
+// En modo rápido (pruebas automáticas) se relajan, porque un solo equipo abre decenas de salas
+const FACTOR_LIMITES = RAPIDO ? 100 : 1;
+const limiteApi = Limites.crearLimitador(60 * FACTOR_LIMITES, 60000);     // consultas HTTP /api/sala por IP
+const limiteEntrar = Limites.crearLimitador(30 * FACTOR_LIMITES, 60000);  // intentos de unirse por IP
+const limiteCrear = Limites.crearLimitador(10 * FACTOR_LIMITES, 60000);   // salas nuevas por IP
+const conexionesPorIp = new Limites.ContadorConexiones(MAX_CONEXIONES_POR_IP);
+
 const app = express();
+app.disable("x-powered-by");
+app.use(Limites.cabecerasSeguras);
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/salud", function (req, res) {
   res.json({ ok: true, salas: salas.size });
@@ -45,6 +63,10 @@ app.get("/m/:codigo", function (req, res) {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 app.get("/api/sala/:codigo", function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
+    return;
+  }
   const codigo = normalizarCodigo(req.params.codigo);
   const sala = salas.get(codigo);
   if (!sala) {
@@ -62,7 +84,7 @@ app.get("/api/sala/:codigo", function (req, res) {
 });
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server: server, path: "/ws" });
+const wss = new WebSocketServer({ server: server, path: "/ws", maxPayload: MAX_MENSAJE_BYTES });
 
 const salas = new Map();
 
@@ -72,7 +94,7 @@ function codigoUnico() {
   do {
     codigo = "";
     for (let i = 0; i < 5; i++) {
-      codigo += letras[Math.floor(Math.random() * letras.length)];
+      codigo += letras[crypto.randomInt(letras.length)];
     }
   } while (salas.has(codigo));
   return codigo;
@@ -103,7 +125,10 @@ function leerCiegas(msg) {
   const crudo = (msg && msg.fichasIniciales != null) ? msg.fichasIniciales : Motor.FICHAS_INICIALES;
   const norm = Motor.normalizarFichas(crudo);
   if (norm.error) return norm;
-  return Motor.ciegasPara(norm.fichas);
+  const ciegas = Motor.ciegasPara(norm.fichas);
+  // Modo torneo: las ciegas se duplican cada MANOS_POR_NIVEL manos
+  ciegas.subirCiegasCada = (msg && msg.torneo === true) ? Motor.MANOS_POR_NIVEL : 0;
+  return ciegas;
 }
 
 function leerNombre(msg) {
@@ -139,6 +164,43 @@ function transmitir(sala, tipo, extra) {
     if (ws && ws.token) payload.token = ws.token;
     enviar(ws, payload);
   }
+  // Los espectadores reciben lo mismo que cualquiera, pero sin cartas privadas
+  // (estadoPublico sin id) y sin las cuentas en Bs, que son cosa de los jugadores.
+  for (const [id, ws] of sala.espectadores) {
+    const payload = Object.assign({
+      tipo: tipo,
+      estado: sala.mesa.estadoPublico()
+    }, meta(sala), extra);
+    delete payload.cuentas;
+    delete payload.mensajeCuentas;
+    delete payload.token;
+    payload.tuId = id;
+    payload.esAnfitrion = false;
+    payload.esEspectador = true;
+    enviar(ws, payload);
+  }
+}
+
+function payloadEspectador(sala, ws) {
+  const payload = Object.assign({
+    tipo: "mirando",
+    estado: sala.mesa.estadoPublico()
+  }, meta(sala));
+  delete payload.cuentas;
+  payload.tuId = ws.jugadorId;
+  payload.esAnfitrion = false;
+  payload.esEspectador = true;
+  return payload;
+}
+
+/** Cuando la sala desaparece, se avisa a quien estaba mirando. */
+function cerrarEspectadores(sala) {
+  for (const ws of sala.espectadores.values()) {
+    enviar(ws, { tipo: "error", codigoError: "sala-inexistente", mensaje: "La mesa se cerró." });
+    ws.espectador = false;
+    ws.codigoSala = null;
+  }
+  sala.espectadores.clear();
 }
 
 function enviarCartasPrivadas(sala) {
@@ -175,9 +237,11 @@ function crearSala(opciones) {
       asientos: opciones.asientos || 9,
       fichasIniciales: (opciones.ciegas && opciones.ciegas.fichasIniciales) || Motor.FICHAS_INICIALES,
       ciegaPequena: opciones.ciegas && opciones.ciegas.ciegaPequena,
-      ciegaGrande: opciones.ciegas && opciones.ciegas.ciegaGrande
+      ciegaGrande: opciones.ciegas && opciones.ciegas.ciegaGrande,
+      subirCiegasCada: (opciones.ciegas && opciones.ciegas.subirCiegasCada) || 0
     }),
     clientes: new Map(),
+    espectadores: new Map(),   // gente que solo mira: ve la mesa pero no juega ni ve cartas privadas
     partidaIniciada: false,
     timers: [],
     timerLimpieza: null,
@@ -194,7 +258,7 @@ function crearSala(opciones) {
 function engancharMesa(sala) {
   sala.mesa.on(function (ev) {
     if (ev.tipo === "mano-iniciada") {
-      transmitir(sala, "mano-iniciada", { secuenciaReparto: ev.secuenciaReparto });
+      transmitir(sala, "mano-iniciada", { secuenciaReparto: ev.secuenciaReparto, ciegasSubieron: !!ev.ciegasSubieron });
       enviarCartasPrivadas(sala);
     } else if (ev.tipo === "calle") {
       transmitir(sala, "calle", { calle: ev.calle, nuevas: ev.nuevas });
@@ -278,6 +342,7 @@ function programarLimpieza(sala) {
   }
   if (humanosEnMesa(sala) === 0) {
     limpiarTimers(sala);
+    cerrarEspectadores(sala);
     salas.delete(sala.codigo);
     console.log("Sala borrada (sin humanos)", sala.codigo);
     return;
@@ -287,6 +352,7 @@ function programarLimpieza(sala) {
       sala.timerLimpieza = null;
       if (humanosConectados(sala) === 0) {
         limpiarTimers(sala);
+        cerrarEspectadores(sala);
         salas.delete(sala.codigo);
         console.log("Sala caducada", sala.codigo);
       }
@@ -488,6 +554,7 @@ function meta(sala) {
     fichasIniciales: sala.mesa.fichasIniciales,
     ciegaPequena: sala.mesa.ciegaPequena,
     ciegaGrande: sala.mesa.ciegaGrande,
+    subirCiegasCada: sala.mesa.subirCiegasCada,
     cuentas: snapshotCuentas(sala)
   };
 }
@@ -602,6 +669,13 @@ function manejar(ws, msg) {
     return;
   }
 
+  // Quien solo mira no puede hacer nada salvo irse
+  if (ws.espectador) {
+    if (tipo === "salir") alSalir(ws, true);
+    else enviar(ws, { tipo: "error", mensaje: "Estás mirando la partida: solo los jugadores sentados pueden hacer eso." });
+    return;
+  }
+
   if (tipo === "reconectar") {
     const token = String(msg.token || "");
     const hallado = buscarPorToken(token);
@@ -610,6 +684,44 @@ function manejar(ws, msg) {
       return;
     }
     recostar(ws, hallado);
+    return;
+  }
+
+  if (tipo === "crear-privada" || tipo === "unirse" || tipo === "unirse-publica" || tipo === "mirar") {
+    const lim = tipo === "unirse" ? limiteEntrar : (tipo === "crear-privada" ? limiteCrear : limiteEntrar);
+    if (!lim.permitir(ws.ip)) {
+      enviar(ws, { tipo: "error", mensaje: "Demasiados intentos seguidos, espera un minuto." });
+      return;
+    }
+    if ((tipo === "crear-privada") && salas.size >= MAX_SALAS) {
+      enviar(ws, { tipo: "error", mensaje: "El servidor está lleno ahora mismo, prueba en unos minutos." });
+      return;
+    }
+  }
+
+  if (tipo === "mirar") {
+    const codigo = normalizarCodigo(msg.codigo);
+    if (codigo.length !== 5) {
+      enviar(ws, { tipo: "error", mensaje: "El código tiene que tener 5 letras, o pega el enlace de la mesa." });
+      return;
+    }
+    const sala = salas.get(codigo);
+    if (!sala) {
+      errorSalaInexistente(ws, codigo);
+      return;
+    }
+    if (ws.codigoSala) {
+      enviar(ws, { tipo: "error", mensaje: "Ya estás en una mesa." });
+      return;
+    }
+    if (sala.espectadores.size >= MAX_ESPECTADORES) {
+      enviar(ws, { tipo: "error", mensaje: "Ya hay demasiada gente mirando esta mesa." });
+      return;
+    }
+    ws.espectador = true;
+    ws.codigoSala = sala.codigo;
+    sala.espectadores.set(ws.jugadorId, ws);
+    enviar(ws, payloadEspectador(sala, ws));
     return;
   }
 
@@ -688,6 +800,10 @@ function manejar(ws, msg) {
       }
     }
     let sala = buscarSalaPublica();
+    if (!sala && salas.size >= MAX_SALAS) {
+      enviar(ws, { tipo: "error", mensaje: "El servidor está lleno ahora mismo, prueba en unos minutos." });
+      return;
+    }
     if (!sala) {
       const ciegas = leerCiegas(msg);
       if (ciegas.error) {
@@ -882,6 +998,12 @@ function alSalir(ws, intencional) {
   if (ws.reemplazado) return;
   const codigo = ws.codigoSala;
   const sala = salas.get(codigo);
+  if (ws.espectador) {
+    if (sala) sala.espectadores.delete(ws.jugadorId);
+    ws.espectador = false;
+    ws.codigoSala = null;
+    return;
+  }
   if (!sala) return;
 
   if (sala.clientes.get(ws.jugadorId) === ws) {
@@ -925,7 +1047,15 @@ function alSalir(ws, intencional) {
   if (salas.has(sala.codigo)) transmitir(sala, "sala-actualizada");
 }
 
-wss.on("connection", function (ws) {
+wss.on("connection", function (ws, req) {
+  ws.ip = Limites.ipDe(req, CONFIAR_PROXY);
+  if (!conexionesPorIp.entrar(ws.ip)) {
+    ws.close(1013, "Demasiadas conexiones");
+    return;
+  }
+  ws.limiteMensajes = Limites.crearLimitador(MAX_MENSAJES_VENTANA, VENTANA_MENSAJES_MS);
+  ws.avisosExceso = 0;
+  ws.on("error", function () { /* mensaje demasiado grande o conexión rota: se cierra sola */ });
   ws.jugadorId = nuevoId();
   ws.codigoSala = null;
   ws.token = null;
@@ -935,6 +1065,12 @@ wss.on("connection", function (ws) {
   ws.on("pong", function () { ws.isAlive = true; });
 
   ws.on("message", function (raw) {
+    if (!ws.limiteMensajes.permitir("m")) {
+      ws.avisosExceso += 1;
+      if (ws.avisosExceso === 1) enviar(ws, { tipo: "error", mensaje: "Vas muy rápido, espera un momento." });
+      if (ws.avisosExceso >= 5) ws.close(1008, "Exceso de mensajes");
+      return;
+    }
     let msg;
     try {
       msg = JSON.parse(raw.toString());
@@ -951,6 +1087,7 @@ wss.on("connection", function (ws) {
   });
 
   ws.on("close", function () {
+    conexionesPorIp.salir(ws.ip);
     alSalir(ws, !!ws.salidaIntencional);
   });
 });

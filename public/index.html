@@ -69,9 +69,11 @@
                   <button type="button" data-fichas="50000">50.000</button>
                 </div>
               </fieldset>
+              <label class="opcion-torneo"><input type="checkbox" id="torneo-online"> Modo torneo: las ciegas se duplican cada 10 manos</label>
               <div class="fila-codigo" id="caja-tengo-codigo">
                 <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
                 <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
+                <button type="button" id="btn-mirar-codigo" class="btn ghost" title="Ver la partida sin sentarte">Solo mirar</button>
               </div>
             </details>
           </div>
@@ -127,6 +129,7 @@
             <button type="button" data-fichas="50000">50.000</button>
           </div>
         </fieldset>
+        <label class="opcion-torneo"><input type="checkbox" id="torneo-solo"> Modo torneo: las ciegas se duplican cada 10 manos</label>
         <button type="button" id="btn-empezar-solo" class="principal">Sentarme a la mesa</button>
         <button type="button" id="btn-volver-solo" class="secundario">Volver</button>
       </div>
@@ -177,6 +180,8 @@
         <span id="info-sala" class="code-pill"></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
         <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
+        <button type="button" id="btn-abrir-historial" class="icon-btn" title="Historial de manos" aria-label="Historial de manos">📜</button>
+        <button type="button" id="btn-sonido" class="icon-btn" title="Sonido" aria-label="Activar o silenciar el sonido" aria-pressed="true">🔊</button>
         <button type="button" id="btn-abrir-cuentas" class="icon-btn" title="Recargar y cuentas en Bs" aria-label="Cuentas en bolivianos" hidden>💰</button>
         <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
@@ -402,11 +407,22 @@
     <p class="disclaimer">Solo lleva la cuenta; los pagos se hacen entre ustedes.</p>
   </div>
 
+  <div id="panel-historial" hidden>
+    <div class="chat-cabeza">
+      <strong>Historial de manos</strong>
+      <button type="button" id="btn-cerrar-historial" class="icon-btn" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="lista-historial" class="lista-historial"></div>
+  </div>
+
   <div id="toasts" role="status" aria-live="assertive"></div>
   <script src="/js/evaluador.js"></script>
   <script src="/js/motor.js"></script>
   <script src="/js/bots.js"></script>
   <script src="/js/avatar.js"></script>
+  <script src="/js/historial.js"></script>
+  <script src="/js/sonidos.js"></script>
+  <script src="/js/utilidades.js"></script>
   <script src="/js/interfaz.js"></script>
 </body>
 </html>

@@ -107,7 +107,7 @@
     } else if (a.pelo === 4) { // coleta
       pelo = '<path d="M' + (cx - rx) + ' 34 C ' + (cx - rx) + ' 16, ' + (cx + rx) + ' 16, ' + (cx + rx) + ' 34 C ' + cx + ' 18, ' + (cx - rx) + ' 28, ' + (cx - rx) + ' 34 Z" fill="' + peloC + '"/><ellipse cx="' + (cx + 16) + '" cy="48" rx="6" ry="10" fill="' + peloC + '"/>';
     } else if (a.pelo === 5) { // de lado
-      pelo = '<path d="M' + (cx - rx - 1) + ' 36 C ' + (cx - 10) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + rx) + ' 28 L ' + (cx + 8) + ' 24 C ' + (cx - 6) + ' 18, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
+      pelo = '<path d="M' + (cx - rx - 1) + ' 36 C ' + (cx - 10) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + rx) + ' 28 L ' + (cx + 8) + ' 24 C ' + (cx - 6) + ' 18, ' + (cx - rx + 2) + ' 22, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
     } else if (a.pelo === 6) { // gorra
       pelo = '<path d="M' + (cx - 18) + ' 30 C ' + (cx - 16) + ' 16, ' + (cx + 16) + ' 16, ' + (cx + 18) + ' 30 Z" fill="#1f2933"/><rect x="' + (cx - 22) + '" y="28" width="44" height="5" rx="2" fill="#111827"/>';
     } else if (a.pelo === 7) { // gorro
@@ -141,7 +141,7 @@
 
     let barba = "";
     if (a.barba === 1) barba = '<ellipse cx="40" cy="52" rx="12" ry="8" fill="' + peloC + '" opacity="0.35"/>';
-    if (a.barba === 2) barba = '<path d="M' + (cx - 13) + ' 46 C ' + (cx - 14) + ' 62, ' + (cx + 14) + ' 62, ' + (cx + 13) + ' 46 C ' + cx + ' 52, ' + (cx - 13) + ' 46 Z" fill="' + peloC + '"/>';
+    if (a.barba === 2) barba = '<path d="M' + (cx - 13) + ' 46 C ' + (cx - 14) + ' 62, ' + (cx + 14) + ' 62, ' + (cx + 13) + ' 46 C ' + (cx + 8) + ' 52, ' + (cx - 8) + ' 52, ' + (cx - 13) + ' 46 Z" fill="' + peloC + '"/>';
     if (a.barba === 3) barba = '<path d="M30 48 q10 4 20 0" stroke="' + peloC + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
     if (a.barba === 4) barba = '<path d="M36 50 C 36 58, 44 58, 44 50 Q 40 54 36 50" fill="' + peloC + '"/>';
 

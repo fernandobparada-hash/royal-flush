@@ -1109,7 +1109,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
 /* --------- v7: cuentas en bolivianos (solo anotación) --------- */
 #btn-abrir-cuentas { font-size: 1.15rem; }
-#panel-cuentas {
+#panel-cuentas, #panel-historial {
   position: fixed; left: 8px; right: 8px; bottom: calc(var(--seguro-abajo) + 8px);
   margin: 0 auto; max-width: 520px; z-index: 40;
   background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
@@ -1138,5 +1138,30 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 .lista-pagos p { margin: 0.25em 0; }
 #btn-cuentas-sala { margin: 0.6em 0 0.2em; }
 @media (max-width: 800px) {
-  #panel-cuentas { max-width: none; }
+  #panel-cuentas, #panel-historial { max-width: none; }
 }
+
+/* ---------- Modo torneo ---------- */
+.opcion-torneo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.opcion-torneo input { width: 18px; height: 18px; accent-color: #d4af37; }
+
+/* ---------- Historial de manos ---------- */
+.lista-historial { display: grid; gap: 0.5em; }
+.fila-historial {
+  background: #111d18; border: 1px solid var(--linea); border-radius: 10px;
+  padding: 0.55em 0.7em; text-align: left; font-size: 0.92rem;
+}
+.fila-historial header { display: flex; justify-content: space-between; gap: 0.5em; font-weight: 700; }
+.fila-historial.gane { border-color: #5ee0a0; }
+.fila-historial .detalle { color: var(--muted); font-size: 0.85rem; margin-top: 0.25em; }
+.fila-historial .cartas-texto { letter-spacing: 0.04em; font-weight: 600; color: var(--texto); }
+.fila-historial .ganador-linea { margin-top: 0.25em; }
+.historial-vacio { color: var(--muted); text-align: center; margin: 1em 0; }
+#btn-sonido[aria-pressed="false"] { opacity: 0.55; }

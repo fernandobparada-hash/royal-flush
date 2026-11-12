@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node pruebas/probar-evaluador.js && node pruebas/probar-motor.js"
+    "construir": "node scripts/construir-html-unico.js",
+    "test": "node pruebas/probar-evaluador.js && node pruebas/probar-motor.js && node pruebas/probar-botes.js && node pruebas/probar-bots.js && node pruebas/probar-limites.js && node pruebas/probar-utilidades.js && node pruebas/probar-historial.js && node pruebas/probar-avatar.js && node pruebas/verificar-html-unico.js",
+    "test:online": "node pruebas/probar-sala.js && node pruebas/probar-online-v6.js && node pruebas/probar-cuentas.js && node pruebas/probar-espectador.js",
+    "test:seguridad": "node pruebas/probar-seguridad.js",
+    "test:navegador": "node pruebas/probar-navegador.js"
   },
   "engines": {
     "node": ">=18"

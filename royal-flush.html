@@ -1125,7 +1125,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
 /* --------- v7: cuentas en bolivianos (solo anotación) --------- */
 #btn-abrir-cuentas { font-size: 1.15rem; }
-#panel-cuentas {
+#panel-cuentas, #panel-historial {
   position: fixed; left: 8px; right: 8px; bottom: calc(var(--seguro-abajo) + 8px);
   margin: 0 auto; max-width: 520px; z-index: 40;
   background: var(--panel); border: 1px solid var(--linea); border-radius: 14px;
@@ -1154,8 +1154,33 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 .lista-pagos p { margin: 0.25em 0; }
 #btn-cuentas-sala { margin: 0.6em 0 0.2em; }
 @media (max-width: 800px) {
-  #panel-cuentas { max-width: none; }
+  #panel-cuentas, #panel-historial { max-width: none; }
 }
+
+/* ---------- Modo torneo ---------- */
+.opcion-torneo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.opcion-torneo input { width: 18px; height: 18px; accent-color: #d4af37; }
+
+/* ---------- Historial de manos ---------- */
+.lista-historial { display: grid; gap: 0.5em; }
+.fila-historial {
+  background: #111d18; border: 1px solid var(--linea); border-radius: 10px;
+  padding: 0.55em 0.7em; text-align: left; font-size: 0.92rem;
+}
+.fila-historial header { display: flex; justify-content: space-between; gap: 0.5em; font-weight: 700; }
+.fila-historial.gane { border-color: #5ee0a0; }
+.fila-historial .detalle { color: var(--muted); font-size: 0.85rem; margin-top: 0.25em; }
+.fila-historial .cartas-texto { letter-spacing: 0.04em; font-weight: 600; color: var(--texto); }
+.fila-historial .ganador-linea { margin-top: 0.25em; }
+.historial-vacio { color: var(--muted); text-align: center; margin: 1em 0; }
+#btn-sonido[aria-pressed="false"] { opacity: 0.55; }
 
   </style>
 </head>
@@ -1212,9 +1237,11 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
                   <button type="button" data-fichas="50000">50.000</button>
                 </div>
               </fieldset>
+              <label class="opcion-torneo"><input type="checkbox" id="torneo-online"> Modo torneo: las ciegas se duplican cada 10 manos</label>
               <div class="fila-codigo" id="caja-tengo-codigo">
                 <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
                 <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
+                <button type="button" id="btn-mirar-codigo" class="btn ghost" title="Ver la partida sin sentarte">Solo mirar</button>
               </div>
             </details>
           </div>
@@ -1270,6 +1297,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
             <button type="button" data-fichas="50000">50.000</button>
           </div>
         </fieldset>
+        <label class="opcion-torneo"><input type="checkbox" id="torneo-solo"> Modo torneo: las ciegas se duplican cada 10 manos</label>
         <button type="button" id="btn-empezar-solo" class="principal">Sentarme a la mesa</button>
         <button type="button" id="btn-volver-solo" class="secundario">Volver</button>
       </div>
@@ -1320,6 +1348,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
         <span id="info-sala" class="code-pill"></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
         <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
+        <button type="button" id="btn-abrir-historial" class="icon-btn" title="Historial de manos" aria-label="Historial de manos">📜</button>
+        <button type="button" id="btn-sonido" class="icon-btn" title="Sonido" aria-label="Activar o silenciar el sonido" aria-pressed="true">🔊</button>
         <button type="button" id="btn-abrir-cuentas" class="icon-btn" title="Recargar y cuentas en Bs" aria-label="Cuentas en bolivianos" hidden>💰</button>
         <span class="spacer"></span>
         <span id="info-ciegas">Ciegas 5 / 10</span>
@@ -1545,6 +1575,14 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     <p class="disclaimer">Solo lleva la cuenta; los pagos se hacen entre ustedes.</p>
   </div>
 
+  <div id="panel-historial" hidden>
+    <div class="chat-cabeza">
+      <strong>Historial de manos</strong>
+      <button type="button" id="btn-cerrar-historial" class="icon-btn" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="lista-historial" class="lista-historial"></div>
+  </div>
+
   <div id="toasts" role="status" aria-live="assertive"></div>
   <script>
 /* =========================================================
@@ -1633,9 +1671,34 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     return mazo;
   }
 
+  /**
+   * Devuelve un número en [0, 1) con aleatoriedad criptográfica.
+   * Math.random es predecible: si alguien observa varias manos podría
+   * deducir las cartas que vienen. crypto.getRandomValues no lo es.
+   * Funciona en el navegador y en Node.js 18+. Si por algún motivo
+   * no hubiera crypto, se usa Math.random como último recurso.
+   */
+  function crearAleatorioSeguro() {
+    let c = (typeof globalThis !== "undefined" && globalThis.crypto && typeof globalThis.crypto.getRandomValues === "function")
+      ? globalThis.crypto
+      : null;
+    if (!c && typeof require === "function") {
+      try { c = require("crypto").webcrypto || null; } catch (e) { c = null; }
+    }
+    if (!c || typeof c.getRandomValues !== "function") return Math.random;
+    const buffer = new Uint32Array(2);
+    return function () {
+      c.getRandomValues(buffer);
+      // 53 bits de aleatoriedad, igual que un double de Math.random
+      return (buffer[0] * 2097152 + (buffer[1] >>> 11)) / 9007199254740992;
+    };
+  }
+
+  const aleatorioSeguro = crearAleatorioSeguro();
+
   /** Baraja una copia del mazo (algoritmo de Fisher-Yates). */
   function barajar(mazo, aleatorio) {
-    const rnd = aleatorio || Math.random;
+    const rnd = aleatorio || aleatorioSeguro;
     const mezclado = mazo.slice();
     for (let i = mezclado.length - 1; i > 0; i--) {
       const j = Math.floor(rnd() * (i + 1));
@@ -1934,6 +1997,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     NOMBRES_CATEGORIA: NOMBRES_CATEGORIA,
     crearMazo: crearMazo,
     barajar: barajar,
+    aleatorioSeguro: aleatorioSeguro,
     puntuarCinco: puntuarCinco,
     compararPuntuaciones: compararPuntuaciones,
     mejorMano: mejorMano,
@@ -1979,6 +2043,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   const FICHAS_MAX = 50000;
   const CIEGA_PEQUENA = 5;
   const CIEGA_GRANDE = 10;
+  // Modo torneo: cada cuántas manos suben (se duplican) las ciegas
+  const MANOS_POR_NIVEL = 10;
 
   /**
    * Comprueba que las fichas iniciales estén entre 10 y 50.000.
@@ -2049,6 +2115,9 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       this.ciegaPequena = ciegas.ciegaPequena;
       this.ciegaGrande = ciegas.ciegaGrande;
     }
+    // Modo torneo: 0 = ciegas fijas; N = se duplican cada N manos
+    this.subirCiegasCada = Math.max(0, Math.floor(Number(opciones.subirCiegasCada) || 0));
+    this.nivelCiegas = 1;
     this.porAsiento = new Array(this.asientosTotales).fill(null);
     this.fase = "esperando";
     this.mazo = [];
@@ -2192,6 +2261,18 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       return { error: this.mensaje };
     }
 
+    // Modo torneo: cada N manos las ciegas se duplican (sin pasarse de la mitad del stack inicial)
+    let ciegasSubieron = false;
+    if (this.subirCiegasCada > 0 && this.manosJugadas > 0 && this.manosJugadas % this.subirCiegasCada === 0) {
+      const tope = Math.max(this.ciegaGrande, Math.floor(this.fichasIniciales / 2));
+      if (this.ciegaGrande * 2 <= tope) {
+        this.ciegaPequena *= 2;
+        this.ciegaGrande *= 2;
+        this.nivelCiegas += 1;
+        ciegasSubieron = true;
+      }
+    }
+
     const lista = this.jugadores();
     for (let i = 0; i < lista.length; i++) {
       const j = lista[i];
@@ -2259,7 +2340,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       secuenciaReparto: secuenciaReparto,
       asientoSB: this.asientoSB,
       asientoBB: this.asientoBB,
-      botonDealer: this.botonDealer
+      botonDealer: this.botonDealer,
+      ciegasSubieron: ciegasSubieron
     });
     return { ok: true };
   };
@@ -2792,6 +2874,9 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       ciegaPequena: this.ciegaPequena,
       ciegaGrande: this.ciegaGrande,
       fichasIniciales: this.fichasIniciales,
+      subirCiegasCada: this.subirCiegasCada,
+      nivelCiegas: this.nivelCiegas,
+      manosParaSubirCiegas: this.manosParaSubirCiegas(),
       turnoId: this.turnoId,
       manosJugadas: this.manosJugadas,
       mensaje: this.mensaje,
@@ -2799,6 +2884,19 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       acciones: (paraId && paraId === this.turnoId) ? this.accionesLegales(paraId) : this.accionesLegales(),
       jugadores: jugadores
     };
+  };
+
+  /**
+   * Modo torneo: cuántas manos faltan para que suban las ciegas.
+   * 0 significa "en la próxima mano". Devuelve null si no hay torneo.
+   */
+  Mesa.prototype.manosParaSubirCiegas = function () {
+    const n = this.subirCiegasCada;
+    if (!n) return null;
+    const k = this.manosJugadas;
+    const resto = k % n;
+    if (k > 0 && resto === 0) return 0;
+    return n - resto;
   };
 
   Mesa.prototype.cartasDe = function (jugadorId) {
@@ -2814,6 +2912,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     FICHAS_MAX: FICHAS_MAX,
     CIEGA_PEQUENA: CIEGA_PEQUENA,
     CIEGA_GRANDE: CIEGA_GRANDE,
+    MANOS_POR_NIVEL: MANOS_POR_NIVEL,
     normalizarFichas: normalizarFichas,
     ciegasPara: ciegasPara
   };
@@ -2831,11 +2930,15 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
    de nadie ni las cartas que todavía no han salido.
 
    Su decisión se basa en:
-     1) Lo fuerte que es SU mano (o lo buena que era al
-        empezar, si todavía no hay flop)
-     2) Si tiene "proyectadas" (casi un color o una escalera)
-     3) Un poco de azar, para que no sean predecibles
-        (a veces farolean, a veces se asustan)
+     1) Su probabilidad real de ganar (equidad), calculada
+        simulando miles de repartos posibles (Monte Carlo)
+     2) Lo que cuesta igualar frente a lo que hay en el bote
+        (pot odds)
+     3) Su posición en la mesa y cuántos rivales quedan
+     4) Su estilo de juego (tight, agresivo, suelto o
+        equilibrado), distinto para cada bot
+     5) Un poco de azar, para que no sean predecibles
+        (a veces farolean)
    ========================================================= */
 
 (function (raiz) {
@@ -2918,88 +3021,303 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     return Math.max(0.05, Math.min(0.99, s));
   }
 
+  /* ---------------------------------------------------------
+     ESTILOS DE JUEGO
+     Cada bot tiene un estilo fijo (según su nombre), así en la
+     mesa no todos juegan igual:
+       selectividad: suma = más exigente con las manos que juega
+       agresion:     multiplica las ganas de apostar y subir
+       farol:        probabilidad base de farolear
+       paga:         cuánto le cuesta retirarse (paga más con dudas)
+     --------------------------------------------------------- */
+  const ESTILOS = {
+    tight:       { nombre: "tight",       selectividad:  0.07, agresion: 0.9,  farol: 0.03, paga: -0.03 },
+    agresivo:    { nombre: "agresivo",    selectividad: -0.02, agresion: 1.4,  farol: 0.13, paga:  0.00 },
+    suelto:      { nombre: "suelto",      selectividad: -0.08, agresion: 0.85, farol: 0.06, paga:  0.05 },
+    equilibrado: { nombre: "equilibrado", selectividad:  0.00, agresion: 1.0,  farol: 0.07, paga:  0.00 }
+  };
+  const LISTA_ESTILOS = ["tight", "agresivo", "suelto", "equilibrado"];
+
+  function hashTexto(t) {
+    let h = 2166136261;
+    t = String(t || "");
+    for (let i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  /** Estilo de un bot: siempre el mismo para el mismo jugador. */
+  function estiloDe(jugador) {
+    if (jugador && jugador.estiloBot && ESTILOS[jugador.estiloBot]) return ESTILOS[jugador.estiloBot];
+    const clave = jugador ? (jugador.nombre || jugador.id) : "";
+    return ESTILOS[LISTA_ESTILOS[hashTexto(clave) % LISTA_ESTILOS.length]];
+  }
+
+  /* ---------------------------------------------------------
+     POSICIÓN Y RIVALES
+     --------------------------------------------------------- */
+
+  /** Rivales que siguen en la mano (sin contarse a sí mismo). */
+  function contarRivales(jugador, estado) {
+    const lista = estado.jugadores || [];
+    let n = 0;
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].id !== jugador.id && lista[i].enMano && !lista[i].retirado) n++;
+    }
+    return n;
+  }
+
+  /**
+   * Posición del 0 al 1 entre los jugadores que siguen en la mano:
+   * 1 = último en hablar después del flop (el botón), 0 = el primero.
+   * Hablar al final es una ventaja: ya viste qué hicieron los demás.
+   */
+  function posicionRelativa(jugador, estado) {
+    const lista = (estado.jugadores || []).filter(function (j) { return j.enMano && !j.retirado; });
+    if (lista.length < 2 || estado.botonDealer == null) return 0.5;
+    const total = estado.asientosTotales || 9;
+    const boton = estado.botonDealer;
+    function distancia(j) {
+      const d = ((j.asiento - boton) % total + total) % total;
+      return d === 0 ? total : d; // el botón habla el último
+    }
+    lista.sort(function (a, b) { return distancia(a) - distancia(b); });
+    const idx = lista.findIndex(function (j) { return j.id === jugador.id; });
+    if (idx < 0) return 0.5;
+    return idx / (lista.length - 1);
+  }
+
+  /* ---------------------------------------------------------
+     EQUIDAD (probabilidad real de ganar), por simulación Monte Carlo
+     Repartimos al azar las cartas que faltan y las manos de los rivales
+     muchas veces, y contamos cuántas veces ganaría el bot.
+     --------------------------------------------------------- */
+  function equidad(privadas, comunitarias, rivales, iteraciones, aleatorio) {
+    const rnd = aleatorio || Math.random;
+    rivales = Math.max(1, Math.min(rivales || 1, 9));
+    iteraciones = iteraciones || 160;
+    const conocidas = privadas.concat(comunitarias);
+    const mazo = Ev.crearMazo().filter(function (c) {
+      return !conocidas.some(function (k) { return k.numero === c.numero && k.palo === c.palo; });
+    });
+    const faltan = 5 - comunitarias.length;
+    const necesarias = faltan + rivales * 2;
+    if (necesarias > mazo.length) return 0.5;
+
+    let puntos = 0;
+    for (let it = 0; it < iteraciones; it++) {
+      // Fisher-Yates parcial: basta con mezclar las cartas que vamos a usar
+      for (let i = 0; i < necesarias; i++) {
+        const j = i + Math.floor(rnd() * (mazo.length - i));
+        const tmp = mazo[i]; mazo[i] = mazo[j]; mazo[j] = tmp;
+      }
+      const mesa = comunitarias.concat(mazo.slice(0, faltan));
+      const mia = Ev.mejorMano(privadas.concat(mesa));
+      let gana = true;
+      let empates = 0;
+      for (let r = 0; r < rivales; r++) {
+        const base = faltan + r * 2;
+        const su = Ev.mejorMano([mazo[base], mazo[base + 1]].concat(mesa));
+        const c = Ev.compararPuntuaciones(mia, su);
+        if (c < 0) { gana = false; break; }
+        if (c === 0) empates++;
+      }
+      if (gana) puntos += 1 / (empates + 1);
+    }
+    return puntos / iteraciones;
+  }
+
   /**
    * Elige una acción legal. Devuelve { tipo, cantidad }.
    * "cantidad" es el total de la ronda (subir a X).
+   * opciones (para pruebas): { aleatorio: fn, iteraciones: n }
    */
-  function decidir(legales, jugador, estado) {
+  function decidir(legales, jugador, estado, opciones) {
     if (!legales || !legales.tipos || legales.tipos.length === 0) {
       return { tipo: "pasar" };
     }
+    opciones = opciones || {};
+    const rnd = opciones.aleatorio || Math.random;
 
     const privadas = (jugador.cartas || []).filter(function (c) { return !c.oculta; });
     const comunitarias = estado.comunitarias || [];
-    const fase = estado.fase;
-    const fuerza = (fase === "preflop" || comunitarias.length < 3)
-      ? fuerzaPreflop(privadas)
-      : fuerzaPostflop(privadas, comunitarias);
+    const preflop = estado.fase === "preflop" || comunitarias.length < 3;
+    const estilo = estiloDe(jugador);
+    const rivales = Math.max(1, contarRivales(jugador, estado));
+    const pos = posicionRelativa(jugador, estado);
 
-    const azar = Math.random();
-    const farol = azar < 0.06;
-    const asustado = azar > 0.88;
-    const porIgualar = legales.porIgualar || 0;
+    const bb = estado.ciegaGrande || 10;
     const bote = estado.boteTotal || 0;
+    const porIgualar = legales.porIgualar || 0;
+    const apuestaMaxima = estado.apuestaMaxima || 0;
     const potOdds = porIgualar / (bote + porIgualar + 1);
-    const apuestaGrande = porIgualar >= Math.max(estado.ciegaGrande * 6, jugador.fichas * 0.25);
+    const azar = rnd();
+    const stackEnCiegas = (jugador.fichas || 0) / bb;
 
-    function subirAlgo(agresivo) {
-      const min = legales.minSubida || (estado.apuestaMaxima + (estado.subidaMinima || estado.ciegaGrande));
+    // ---- Fuerza de la mano ----
+    let fuerza;      // 0 a 1, solo para preflop
+    let equity = 0;  // probabilidad de ganar, solo postflop
+    let rel = 0;     // equity respecto a lo "normal" con ese número de rivales (-1 a 1)
+    let proyecta = false;
+    if (preflop) {
+      fuerza = fuerzaPreflop(privadas);
+      // Con muchos rivales hay que exigir más; en buena posición se puede jugar más
+      fuerza += (pos - 0.5) * 0.08 - Math.max(0, rivales - 2) * 0.012;
+      fuerza = Math.max(0.03, Math.min(0.99, fuerza));
+    } else {
+      equity = equidad(privadas, comunitarias, rivales, opciones.iteraciones, rnd);
+      const justo = 1 / (rivales + 1);
+      rel = (equity - justo) / (1 - justo);
+      const draws = Ev.detectarProyectadas(privadas.concat(comunitarias));
+      proyecta = !!(draws.color || draws.escaleraAbierta) && comunitarias.length < 5;
+    }
+
+    // ---- Tamaños de apuesta ----
+    // "frac" es la fracción del bote. Devuelve la acción lista para enviar.
+    function apuestaDe(frac, permitirAllIn) {
+      const min = legales.minSubida || (apuestaMaxima + (estado.subidaMinima || bb));
       const max = legales.maxSubida;
-      if (!isFinite(min) || !isFinite(max) || max <= 0) return { tipo: legales.puedeIgualar ? "igualar" : (legales.puedePasar ? "pasar" : "retirarse") };
-      let objetivo;
-      // All-in solo con manos realmente fuertes y muy de vez en cuando
-      if (agresivo && fuerza > 0.93 && azar < 0.12) {
-        objetivo = max;
-      } else if ((estado.fase === "preflop" || (estado.comunitarias || []).length === 0) && (estado.apuestaMaxima || 0) <= (estado.ciegaGrande || 10)) {
-        // Apertura clásica: entre 2.5 y 4 ciegas grandes
-        const bb = estado.ciegaGrande || 10;
-        objetivo = bb * (agresivo ? 4 : 3);
-      } else {
-        const boteTras = bote + porIgualar;
-        const tamano = agresivo ? 0.65 : 0.45;
-        objetivo = Math.round((estado.apuestaMaxima || 0) + Math.max(estado.ciegaGrande, boteTras * tamano));
-        // Tope: no más de un tercio de las fichas en una sola subida (salvo all-in raro de arriba)
+      const alternativa = legales.puedeIgualar ? { tipo: "igualar" } : (legales.puedePasar ? { tipo: "pasar" } : { tipo: "retirarse" });
+      if (!isFinite(min) || !isFinite(max) || max <= 0) return alternativa;
+      if (!(legales.puedeApostar || legales.puedeSubir)) {
+        return (permitirAllIn && legales.puedeAllIn) ? { tipo: "all-in" } : alternativa;
+      }
+      const boteTras = bote + porIgualar;
+      let objetivo = Math.round(apuestaMaxima + Math.max(bb, boteTras * frac));
+      if (preflop && apuestaMaxima <= bb) {
+        objetivo = Math.round(bb * (2.5 + frac * 2)); // apertura clásica: 2,5 a 4 ciegas
+      }
+      if (!permitirAllIn) {
+        // No más de un tercio del stack en una sola apuesta, salvo que ya esté muy comprometido
         const tope = jugador.apuestaRonda + Math.max(min, Math.floor(jugador.fichas * 0.35));
         objetivo = Math.min(objetivo, tope);
       }
       objetivo = Math.max(min, Math.min(max, objetivo));
-      if (objetivo >= max && fuerza < 0.9) objetivo = Math.max(min, max - 1);
-      if (objetivo >= max) return { tipo: "all-in" };
+      if (objetivo >= max) {
+        if (permitirAllIn && legales.puedeAllIn) return { tipo: "all-in" };
+        if (max - 1 >= min) objetivo = max - 1;
+        else return legales.puedeAllIn ? { tipo: "all-in" } : alternativa;
+      }
       return { tipo: legales.puedeApostar ? "apostar" : "subir", cantidad: objetivo };
     }
 
-    // Si puede pasar (nadie ha apostado, o ya está igualado)
+    function pagarOPasar() {
+      if (legales.puedePasar) return { tipo: "pasar" };
+      if (legales.puedeIgualar) return { tipo: "igualar" };
+      if (legales.puedeAllIn) return { tipo: "all-in" };
+      return { tipo: "retirarse" };
+    }
+    function soltar() {
+      if (legales.puedePasar) return { tipo: "pasar" };
+      return { tipo: "retirarse" };
+    }
+
+    // =====================================================
+    // PREFLOP
+    // =====================================================
+    if (preflop) {
+      // Stack corto (menos de 12 ciegas): se juega "todo o nada"
+      if (stackEnCiegas <= 12 && legales.puedeAllIn) {
+        const umbralEmpuje = 0.62 + estilo.selectividad - (12 - stackEnCiegas) * 0.015 - (pos * 0.04);
+        if (fuerza >= umbralEmpuje) return { tipo: "all-in" };
+        if (!legales.puedePasar && porIgualar > jugador.fichas * 0.5 && fuerza < umbralEmpuje - 0.1) return { tipo: "retirarse" };
+      }
+
+      const premium = fuerza >= 0.86;
+      const buena = fuerza >= 0.62 + estilo.selectividad;
+
+      // Nadie ha subido (solo ciegas): abrimos, limpeamos o pasamos
+      if (apuestaMaxima <= bb) {
+        const umbralAbrir = 0.56 + estilo.selectividad - pos * 0.06;
+        if (legales.puedePasar) {
+          // estamos en la ciega grande: no hace falta pagar
+          if ((fuerza > umbralAbrir + 0.08 || azar < estilo.farol * 0.5) && (legales.puedeApostar || legales.puedeSubir) && azar < 0.65 * estilo.agresion) {
+            return apuestaDe(0.5 + fuerza * 0.4, false);
+          }
+          return { tipo: "pasar" };
+        }
+        if (fuerza >= umbralAbrir && (legales.puedeApostar || legales.puedeSubir) && azar < Math.min(0.92, 0.5 + 0.4 * estilo.agresion)) {
+          return apuestaDe(0.5 + fuerza * 0.5, premium && azar < 0.05);
+        }
+        if (legales.puedeIgualar && fuerza >= 0.34 + estilo.selectividad * 0.5 && porIgualar <= bb) {
+          return { tipo: "igualar" }; // limp barato
+        }
+        return soltar();
+      }
+
+      // Alguien subió: ¿cuánto nos cuesta? (en ciegas)
+      const costeEnCiegas = porIgualar / bb;
+      if (premium && (legales.puedeSubir || legales.puedeApostar) && azar < 0.7 * estilo.agresion) {
+        return apuestaDe(0.9, fuerza >= 0.94 && azar < 0.35);
+      }
+      if (buena && (legales.puedeSubir || legales.puedeApostar) && fuerza >= 0.74 && azar < 0.25 * estilo.agresion) {
+        return apuestaDe(0.75, false);
+      }
+      // Pagar si la mano aguanta el precio; cuanto más cara la subida, más fuerza pide
+      const precio = Math.min(0.28, costeEnCiegas * 0.025);
+      const umbralPago = 0.42 + estilo.selectividad - estilo.paga + precio;
+      if (fuerza >= umbralPago || (potOdds < 0.12 && fuerza > 0.3)) {
+        return legales.puedeIgualar ? { tipo: "igualar" } : pagarOPasar();
+      }
+      if (azar < estilo.farol * 0.4 && (legales.puedeSubir) && costeEnCiegas <= 6) {
+        return apuestaDe(0.8, false); // farol de 3-bet, muy de vez en cuando
+      }
+      return soltar();
+    }
+
+    // =====================================================
+    // POSTFLOP (flop, turn, river)
+    // =====================================================
+    const enRiver = comunitarias.length === 5;
+    const valorMin = 0.34 + estilo.selectividad;   // "rel" mínima para apostar por valor
+    const subirMin = 0.60 + estilo.selectividad;   // "rel" mínima para subir
+
+    // Nadie ha apostado: pasamos o apostamos
     if (legales.puedePasar) {
-      if (asustado) return { tipo: "pasar" };
-      const umbralApuesta = (estado.fase === "preflop") ? 0.72 : 0.62;
-      if ((fuerza > umbralApuesta || farol) && (legales.puedeApostar || legales.puedeSubir) && azar < 0.4 + fuerza * 0.25) {
-        return subirAlgo(fuerza > 0.8);
+      const puedeApostar = legales.puedeApostar || legales.puedeSubir;
+      if (!puedeApostar) return { tipo: "pasar" };
+
+      if (rel >= valorMin && azar < Math.min(0.95, 0.55 + 0.35 * estilo.agresion + pos * 0.1)) {
+        // Cuanto más fuerte, más grande la apuesta
+        const frac = rel > 0.75 ? 0.8 : (rel > 0.55 ? 0.62 : 0.45);
+        return apuestaDe(frac, rel > 0.92 && azar < 0.15);
+      }
+      if (proyecta && !enRiver && azar < 0.32 * estilo.agresion) {
+        return apuestaDe(0.5, false); // semi-farol con proyecto
+      }
+      if (rel < 0.1 && rivales <= 2 && azar < estilo.farol * (0.6 + pos)) {
+        return apuestaDe(0.6, false); // farol, sobre todo en posición y contra pocos
       }
       return { tipo: "pasar" };
     }
 
-    // Alguien ha apostado: ¿igualamos, subimos o nos retiramos?
-    if (asustado && fuerza < 0.75 && apuestaGrande) {
-      return { tipo: "retirarse" };
-    }
+    // Alguien apostó: comparamos nuestra probabilidad de ganar con lo que cuesta igualar
+    const margen = 0.02 + (0.04 * (1 - estilo.agresion / 1.4)) - estilo.paga;
+    const necesaria = potOdds + Math.max(-0.02, margen);
+    const puedeSubir = legales.puedeSubir || legales.puedeApostar;
 
-    if (fuerza < 0.22 && !farol) {
-      if (apuestaGrande || (potOdds > 0.35 && fuerza < 0.3)) {
-        return { tipo: "retirarse" };
-      }
+    // Mano muy fuerte: subir por valor (y a veces todo el stack)
+    if (rel >= subirMin && puedeSubir && azar < 0.45 * estilo.agresion + 0.15) {
+      return apuestaDe(rel > 0.8 ? 0.9 : 0.65, rel > 0.88 && azar < 0.18);
     }
-
-    if (fuerza < 0.35 && apuestaGrande && !farol && azar < 0.7) {
-      return { tipo: "retirarse" };
+    // Semi-farol: subir con un proyecto fuerte
+    if (proyecta && !enRiver && puedeSubir && equity >= necesaria && azar < 0.18 * estilo.agresion) {
+      return apuestaDe(0.7, false);
     }
-
-    if ((fuerza > 0.78 || farol) && (legales.puedeSubir || legales.puedeApostar) && azar < 0.5 + fuerza * 0.25) {
-      return subirAlgo(true);
+    // Con las cuentas a favor, igualamos
+    if (equity >= necesaria) {
+      return legales.puedeIgualar ? { tipo: "igualar" } : pagarOPasar();
     }
-
-    if (legales.puedeIgualar) return { tipo: "igualar" };
-    if (legales.puedePasar) return { tipo: "pasar" };
-    if (legales.puedeAllIn && fuerza > 0.92 && apuestaGrande) return { tipo: "all-in" };
+    // Proyecto que con las probabilidades implícitas casi compensa
+    if (proyecta && !enRiver && equity + 0.07 >= necesaria && porIgualar <= (bote + 1) * 0.5) {
+      return legales.puedeIgualar ? { tipo: "igualar" } : pagarOPasar();
+    }
+    // Pagar "por curiosidad" a veces cuando la apuesta es pequeña
+    if (porIgualar <= bb && azar < 0.2 + estilo.paga * 2) {
+      return legales.puedeIgualar ? { tipo: "igualar" } : pagarOPasar();
+    }
     return { tipo: "retirarse" };
   }
 
@@ -3008,6 +3326,10 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     nombreBot: nombreBot,
     fuerzaPreflop: fuerzaPreflop,
     fuerzaPostflop: fuerzaPostflop,
+    equidad: equidad,
+    estiloDe: estiloDe,
+    posicionRelativa: posicionRelativa,
+    ESTILOS: ESTILOS,
     decidir: decidir
   };
 
@@ -3126,7 +3448,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     } else if (a.pelo === 4) { // coleta
       pelo = '<path d="M' + (cx - rx) + ' 34 C ' + (cx - rx) + ' 16, ' + (cx + rx) + ' 16, ' + (cx + rx) + ' 34 C ' + cx + ' 18, ' + (cx - rx) + ' 28, ' + (cx - rx) + ' 34 Z" fill="' + peloC + '"/><ellipse cx="' + (cx + 16) + '" cy="48" rx="6" ry="10" fill="' + peloC + '"/>';
     } else if (a.pelo === 5) { // de lado
-      pelo = '<path d="M' + (cx - rx - 1) + ' 36 C ' + (cx - 10) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + rx) + ' 28 L ' + (cx + 8) + ' 24 C ' + (cx - 6) + ' 18, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
+      pelo = '<path d="M' + (cx - rx - 1) + ' 36 C ' + (cx - 10) + ' 14, ' + (cx + 16) + ' 14, ' + (cx + rx) + ' 28 L ' + (cx + 8) + ' 24 C ' + (cx - 6) + ' 18, ' + (cx - rx + 2) + ' 22, ' + (cx - rx + 2) + ' 28 Z" fill="' + peloC + '"/>';
     } else if (a.pelo === 6) { // gorra
       pelo = '<path d="M' + (cx - 18) + ' 30 C ' + (cx - 16) + ' 16, ' + (cx + 16) + ' 16, ' + (cx + 18) + ' 30 Z" fill="#1f2933"/><rect x="' + (cx - 22) + '" y="28" width="44" height="5" rx="2" fill="#111827"/>';
     } else if (a.pelo === 7) { // gorro
@@ -3160,7 +3482,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
     let barba = "";
     if (a.barba === 1) barba = '<ellipse cx="40" cy="52" rx="12" ry="8" fill="' + peloC + '" opacity="0.35"/>';
-    if (a.barba === 2) barba = '<path d="M' + (cx - 13) + ' 46 C ' + (cx - 14) + ' 62, ' + (cx + 14) + ' 62, ' + (cx + 13) + ' 46 C ' + cx + ' 52, ' + (cx - 13) + ' 46 Z" fill="' + peloC + '"/>';
+    if (a.barba === 2) barba = '<path d="M' + (cx - 13) + ' 46 C ' + (cx - 14) + ' 62, ' + (cx + 14) + ' 62, ' + (cx + 13) + ' 46 C ' + (cx + 8) + ' 52, ' + (cx - 8) + ' 52, ' + (cx - 13) + ' 46 Z" fill="' + peloC + '"/>';
     if (a.barba === 3) barba = '<path d="M30 48 q10 4 20 0" stroke="' + peloC + '" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
     if (a.barba === 4) barba = '<path d="M36 50 C 36 58, 44 58, 44 50 Q 40 54 36 50" fill="' + peloC + '"/>';
 
@@ -3209,6 +3531,375 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 });
 
 /* =========================================================
+   HISTORIAL DE MANOS
+   ---------------------------------------------------------
+   Guarda un resumen de cada mano que termina (quién ganó,
+   cuánto, con qué mano, qué cartas había en la mesa y qué
+   cartas se enseñaron). No dibuja nada: solo guarda y da
+   los datos; interfaz.js los pinta en el panel "Historial".
+   Funciona en el navegador y en Node.js (pruebas).
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  /** "A♠", "10♥"... Las cartas ocultas se muestran como "??". */
+  function textoCarta(c) {
+    if (!c || c.oculta) return "??";
+    return String(c.texto) + String(c.palo || "");
+  }
+
+  function nombreDe(estado, id) {
+    const lista = (estado && estado.jugadores) || [];
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].id === id) return lista[i].nombre;
+    }
+    return "Jugador";
+  }
+
+  /**
+   * Convierte el estado de una mesa que acaba de terminar una mano
+   * en una entrada de historial. Devuelve null si no hay resultado.
+   */
+  function resumirMano(estado, tuId) {
+    const r = estado && estado.resultadoShowdown;
+    if (!r) return null;
+
+    const ganadores = (r.ganadores || []).map(function (g) {
+      return {
+        id: g.id,
+        nombre: g.nombre || nombreDe(estado, g.id),
+        premio: g.premio || 0,
+        descripcion: g.descripcion || ""
+      };
+    });
+    const bote = ganadores.reduce(function (s, g) { return s + g.premio; }, 0);
+
+    return {
+      mano: estado.manosJugadas || 0,
+      ciegas: (estado.ciegaPequena || 0) + " / " + (estado.ciegaGrande || 0),
+      comunitarias: (estado.comunitarias || []).map(textoCarta),
+      bote: bote,
+      sinShowdown: !!r.sinShowdown,
+      ganadores: ganadores,
+      reveladas: (r.revelados || []).map(function (x) {
+        return {
+          id: x.id,
+          nombre: x.nombre,
+          cartas: (x.cartas || []).map(textoCarta),
+          descripcion: x.descripcion || ""
+        };
+      }),
+      gane: !!tuId && ganadores.some(function (g) { return g.id === tuId; })
+    };
+  }
+
+  /** Una línea de texto para una entrada: "Mano 3 · Bote 120 · Ana gana 120 con Pareja". */
+  function lineaResumen(e) {
+    const quien = e.ganadores.map(function (g) {
+      return g.nombre + " " + (e.ganadores.length > 1 ? "(" + g.premio + ")" : "gana " + g.premio);
+    }).join(", ");
+    const con = (e.ganadores.length === 1 && e.ganadores[0].descripcion && !e.sinShowdown)
+      ? " con " + e.ganadores[0].descripcion
+      : (e.sinShowdown ? " (todos se retiraron)" : "");
+    return "Mano " + e.mano + " · Bote " + e.bote + " · " + quien + con;
+  }
+
+  function crearHistorial(maximo) {
+    const limite = Math.max(1, maximo || 50);
+    let entradas = [];
+    return {
+      /** Guarda la mano si hay resultado y no estaba ya guardada. Devuelve la entrada o null. */
+      registrar: function (estado, tuId) {
+        const e = resumirMano(estado, tuId);
+        if (!e) return null;
+        if (entradas.some(function (x) { return x.mano === e.mano; })) return null;
+        entradas.push(e);
+        if (entradas.length > limite) entradas = entradas.slice(entradas.length - limite);
+        return e;
+      },
+      /** Más recientes primero. */
+      lista: function () { return entradas.slice().reverse(); },
+      limpiar: function () { entradas = []; },
+      cantidad: function () { return entradas.length; }
+    };
+  }
+
+  const api = {
+    crearHistorial: crearHistorial,
+    resumirMano: resumirMano,
+    lineaResumen: lineaResumen,
+    textoCarta: textoCarta
+  };
+
+  raiz.PokerHistorial = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
+   SONIDOS
+   ---------------------------------------------------------
+   Los sonidos se fabrican al vuelo con la Web Audio API
+   (no hay archivos de audio que descargar): un "clic" para
+   las cartas, un "tintineo" para las fichas, un aviso suave
+   cuando te toca y una melodía corta cuando ganas.
+
+   Si el navegador no soporta audio, no pasa nada: todas las
+   funciones simplemente no hacen nada.
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  /**
+   * opciones.AudioContext: constructor del contexto (para pruebas).
+   * opciones.activo:       si empiezan encendidos (por defecto sí).
+   */
+  function crearSonidos(opciones) {
+    opciones = opciones || {};
+    const Ctor = opciones.AudioContext ||
+      (typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null);
+    let ctx = null;
+    let activo = opciones.activo !== false;
+
+    function contexto() {
+      if (!Ctor) return null;
+      if (!ctx) {
+        try { ctx = new Ctor(); } catch (e) { return null; }
+      }
+      // Los navegadores arrancan el audio "dormido" hasta que el usuario toca algo
+      if (ctx.state === "suspended" && typeof ctx.resume === "function") {
+        try { ctx.resume(); } catch (e) { /* */ }
+      }
+      return ctx;
+    }
+
+    /** Un tono con forma de "pluck": sube rápido y se apaga. */
+    function tono(c, frecuencia, inicio, duracion, tipo, volumen) {
+      const osc = c.createOscillator();
+      const ganancia = c.createGain();
+      osc.type = tipo || "sine";
+      osc.frequency.setValueAtTime(frecuencia, inicio);
+      ganancia.gain.setValueAtTime(0.0001, inicio);
+      ganancia.gain.exponentialRampToValueAtTime(Math.max(0.0002, volumen), inicio + 0.008);
+      ganancia.gain.exponentialRampToValueAtTime(0.0001, inicio + duracion);
+      osc.connect(ganancia);
+      ganancia.connect(c.destination);
+      osc.start(inicio);
+      osc.stop(inicio + duracion + 0.02);
+    }
+
+    /** Un soplido corto de ruido filtrado (sonido de carta o de tela). */
+    function ruido(c, inicio, duracion, volumen, frecuenciaFiltro) {
+      const muestras = Math.max(1, Math.floor(c.sampleRate * duracion));
+      const buffer = c.createBuffer(1, muestras, c.sampleRate);
+      const datos = buffer.getChannelData(0);
+      for (let i = 0; i < muestras; i++) {
+        datos[i] = (Math.random() * 2 - 1) * (1 - i / muestras);
+      }
+      const fuente = c.createBufferSource();
+      fuente.buffer = buffer;
+      const filtro = c.createBiquadFilter();
+      filtro.type = "bandpass";
+      filtro.frequency.value = frecuenciaFiltro || 2500;
+      const ganancia = c.createGain();
+      ganancia.gain.value = volumen;
+      fuente.connect(filtro);
+      filtro.connect(ganancia);
+      ganancia.connect(c.destination);
+      fuente.start(inicio);
+    }
+
+    const SONIDOS = {
+      carta: function (c, t) { ruido(c, t, 0.07, 0.35, 3200); },
+      ficha: function (c, t) {
+        tono(c, 2100, t, 0.07, "triangle", 0.18);
+        tono(c, 2800, t + 0.045, 0.09, "triangle", 0.14);
+      },
+      pasar: function (c, t) { tono(c, 320, t, 0.06, "sine", 0.25); tono(c, 320, t + 0.09, 0.06, "sine", 0.2); },
+      retirarse: function (c, t) { ruido(c, t, 0.16, 0.18, 900); },
+      turno: function (c, t) {
+        tono(c, 880, t, 0.14, "sine", 0.22);
+        tono(c, 1320, t + 0.11, 0.2, "sine", 0.18);
+      },
+      ganar: function (c, t) {
+        [523, 659, 784, 1047].forEach(function (f, i) { tono(c, f, t + i * 0.09, 0.28, "triangle", 0.2); });
+      },
+      fin: function (c, t) { tono(c, 392, t, 0.18, "sine", 0.15); tono(c, 330, t + 0.12, 0.22, "sine", 0.12); },
+      ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
+    };
+
+    return {
+      NOMBRES: Object.keys(SONIDOS),
+
+      /**
+       * reproducir("carta", { veces: 4, cada: 0.12 }) suena 4 veces seguidas.
+       * Devuelve true si realmente programó algún sonido.
+       */
+      reproducir: function (nombre, op) {
+        if (!activo) return false;
+        const f = SONIDOS[nombre];
+        if (!f) return false;
+        const c = contexto();
+        if (!c) return false;
+        const veces = Math.max(1, Math.min(12, (op && op.veces) || 1));
+        const cada = (op && op.cada) || 0.12;
+        try {
+          for (let i = 0; i < veces; i++) f(c, c.currentTime + i * cada);
+        } catch (e) {
+          return false;
+        }
+        return true;
+      },
+
+      activar: function (si) { activo = !!si; },
+      estaActivo: function () { return activo; },
+      alternar: function () { activo = !activo; return activo; },
+      disponible: function () { return !!Ctor; }
+    };
+  }
+
+  const api = { crearSonidos: crearSonidos };
+  raiz.PokerSonidos = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
+   UTILIDADES — funciones pequeñas que no tocan la pantalla
+   ---------------------------------------------------------
+   Formatear números, escapar texto para HTML, geometría de
+   cajas, nombres de acciones... Viven aquí (y no dentro de
+   interfaz.js) porque así se pueden probar sin navegador
+   (pruebas/probar-utilidades.js) y interfaz.js queda más corto.
+   ========================================================= */
+
+(function (raiz) {
+  "use strict";
+
+  function formatearFichas(n) {
+    n = Math.round(Number(n) || 0);
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function formatearBs(n) {
+    const v = Math.round((Number(n) || 0) * 100) / 100;
+    const s = (v % 1 === 0) ? String(v) : String(v).replace(".", ",");
+    return s + " Bs";
+  }
+
+  function escapar(texto) {
+    return String(texto)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function clamp(n, a, b) {
+    return Math.max(a, Math.min(b, n));
+  }
+
+  function rectsSeSolapan(a, b, holgura) {
+    holgura = holgura == null ? 2 : holgura;
+    return !(a.right + holgura <= b.left || b.right + holgura <= a.left || a.bottom + holgura <= b.top || b.bottom + holgura <= a.top);
+  }
+
+  function caja(x, y, w, h) {
+    return { x: x, y: y, w: w, h: h, left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 };
+  }
+
+  function sePisan(a, b, g) {
+    g = g == null ? 3 : g;
+    return !(a.right + g <= b.left || b.right + g <= a.left || a.bottom + g <= b.top || b.bottom + g <= a.top);
+  }
+
+  function textoAccion(accion) {
+    const mapa = {
+      "retirarse": "Retirado",
+      "pasar": "Pasa",
+      "igualar": "Iguala",
+      "apostar": "Apuesta",
+      "subir": "Sube",
+      "all-in": "All-in",
+      "ciega-pequena": "Ciega chica",
+      "ciega-grande": "Ciega grande"
+    };
+    return mapa[accion] || "";
+  }
+
+  function colorFicha(i, cantidad) {
+    if (cantidad >= 10000) {
+      const c = ["#f4d35e", "#1a1a1a", "#c41e3a", "#2b6bb0"];
+      return c[i % c.length];
+    }
+    if (cantidad >= 1000) {
+      const c = ["#1a1a1a", "#c41e3a", "#2b6bb0", "#e8e0c8"];
+      return c[i % c.length];
+    }
+    const c = ["#c41e3a", "#e8e0c8", "#2b6bb0"];
+    return c[i % c.length];
+  }
+
+  function primerNombre(nombre) {
+    const txt = String(nombre || "").trim();
+    if (!txt) return "";
+    return txt.split(/\s+/)[0];
+  }
+
+  function extraerCodigo(texto) {
+    const raw = String(texto || "").trim().toUpperCase();
+    const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
+    if (fromPath) return fromPath[1].slice(0, 5);
+    const letras = raw.replace(/[^A-Z0-9]/g, "");
+    if (letras.length >= 5) return letras.slice(0, 5);
+    return letras;
+  }
+
+  function anguloAsiento(indice, total, gap) {
+    const available = Math.PI * 2 - gap;
+    const u = (indice / total) * available;
+    const mid = Math.PI - gap / 2;
+    return u <= mid ? u : u + gap;
+  }
+
+  function textoCiegas(estado) {
+    let t = "Ciegas " + estado.ciegaPequena + " / " + estado.ciegaGrande;
+    if (estado.subirCiegasCada) {
+      // manosParaSubirCiegas = 0 significa "se duplican al empezar la próxima mano"
+      const f = estado.manosParaSubirCiegas;
+      if (f === 0) t += " · suben en la próxima mano";
+      else if (f != null) t += " · suben en " + (f + 1) + " manos";
+    }
+    return t;
+  }
+
+  const api = {
+    formatearFichas: formatearFichas,
+    formatearBs: formatearBs,
+    escapar: escapar,
+    clamp: clamp,
+    rectsSeSolapan: rectsSeSolapan,
+    caja: caja,
+    sePisan: sePisan,
+    textoAccion: textoAccion,
+    colorFicha: colorFicha,
+    primerNombre: primerNombre,
+    extraerCodigo: extraerCodigo,
+    anguloAsiento: anguloAsiento,
+    textoCiegas: textoCiegas
+  };
+
+  raiz.PokerUtilidades = api;
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this);
+
+/* =========================================================
    INTERFAZ — menú, mesa, animaciones y modo en línea
    ---------------------------------------------------------
    Este archivo "pinta" el juego y captura lo que pulsas.
@@ -3223,6 +3914,23 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   const Bots = window.PokerBots;
   const Ev = window.PokerEvaluador;
   const Avatar = window.PokerAvatar;
+  const Historial = window.PokerHistorial;
+  const ModuloSonidos = window.PokerSonidos;
+  const Util = window.PokerUtilidades;
+  // Funciones puras (no tocan la pantalla) que viven en utilidades.js
+  const formatearFichas = Util.formatearFichas;
+  const formatearBs = Util.formatearBs;
+  const escapar = Util.escapar;
+  const clamp = Util.clamp;
+  const rectsSeSolapan = Util.rectsSeSolapan;
+  const caja = Util.caja;
+  const sePisan = Util.sePisan;
+  const textoAccion = Util.textoAccion;
+  const colorFicha = Util.colorFicha;
+  const primerNombre = Util.primerNombre;
+  const extraerCodigo = Util.extraerCodigo;
+  const anguloAsiento = Util.anguloAsiento;
+  const textoCiegas = Util.textoCiegas;
 
   const ui = {
     modo: "menu",
@@ -3248,13 +3956,18 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     timerPing: null,
     timerSalud: null,
     timerReconnect: null,
-    cuentas: null
+    cuentas: null,
+    historial: Historial ? Historial.crearHistorial(50) : null,
+    historialSala: null,
+    ultimaCiegaGrande: null,
+    espectador: false
   };
 
   const LS_NOMBRE = "rf_nombre";
   const LS_AVATAR = "rf_avatar";
   const LS_TOKEN = "rf_token";
   const LS_CODIGO = "rf_codigo";
+  const LS_SONIDO = "rf_sonido";
   const FRASES_CHAT = (Avatar && Avatar.FRASES_CHAT) ? Avatar.FRASES_CHAT : [];
 
   const $ = function (id) { return document.getElementById(id); };
@@ -3347,10 +4060,128 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     return marcado ? Number(marcado.value) : 9;
   }
 
-  function formatearFichas(n) {
-    n = Math.round(Number(n) || 0);
-    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  /* ---------- Sonido ---------- */
+
+  function leerSonidoGuardado() {
+    try { return localStorage.getItem(LS_SONIDO) !== "0"; } catch (e) { return true; }
   }
+
+  const sonidos = ModuloSonidos ? ModuloSonidos.crearSonidos({ activo: leerSonidoGuardado() }) : null;
+
+  function sonar(nombre, opciones) {
+    if (sonidos) sonidos.reproducir(nombre, opciones);
+  }
+
+  function pintarBotonSonido() {
+    const b = $("btn-sonido");
+    if (!b || !sonidos) return;
+    const activo = sonidos.estaActivo();
+    b.textContent = activo ? "🔊" : "🔇";
+    b.setAttribute("aria-pressed", activo ? "true" : "false");
+    b.title = activo ? "Silenciar el sonido" : "Activar el sonido";
+  }
+
+  function alternarSonido() {
+    if (!sonidos) return;
+    const activo = sonidos.alternar();
+    try { localStorage.setItem(LS_SONIDO, activo ? "1" : "0"); } catch (e) { /* */ }
+    pintarBotonSonido();
+    if (activo) sonar("ficha");
+  }
+
+  /** Suena según lo que pasa en la mesa (sirve tanto para el modo solo como para el online). */
+  function sonarEvento(ev) {
+    if (!sonidos || !ev) return;
+    if (ev.tipo === "accion") {
+      const a = ev.accion;
+      if (a === "retirarse") sonar("retirarse");
+      else if (a === "pasar") sonar("pasar");
+      else if (a === "igualar" || a === "apostar" || a === "subir" || a === "all-in") sonar("ficha");
+    } else if (ev.tipo === "turno") {
+      if (ev.jugadorId && ev.jugadorId === ui.tuId) sonar("turno");
+    } else if (ev.tipo === "calle") {
+      sonar("carta", { veces: (ev.nuevas && ev.nuevas.length) || 1, cada: 0.15 });
+    } else if (ev.tipo === "mano-iniciada") {
+      sonar("carta", { veces: (ev.secuenciaReparto && ev.secuenciaReparto.length) || 4, cada: 0.13 });
+      if (ev.ciegasSubieron) setTimeout(function () { sonar("ciegas"); }, 700);
+    }
+  }
+
+  function sonarResultado(estado) {
+    const r = estado && estado.resultadoShowdown;
+    if (!r || !sonidos) return;
+    const gane = (r.ganadores || []).some(function (g) { return g.id === ui.tuId; });
+    sonar(gane ? "ganar" : "fin");
+  }
+
+  /* ---------- Historial de manos ---------- */
+
+  function registrarHistorial(estado) {
+    if (!ui.historial || !estado) return;
+    const entrada = ui.historial.registrar(estado, ui.tuId);
+    if (entrada && $("panel-historial") && !$("panel-historial").hidden) pintarHistorial();
+  }
+
+  function pintarHistorial() {
+    const caja = $("lista-historial");
+    if (!caja) return;
+    caja.textContent = "";
+    const lista = ui.historial ? ui.historial.lista() : [];
+    if (!lista.length) {
+      const p = document.createElement("p");
+      p.className = "historial-vacio";
+      p.textContent = "Todavía no ha terminado ninguna mano.";
+      caja.appendChild(p);
+      return;
+    }
+    function linea(clase, texto) {
+      const d = document.createElement("div");
+      d.className = clase;
+      d.textContent = texto;
+      return d;
+    }
+    for (let i = 0; i < lista.length; i++) {
+      const e = lista[i];
+      const fila = document.createElement("div");
+      fila.className = "fila-historial" + (e.gane ? " gane" : "");
+      const cab = document.createElement("header");
+      const a = document.createElement("span");
+      a.textContent = "Mano " + e.mano + (e.gane ? " · ¡Ganaste!" : "");
+      const b = document.createElement("span");
+      b.textContent = "Bote " + formatearFichas(e.bote);
+      cab.appendChild(a);
+      cab.appendChild(b);
+      fila.appendChild(cab);
+      for (let g = 0; g < e.ganadores.length; g++) {
+        const gan = e.ganadores[g];
+        let t = gan.nombre + " se lleva " + formatearFichas(gan.premio);
+        if (gan.descripcion && !e.sinShowdown) t += " con " + gan.descripcion;
+        if (e.sinShowdown) t += " (todos se retiraron)";
+        fila.appendChild(linea("ganador-linea", t));
+      }
+      if (e.comunitarias.length) fila.appendChild(linea("detalle cartas-texto", "Mesa: " + e.comunitarias.join("  ")));
+      for (let r = 0; r < e.reveladas.length; r++) {
+        const rev = e.reveladas[r];
+        fila.appendChild(linea("detalle", rev.nombre + ": " + rev.cartas.join(" ") + " · " + rev.descripcion));
+      }
+      fila.appendChild(linea("detalle", "Ciegas " + e.ciegas));
+      caja.appendChild(fila);
+    }
+  }
+
+  function abrirHistorial() {
+    const panel = $("panel-historial");
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) pintarHistorial();
+  }
+
+  function torneoElegido(grupo) {
+    const el = $("torneo-" + grupo);
+    return !!(el && el.checked);
+  }
+
+  /** "Ciegas 5 / 10" y, en modo torneo, cuántas manos faltan para que suban. */
 
   function movimientoReducido() {
     return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -3413,7 +4244,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       else el.hidden = true;
     }
     document.documentElement.classList.toggle("en-mesa", idPantalla === "pantalla-mesa");
-    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = idPantalla !== "pantalla-mesa" || ui.modo !== "online";
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = idPantalla !== "pantalla-mesa" || ui.modo !== "online" || ui.espectador;
+    if ($("btn-abrir-chat")) $("btn-abrir-chat").hidden = idPantalla === "pantalla-mesa" && ui.espectador;
     if (idPantalla !== "pantalla-mesa" && idPantalla !== "pantalla-sala") {
       if ($("panel-cuentas")) $("panel-cuentas").hidden = true;
     }
@@ -3430,15 +4262,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     while (box.children.length >= 2) box.firstChild.remove();
     box.appendChild(el);
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, kind === "err" ? 5000 : 2800);
-  }
-
-  function extraerCodigo(texto) {
-    const raw = String(texto || "").trim().toUpperCase();
-    const fromPath = raw.match(/\/M\/([A-Z0-9]{4,12})/);
-    if (fromPath) return fromPath[1].slice(0, 5);
-    const letras = raw.replace(/[^A-Z0-9]/g, "");
-    if (letras.length >= 5) return letras.slice(0, 5);
-    return letras;
   }
 
   function codigoDesdeUbicacion() {
@@ -3637,6 +4460,9 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     detenerPartidaLocal();
     cerrarWS(false);
     ui.modo = "menu";
+    ui.espectador = false;
+    ui.ultimaCiegaGrande = null;
+    if ($("panel-historial")) $("panel-historial").hidden = true;
     limpiarAvisos();
     mostrar("pantalla-menu");
     mostrarInvitacionPendiente();
@@ -3683,12 +4509,15 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       asientos: n,
       fichasIniciales: ciegas.fichasIniciales,
       ciegaPequena: ciegas.ciegaPequena,
-      ciegaGrande: ciegas.ciegaGrande
+      ciegaGrande: ciegas.ciegaGrande,
+      subirCiegasCada: torneoElegido("solo") ? Motor.MANOS_POR_NIVEL : 0
     });
     ui.mesa = mesa;
     ui.tuId = "humano";
     ui.modo = "solo";
     ui.codigo = null;
+    ui.ultimaCiegaGrande = null;
+    if (ui.historial) ui.historial.limpiar();
 
     mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
     const usados = [nombreJugador(false)];
@@ -3737,6 +4566,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   async function manejarEvento(ev) {
     if (!ui.mesa) return;
     const estado = ui.mesa.estadoPublico(ui.tuId);
+    sonarEvento(ev);
 
     if (ev.tipo === "mano-iniciada") {
       ui.animando = true;
@@ -3778,6 +4608,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       const msg = $("mensaje-mesa");
       msg.textContent = estado.mensaje || "";
       msg.className = "premio";
+      registrarHistorial(estado);
       celebrar(estado);
       programarNuevaMano();
       return;
@@ -3862,46 +4693,12 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     mesa.classList.toggle("vertical", esVerticalEstrecho());
   }
 
-  function anguloAsiento(indice, total, gap) {
-    const available = Math.PI * 2 - gap;
-    const u = (indice / total) * available;
-    const mid = Math.PI - gap / 2;
-    return u <= mid ? u : u + gap;
-  }
-
   function zonaDeAngulo(ang, indice) {
     if (indice === 0) return "abajo";
     const c = Math.cos(ang);
     if (c > 0.45) return "abajo";
     if (c < -0.35) return "arriba";
     return "lado";
-  }
-
-  function textoAccion(accion) {
-    const mapa = {
-      "retirarse": "Retirado",
-      "pasar": "Pasa",
-      "igualar": "Iguala",
-      "apostar": "Apuesta",
-      "subir": "Sube",
-      "all-in": "All-in",
-      "ciega-pequena": "Ciega chica",
-      "ciega-grande": "Ciega grande"
-    };
-    return mapa[accion] || "";
-  }
-
-  function colorFicha(i, cantidad) {
-    if (cantidad >= 10000) {
-      const c = ["#f4d35e", "#1a1a1a", "#c41e3a", "#2b6bb0"];
-      return c[i % c.length];
-    }
-    if (cantidad >= 1000) {
-      const c = ["#1a1a1a", "#c41e3a", "#2b6bb0", "#e8e0c8"];
-      return c[i % c.length];
-    }
-    const c = ["#c41e3a", "#e8e0c8", "#2b6bb0"];
-    return c[i % c.length];
   }
 
   function htmlPilaFichas(cantidad, conValor) {
@@ -3918,24 +4715,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
   function estiloPx(x, y) {
     return "left:" + Math.round(x) + "px;top:" + Math.round(y) + "px;";
-  }
-
-  function rectsSeSolapan(a, b, holgura) {
-    holgura = holgura == null ? 2 : holgura;
-    return !(a.right + holgura <= b.left || b.right + holgura <= a.left || a.bottom + holgura <= b.top || b.bottom + holgura <= a.top);
-  }
-
-  function clamp(n, a, b) {
-    return Math.max(a, Math.min(b, n));
-  }
-
-  function caja(x, y, w, h) {
-    return { x: x, y: y, w: w, h: h, left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 };
-  }
-
-  function sePisan(a, b, g) {
-    g = g == null ? 3 : g;
-    return !(a.right + g <= b.left || b.right + g <= a.left || a.bottom + g <= b.top || b.bottom + g <= a.top);
   }
 
   function instalarObservadorMesa() {
@@ -4474,12 +5253,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     ajustarNombres();
   }
 
-  function primerNombre(nombre) {
-    const txt = String(nombre || "").trim();
-    if (!txt) return "";
-    return txt.split(/\s+/)[0];
-  }
-
   function ajustarNombres() {
     const nombres = document.querySelectorAll(".pieza-info .nombre-jugador");
     for (let i = 0; i < nombres.length; i++) {
@@ -4579,7 +5352,11 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       : [];
 
     if (estado.ciegaPequena && estado.ciegaGrande && $("info-ciegas")) {
-      $("info-ciegas").textContent = "Ciegas " + estado.ciegaPequena + " / " + estado.ciegaGrande;
+      if (ui.ultimaCiegaGrande && estado.ciegaGrande > ui.ultimaCiegaGrande) {
+        toast("¡Las ciegas suben a " + estado.ciegaPequena + " / " + estado.ciegaGrande + "!");
+      }
+      ui.ultimaCiegaGrande = estado.ciegaGrande;
+      $("info-ciegas").textContent = textoCiegas(estado);
     }
 
     pintarPortaVasos(total);
@@ -4662,7 +5439,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     });
   }
 
-
   function actualizarPanelAcciones(estado) {
     const panel = $("panel-acciones");
     const acciones = estado.acciones;
@@ -4701,14 +5477,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   function infoFichasPropias(estado) {
     const j = (estado.jugadores || []).find(function (p) { return p.id === ui.tuId; });
     return j ? j.fichas : 0;
-  }
-
-  function escapar(texto) {
-    return String(texto)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
   }
 
   /* ---------- Animación: cartas que vuelan ---------- */
@@ -4755,6 +5523,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   }
 
   function celebrar(estado) {
+    sonarResultado(estado);
     chatBotsOcasional("win");
     const capa = $("celebracion");
     if (!capa || movimientoReducido()) return;
@@ -4939,7 +5708,10 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
         if (ws !== ui.ws) return;
         ui.ws = null;
         detenerKeepAlive();
-        if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
+        if (ui.modo === "online" && ui.espectador) {
+          toast("Se cortó la conexión.", "err");
+          irMenu();
+        } else if (ui.modo === "online" && ui.token && ui.codigo && !ui.reconectando) {
           programarReconexion();
         }
       });
@@ -4981,7 +5753,10 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   }
 
   function alMensajeServidor(msg) {
-    if (msg.tuId) ui.tuId = msg.tuId;
+    if (msg.tuId) {
+      ui.tuId = msg.tuId;
+      ui.espectador = !!msg.esEspectador;
+    }
     if (msg.codigo) ui.codigo = msg.codigo;
     if (msg.token) guardarSesionSala(msg.token, msg.codigo || ui.codigo);
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
@@ -4991,6 +5766,12 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     if (msg.tipo === "pong") return;
 
     if (msg.tipo === "error") {
+      if (ui.espectador && msg.codigoError === "sala-inexistente") {
+        borrarSesionSala();
+        irMenu();
+        mostrarError(msg.mensaje || "La mesa se cerró.");
+        return;
+      }
       mostrarError(msg.mensaje || "Ha ocurrido un error.");
       if (msg.codigoError === "sala-inexistente") {
         borrarSesionSala();
@@ -5003,6 +5784,20 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
     if (msg.tipo === "chat") {
       mostrarFrase(msg);
+      return;
+    }
+
+    // Modo espectador: se ve la mesa, sin cartas privadas y sin poder jugar
+    if (msg.tipo === "mirando") {
+      ui.modo = "online";
+      ui.espectador = true;
+      entrarEnMesaOnline(msg);
+      if ($("info-sala")) $("info-sala").textContent = "👁 " + (msg.codigo || ui.codigo || "");
+      if ($("mensaje-mesa")) $("mensaje-mesa").textContent = "Estás mirando la partida.";
+      return;
+    }
+    if (ui.espectador && msg.tipo === "partida-terminada") {
+      toast("La partida terminó.");
       return;
     }
 
@@ -5035,6 +5830,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       }
       return;
     }
+
+    if (msg.tipo === "accion" || msg.tipo === "turno" || msg.tipo === "calle" || msg.tipo === "mano-iniciada") sonarEvento(msg);
 
     if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
       entrarEnMesaOnline(msg);
@@ -5070,6 +5867,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       if ($("pantalla-mesa").hidden && msg.estado.fase !== "esperando") {
         entrarEnMesaOnline(msg);
       }
+      if (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown") registrarHistorial(msg.estado);
       renderMesa(msg.estado);
       if (msg.estado.mensaje && (msg.tipo === "showdown" || msg.tipo === "ganador-sin-showdown" || msg.estado.fase === "entre-manos")) {
         $("mensaje-mesa").textContent = msg.estado.mensaje;
@@ -5080,10 +5878,16 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   }
 
   function entrarEnMesaOnline(msg) {
+    if ($("pantalla-mesa").hidden) ui.ultimaCiegaGrande = null;
+    const salaActual = msg.codigo || ui.codigo || "";
+    if (ui.historialSala !== salaActual) {
+      ui.historialSala = salaActual;
+      if (ui.historial) ui.historial.limpiar();
+    }
     ui.modo = "online";
-    $("info-sala").textContent = (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
+    $("info-sala").textContent = (ui.espectador ? "👁 " : "") + (ui.codigo ? ui.codigo : (ui.publica ? "Pública" : "Privada"));
     if ($("btn-compartir-mesa")) $("btn-compartir-mesa").hidden = !ui.codigo;
-    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = false;
+    if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").hidden = !!ui.espectador;
     if (ui.codigo) actualizarUrlSala(ui.codigo);
     $("info-ciegas").textContent = "Ciegas 5 / 10";
     mostrar("pantalla-mesa");
@@ -5163,6 +5967,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
         nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
         fichasIniciales: fichasElegidas("online"),
+        torneo: torneoElegido("online"),
         avatar: ui.avatar,
         token: ui.token
       });
@@ -5188,6 +5993,23 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     }
   }
 
+  async function mirarCodigo() {
+    limpiarAvisos();
+    const crudo = ($("input-codigo") && $("input-codigo").value) || codigoDesdeUbicacion() || "";
+    const codigo = extraerCodigo(crudo);
+    if (codigo.length !== 5) {
+      mostrarError("El código tiene que tener 5 letras, o pega el enlace de la mesa.");
+      return;
+    }
+    ui.modo = "online";
+    try {
+      await conectarWS();
+      enviarWS({ tipo: "mirar", codigo: codigo });
+    } catch (e) {
+      mostrarError(e.message);
+    }
+  }
+
   async function unirsePublica() {
     limpiarAvisos();
     ui.modo = "online";
@@ -5198,6 +6020,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
         nombre: nombreJugador(false),
         asientos: asientosElegidos("asientos-online"),
         fichasIniciales: fichasElegidas("online"),
+        torneo: torneoElegido("online"),
         avatar: ui.avatar,
         token: ui.token
       });
@@ -5270,13 +6093,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     setTimeout(function () {
       mostrarFrase({ frase: frase, deNombre: bot.nombre, deAsiento: bot.asiento, deId: bot.id });
     }, 600 + Math.random() * 900);
-  }
-
-
-  function formatearBs(n) {
-    const v = Math.round((Number(n) || 0) * 100) / 100;
-    const s = (v % 1 === 0) ? String(v) : String(v).replace(".", ",");
-    return s + " Bs";
   }
 
   function fichasPorBs() {
@@ -5454,7 +6270,6 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
   /* ---------- Enlazar botones ---------- */
 
-
   function iniciarUI() {
     cargarPreferencias();
     iniciarSelectoresFichas();
@@ -5478,6 +6293,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     if ($("btn-unirse-codigo")) $("btn-unirse-codigo").addEventListener("click", function () {
       conNombreYAvatar(function () { unirseCodigo(); }, { saltarAvatar: true });
     });
+    if ($("btn-mirar-codigo")) $("btn-mirar-codigo").addEventListener("click", mirarCodigo);
     if ($("btn-sala-publica")) $("btn-sala-publica").addEventListener("click", jugarPublica);
     if ($("btn-llenar-bots")) $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
     if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
@@ -5502,6 +6318,12 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       pintarPreviewAvatar();
     });
     if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
+    if ($("btn-abrir-historial")) $("btn-abrir-historial").addEventListener("click", abrirHistorial);
+    if ($("btn-cerrar-historial")) $("btn-cerrar-historial").addEventListener("click", function () { $("panel-historial").hidden = true; });
+    if ($("btn-sonido")) {
+      $("btn-sonido").addEventListener("click", alternarSonido);
+      pintarBotonSonido();
+    }
     if ($("btn-abrir-chat")) $("btn-abrir-chat").addEventListener("click", abrirChat);
     if ($("btn-cerrar-chat")) $("btn-cerrar-chat").addEventListener("click", function () { $("panel-chat").hidden = true; });
     if ($("btn-abrir-cuentas")) $("btn-abrir-cuentas").addEventListener("click", function () { abrirCuentas("recargar"); });

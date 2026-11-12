@@ -28,6 +28,8 @@
   const FICHAS_MAX = 50000;
   const CIEGA_PEQUENA = 5;
   const CIEGA_GRANDE = 10;
+  // Modo torneo: cada cuántas manos suben (se duplican) las ciegas
+  const MANOS_POR_NIVEL = 10;
 
   /**
    * Comprueba que las fichas iniciales estén entre 10 y 50.000.
@@ -98,6 +100,9 @@
       this.ciegaPequena = ciegas.ciegaPequena;
       this.ciegaGrande = ciegas.ciegaGrande;
     }
+    // Modo torneo: 0 = ciegas fijas; N = se duplican cada N manos
+    this.subirCiegasCada = Math.max(0, Math.floor(Number(opciones.subirCiegasCada) || 0));
+    this.nivelCiegas = 1;
     this.porAsiento = new Array(this.asientosTotales).fill(null);
     this.fase = "esperando";
     this.mazo = [];
@@ -241,6 +246,18 @@
       return { error: this.mensaje };
     }
 
+    // Modo torneo: cada N manos las ciegas se duplican (sin pasarse de la mitad del stack inicial)
+    let ciegasSubieron = false;
+    if (this.subirCiegasCada > 0 && this.manosJugadas > 0 && this.manosJugadas % this.subirCiegasCada === 0) {
+      const tope = Math.max(this.ciegaGrande, Math.floor(this.fichasIniciales / 2));
+      if (this.ciegaGrande * 2 <= tope) {
+        this.ciegaPequena *= 2;
+        this.ciegaGrande *= 2;
+        this.nivelCiegas += 1;
+        ciegasSubieron = true;
+      }
+    }
+
     const lista = this.jugadores();
     for (let i = 0; i < lista.length; i++) {
       const j = lista[i];
@@ -308,7 +325,8 @@
       secuenciaReparto: secuenciaReparto,
       asientoSB: this.asientoSB,
       asientoBB: this.asientoBB,
-      botonDealer: this.botonDealer
+      botonDealer: this.botonDealer,
+      ciegasSubieron: ciegasSubieron
     });
     return { ok: true };
   };
@@ -841,6 +859,9 @@
       ciegaPequena: this.ciegaPequena,
       ciegaGrande: this.ciegaGrande,
       fichasIniciales: this.fichasIniciales,
+      subirCiegasCada: this.subirCiegasCada,
+      nivelCiegas: this.nivelCiegas,
+      manosParaSubirCiegas: this.manosParaSubirCiegas(),
       turnoId: this.turnoId,
       manosJugadas: this.manosJugadas,
       mensaje: this.mensaje,
@@ -848,6 +869,19 @@
       acciones: (paraId && paraId === this.turnoId) ? this.accionesLegales(paraId) : this.accionesLegales(),
       jugadores: jugadores
     };
+  };
+
+  /**
+   * Modo torneo: cuántas manos faltan para que suban las ciegas.
+   * 0 significa "en la próxima mano". Devuelve null si no hay torneo.
+   */
+  Mesa.prototype.manosParaSubirCiegas = function () {
+    const n = this.subirCiegasCada;
+    if (!n) return null;
+    const k = this.manosJugadas;
+    const resto = k % n;
+    if (k > 0 && resto === 0) return 0;
+    return n - resto;
   };
 
   Mesa.prototype.cartasDe = function (jugadorId) {
@@ -863,6 +897,7 @@
     FICHAS_MAX: FICHAS_MAX,
     CIEGA_PEQUENA: CIEGA_PEQUENA,
     CIEGA_GRANDE: CIEGA_GRANDE,
+    MANOS_POR_NIVEL: MANOS_POR_NIVEL,
     normalizarFichas: normalizarFichas,
     ciegasPara: ciegasPara
   };

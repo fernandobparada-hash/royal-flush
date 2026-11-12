@@ -1932,6 +1932,10 @@
 
     if (msg.tipo === "accion" || msg.tipo === "turno" || msg.tipo === "calle" || msg.tipo === "mano-iniciada") sonarEvento(msg);
 
+    // El último estado que mandó el servidor: al terminar una animación se dibuja
+    // este (y no el del principio), por si mientras tanto llegó "te toca".
+    if (msg.estado) ui.estadoServidor = msg.estado;
+
     if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
       entrarEnMesaOnline(msg);
       if (msg.secuenciaReparto) {
@@ -1940,7 +1944,7 @@
         renderMesa(msg.estado, { ocultarPrivadas: true, vaciarComunitarias: true });
         animarReparto(msg.secuenciaReparto).then(function () {
           ui.animando = false;
-          if (ui.estado) renderMesa(msg.estado);
+          if (ui.estado) renderMesa(ui.estadoServidor || msg.estado);
           $("mensaje-mesa").textContent = "Preflop · a hablar.";
         });
       } else if (msg.estado) {
@@ -1953,7 +1957,7 @@
       ui.animando = true;
       animarFichasAlBote().then(function () { return animarComunitarias(msg.nuevas); }).then(function () {
         ui.animando = false;
-        if (msg.estado) renderMesa(msg.estado, { voltear: true });
+        if (msg.estado) renderMesa(ui.estadoServidor || msg.estado, { voltear: true });
       });
       if (msg.estado) {
         // Mientras vuelan, ya podemos ir actualizando el bote

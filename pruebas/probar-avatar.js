@@ -68,6 +68,18 @@ for (let i = 0; i < 400; i++) comprobar(Avatar.aleatorio("azar-" + i), "aleatori
 ok("Se revisaron muchos avatares (" + totalSvg + " dibujos, " + totalPaths + " trazos)", totalSvg > 400 && totalPaths > 400);
 ok("Ningún trazo SVG está mal escrito", problemas.length === 0, problemas.slice(0, 3).join(" | "));
 
+console.log("\n--- v12: opciones, piezas de pago y velocidad ---");
+ok("Hay " + Avatar.totalOpciones() + " opciones de avatar (al menos 100)", Avatar.totalOpciones() >= 100);
+ok("Hay " + Avatar.piezasDePago().length + " piezas que se compran con monedas", Avatar.piezasDePago().length >= 30);
+ok("Cada campo tiene su nombre en castellano y sus etiquetas", Avatar.ORDEN.every(function (c) { return Avatar.NOMBRES_CAMPO[c] && Avatar.LABELS[c].length === Avatar.CAMPOS[c]; }));
+const dos = Avatar.svg(Avatar.porDefecto(), 40) + Avatar.svg(Avatar.porDefecto(), 40);
+const ids = (dos.match(/id="([^"]+)"/g) || []);
+ok("Dos dibujos del mismo avatar no repiten ids de degradados", ids.length > 0 && new Set(ids).size === ids.length);
+const t0 = Date.now();
+for (let i = 0; i < 3000; i++) Avatar.svg(Avatar.aleatorio("rapido-" + (i % 300)), 48);
+const ms = Date.now() - t0;
+ok("3000 avatares se dibujan rápido (" + ms + " ms)", ms < 2000);
+
 console.log("\n========================================");
 console.log("Aciertos: " + aciertos + "   Fallos: " + fallos);
 console.log("========================================");

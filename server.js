@@ -24,7 +24,9 @@ const Bots = require("./public/js/bots.js");
 const Avatar = require("./public/js/avatar.js");
 const Limites = require("./servidor/limites.js");
 const Almacen = require("./servidor/almacen.js");
+const Tienda = require("./public/js/tienda.js");
 const Persistencia = require("./servidor/persistencia.js");
+const Util = require("./public/js/utilidades.js");
 
 const PORT = process.env.PORT || 3000;
 const RAPIDO = process.env.POKER_RAPIDO === "1";
@@ -39,6 +41,8 @@ const TURNO_MS = Number(process.env.POKER_TURNO_MS) || (RAPIDO ? 20000 : 30000);
 // Quien ya dejó pasar 2 turnos seguidos sin actuar tiene menos tiempo (probablemente se fue)
 const TURNO_AUSENTE_MS = Number(process.env.POKER_TURNO_AUSENTE_MS) || Math.min(TURNO_MS, 8000);
 const CHAT_COOLDOWN_MS = 2000;
+const CHAT_MAX_VENTANA = 5;           // a lo sumo 5 mensajes…
+const CHAT_VENTANA_MS = 20000;        // …cada 20 s por persona
 const FICHAS_POR_BS = 10;
 const MIN_RECARGA_BS = 10;
 const FRASES_CHAT = Avatar.FRASES_CHAT;
@@ -51,6 +55,12 @@ const VENTANA_MENSAJES_MS = 10000;         // ...cada 10 segundos
 const MAX_CONEXIONES_POR_IP = 20;
 const MAX_SALAS = 300;
 const MAX_ESPECTADORES = 20;               // por sala
+const ASIENTOS_VALIDOS = [9, 10, 15];       // tamaños de mesa permitidos
+const VIDA_MONEDERO_S = 400 * 24 * 3600;    // las monedas se guardan ~13 meses sin uso
+function leerAsientos(msg) {
+  const n = Number(msg && msg.asientos);
+  return ASIENTOS_VALIDOS.indexOf(n) >= 0 ? n : 9;
+}
 // En modo rápido (pruebas automáticas) se relajan, porque un solo equipo abre decenas de salas
 const FACTOR_LIMITES = RAPIDO ? 100 : 1;
 const limiteApi = Limites.crearLimitador(60 * FACTOR_LIMITES, 60000);     // consultas HTTP /api/sala por IP
@@ -110,6 +120,79 @@ app.get("/api/sala/:codigo", function (req, res) {
       asientos: sala.mesa.asientosTotales
     });
   });
+});
+
+/*
+ * Mesas públicas en vivo, para mirarlas sin jugar. Solo datos públicos:
+ * código, cuántos juegan, cuántos miran, ciegas y nombres (nada de cartas).
+ */
+app.get("/api/mesas-publicas", function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ ok: true, mesas: listaMesasPublicas() });
+});
+
+function listaMesasPublicas() {
+  const lista = [];
+  for (const sala of salas.values()) {
+    if (!sala.publica || sala.partidaTerminada) continue;
+    const js = sala.mesa.jugadores();
+    const humanos = js.filter(function (j) { return j.tipo === "humano"; });
+    if (!humanos.length) continue;
+    lista.push({
+      codigo: sala.codigo,
+      jugadores: js.length,
+      humanos: humanos.length,
+      bots: js.length - humanos.length,
+      asientos: sala.mesa.asientosTotales,
+      espectadores: sala.espectadores.size,
+      lleno: sala.espectadores.size >= MAX_ESPECTADORES,
+      enJuego: !!sala.partidaIniciada,
+      ciegas: sala.mesa.ciegaPequena + "/" + sala.mesa.ciegaGrande,
+      nombres: js.slice(0, 4).map(function (j) { return j.nombre; })
+    });
+  }
+  lista.sort(function (a, b) { return (b.enJuego - a.enJuego) || (b.humanos - a.humanos) || (b.espectadores - a.espectadores); });
+  return lista.slice(0, 30);
+}
+
+/*
+ * Monedero de monedas virtuales (solo cosmético, sin dinero real).
+ * El teléfono guarda las monedas y manda una copia acá con su código
+ * de monedero, para recuperarlas en otro aparato o si se borra el navegador.
+ */
+function codigoMonederoValido(id) { return /^[a-f0-9]{24}$/.test(String(id || "")); }
+app.get("/api/monedero/:id", function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
+    return;
+  }
+  const id = String(req.params.id || "").toLowerCase();
+  if (!codigoMonederoValido(id)) { res.status(400).json({ ok: false, mensaje: "Ese código de monedero no es válido." }); return; }
+  res.setHeader("Cache-Control", "no-store");
+  almacen.leer("monedero:" + id).then(function (m) {
+    if (!m) { res.status(404).json({ ok: false, mensaje: "No hay monedas guardadas con ese código." }); return; }
+    res.json({ ok: true, monedero: Tienda.normalizar(m), guardadoEn: m.guardadoEn || null });
+  }).catch(function () { res.status(503).json({ ok: false, mensaje: "No se pudo leer el monedero ahora." }); });
+});
+app.put("/api/monedero/:id", express.json({ limit: "16kb" }), function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
+    return;
+  }
+  const id = String(req.params.id || "").toLowerCase();
+  if (!codigoMonederoValido(id) || !req.body || typeof req.body.monedero !== "object") {
+    res.status(400).json({ ok: false, mensaje: "Monedero no válido." });
+    return;
+  }
+  const m = Tienda.normalizar(req.body.monedero);
+  m.guardadoEn = Date.now();
+  almacen.guardar("monedero:" + id, m, VIDA_MONEDERO_S).then(function () {
+    res.json({ ok: true, monedero: Tienda.normalizar(m) });
+  }).catch(function () { res.status(503).json({ ok: false, mensaje: "No se pudo guardar el monedero ahora." }); });
 });
 
 /*
@@ -250,6 +333,13 @@ function payloadEspectador(sala, ws) {
   return payload;
 }
 
+/** Cuántos miran: se avisa a todos (jugadores y espectadores) con un mensaje liviano. */
+function avisarEspectadores(sala) {
+  const msg = { tipo: "espectadores", espectadores: sala.espectadores.size };
+  for (const ws of sala.clientes.values()) enviar(ws, msg);
+  for (const ws of sala.espectadores.values()) enviar(ws, msg);
+}
+
 /** Cuando la sala desaparece, se avisa a quien estaba mirando. */
 function cerrarEspectadores(sala) {
   for (const ws of sala.espectadores.values()) {
@@ -329,6 +419,7 @@ function engancharMesa(sala) {
       transmitir(sala, "calle", { calle: ev.calle, nuevas: ev.nuevas });
     } else if (ev.tipo === "showdown") {
       transmitir(sala, "showdown", { resultado: ev.resultado });
+      chatGanadorBot(sala);
       if (sala.terminarAlFinal) {
         finalizarPartida(sala);
       } else if (sala.partidaIniciada && !sala.partidaTerminada) {
@@ -336,6 +427,7 @@ function engancharMesa(sala) {
       }
     } else if (ev.tipo === "ganador-sin-showdown") {
       transmitir(sala, "ganador-sin-showdown");
+      chatGanadorBot(sala);
       if (sala.terminarAlFinal) {
         finalizarPartida(sala);
       } else if (sala.partidaIniciada && !sala.partidaTerminada) {
@@ -436,8 +528,27 @@ function programarBots(sala) {
     const legales = sala.mesa.accionesLegales(id);
     const decision = Bots.decidir(legales, j, sala.mesa.estadoPublico(id));
     sala.mesa.accion(id, decision.tipo, decision.cantidad);
+    chatBot(sala, j, Bots.momentoDeAccion(decision.tipo));
     programarBots(sala);
   });
+}
+
+/** Frase corta de un bot con personalidad (como mucho una cada 2,5 s por mesa). */
+function chatBot(sala, j, momento) {
+  if (!j || !momento) return;
+  const ahora = Date.now();
+  if (sala.ultimoChatBot && ahora - sala.ultimoChatBot < 2500) return;
+  const frase = Bots.chatDeBot(j, momento);
+  if (!frase) return;
+  sala.ultimoChatBot = ahora;
+  transmitir(sala, "chat", { frase: frase, deId: j.id, deNombre: j.nombre, deAsiento: j.asiento, bot: true });
+}
+
+function chatGanadorBot(sala) {
+  const r = sala.mesa.resultadoShowdown;
+  if (!r || !r.ganadores || !r.ganadores.length) return;
+  const j = sala.mesa.jugadorPorId(r.ganadores[0].id);
+  if (j && j.tipo === "bot") chatBot(sala, j, "ganar");
 }
 
 function humanosConectados(sala) {
@@ -784,7 +895,7 @@ function restaurarSala(datos) {
   const idPorToken = new Map();
   (datos.jugadores || []).forEach(function (d) {
     const id = d.tipo === "bot" && d.id ? d.id : nuevoId();
-    const r = sala.mesa.sentar({ id: id, nombre: d.nombre, tipo: d.tipo, asiento: d.asiento, fichas: d.fichas, avatar: d.avatar, token: d.token });
+    const r = sala.mesa.sentar({ id: id, nombre: d.nombre, tipo: d.tipo, asiento: d.asiento, fichas: d.fichas, avatar: d.avatar, personalidad: d.personalidad || null, token: d.token });
     if (r && r.jugador) {
       r.jugador.token = d.token || null;
       if (d.tipo === "humano") r.jugador.conectado = false;
@@ -913,6 +1024,7 @@ function meta(sala) {
     partidaIniciada: sala.partidaIniciada,
     partidaTerminada: !!sala.partidaTerminada,
     asientos: sala.mesa.asientosTotales,
+    espectadores: sala.espectadores.size,
     fichasIniciales: sala.mesa.fichasIniciales,
     ciegaPequena: sala.mesa.ciegaPequena,
     ciegaGrande: sala.mesa.ciegaGrande,
@@ -1110,6 +1222,7 @@ function manejar(ws, msg) {
     ws.codigoSala = sala.codigo;
     sala.espectadores.set(ws.jugadorId, ws);
     enviar(ws, payloadEspectador(sala, ws));
+    avisarEspectadores(sala);
     return;
   }
 
@@ -1124,7 +1237,7 @@ function manejar(ws, msg) {
     if (!ws.token) ws.token = nuevoToken();
     const sala = crearSala({
       publica: false,
-      asientos: msg.asientos === 10 ? 10 : 9,
+      asientos: leerAsientos(msg),
       anfitrionId: ws.jugadorId,
       ciegas: ciegas
     });
@@ -1201,7 +1314,7 @@ function manejar(ws, msg) {
       if (!ws.token) ws.token = nuevoToken();
       sala = crearSala({
         publica: true,
-        asientos: msg.asientos === 10 ? 10 : 9,
+        asientos: leerAsientos(msg),
         anfitrionId: ws.jugadorId,
         ciegas: ciegas
       });
@@ -1233,16 +1346,24 @@ function manejar(ws, msg) {
       return;
     }
     const usados = sala.mesa.jugadores().map(function (j) { return j.nombre; });
+    const yaHay = sala.mesa.jugadores().filter(function (j) { return j.personalidad; }).map(function (j) { return j.personalidad; });
+    const libresP = sala.mesa.asientosTotales - sala.mesa.jugadores().length;
+    // Mezcla variada: primero las personalidades que todavía no están en la mesa
+    const pers = Bots.repartirPersonalidades(libresP + yaHay.length).filter(function (p) {
+      const k = yaHay.indexOf(p); if (k >= 0) { yaHay.splice(k, 1); return false; } return true;
+    });
     let asiento;
+    let k = 0;
     while ((asiento = sala.mesa.asientoLibre()) >= 0) {
-      const nom = Bots.nombreBot(usados);
-      usados.push(nom);
+      const bot = Bots.crearBot(usados, pers[k++]);
+      usados.push(bot.nombre);
       sala.mesa.sentar({
         id: "bot-" + sala.codigo + "-" + asiento,
-        nombre: nom,
+        nombre: bot.nombre,
         tipo: "bot",
         asiento: asiento,
-        avatar: Avatar.aleatorio(nom)
+        personalidad: bot.personalidad,
+        avatar: Avatar.aleatorio(bot.nombre)
       });
     }
     transmitir(sala, "sala-actualizada");
@@ -1290,20 +1411,43 @@ function manejar(ws, msg) {
   }
 
   if (tipo === "chat") {
-    const frase = String(msg.frase || "");
-    if (FRASES_CHAT.indexOf(frase) < 0) {
-      enviar(ws, { tipo: "error", mensaje: "Esa frase no está permitida." });
-      return;
+    // Frase rápida de la lista o texto escrito (hasta 80 caracteres, se limpia acá y se muestra escapado)
+    let frase;
+    let libre = false;
+    if (msg.texto != null) {
+      if (typeof msg.texto !== "string" || Array.from(msg.texto).length > Util.MAX_CHAT * 4) {
+        enviar(ws, { tipo: "error", codigoError: "chat-largo", mensaje: "El mensaje puede tener hasta " + Util.MAX_CHAT + " letras." });
+        return;
+      }
+      frase = Util.limpiarChat(msg.texto);
+      libre = true;
+      if (!frase) {
+        enviar(ws, { tipo: "error", codigoError: "chat-vacio", mensaje: "Escribí algo antes de mandar." });
+        return;
+      }
+    } else {
+      frase = String(msg.frase || "");
+      if (FRASES_CHAT.indexOf(frase) < 0) {
+        enviar(ws, { tipo: "error", mensaje: "Esa frase no está permitida." });
+        return;
+      }
     }
     const ahora = Date.now();
     if (ws.ultimoChat && ahora - ws.ultimoChat < CHAT_COOLDOWN_MS) {
       enviar(ws, { tipo: "error", codigoError: "chat-rapido", mensaje: "Esperá un segundo antes de mandar otra frase." });
       return;
     }
+    ws.chatVentana = (ws.chatVentana || []).filter(function (t) { return ahora - t < CHAT_VENTANA_MS; });
+    if (ws.chatVentana.length >= CHAT_MAX_VENTANA) {
+      enviar(ws, { tipo: "error", codigoError: "chat-rapido", mensaje: "Muchos mensajes seguidos. Esperá unos segundos." });
+      return;
+    }
+    ws.chatVentana.push(ahora);
     ws.ultimoChat = ahora;
     const j = sala.mesa.jugadorPorId(ws.jugadorId);
     transmitir(sala, "chat", {
       frase: frase,
+      libre: libre,
       deId: ws.jugadorId,
       deNombre: j ? j.nombre : "",
       deAsiento: j ? j.asiento : null
@@ -1458,7 +1602,10 @@ function alSalir(ws, intencional) {
   const codigo = ws.codigoSala;
   const sala = salas.get(codigo);
   if (ws.espectador) {
-    if (sala) sala.espectadores.delete(ws.jugadorId);
+    if (sala) {
+      sala.espectadores.delete(ws.jugadorId);
+      avisarEspectadores(sala);
+    }
     ws.espectador = false;
     ws.codigoSala = null;
     return;
@@ -1524,6 +1671,8 @@ wss.on("connection", function (ws, req) {
   ws.on("pong", function () { ws.isAlive = true; });
 
   ws.on("message", function (raw) {
+    // Cualquier mensaje del cliente (incluido su "ping" cada 20 s) demuestra que sigue vivo
+    ws.isAlive = true;
     if (!ws.limiteMensajes.permitir("m")) {
       ws.avisosExceso += 1;
       if (ws.avisosExceso === 1) enviar(ws, { tipo: "error", mensaje: "Vas muy rápido, espera un momento." });

@@ -17,12 +17,33 @@
    * opciones.AudioContext: constructor del contexto (para pruebas).
    * opciones.activo:       si empiezan encendidos (por defecto sí).
    */
+  // Escala pentatónica (do re mi sol la): el tema andino "afina" todo a esas notas
+  const PENTA = [0, 2, 4, 7, 9];
+  function afinar(f, escala) {
+    if (!escala || !(f > 0)) return f;
+    const semis = Math.round(12 * Math.log2(f / 261.63));
+    const oct = Math.floor(semis / 12);
+    const dentro = ((semis % 12) + 12) % 12;
+    let mejor = PENTA[0];
+    PENTA.forEach(function (p) { if (Math.abs(p - dentro) < Math.abs(mejor - dentro)) mejor = p; });
+    return 261.63 * Math.pow(2, (oct * 12 + mejor) / 12);
+  }
+
+  const TEMAS = {
+    clasico: { tono: 1, vol: 1, largo: 1 },
+    suave: { tono: 0.75, vol: 0.6, largo: 1.4, onda: "sine" },
+    casino: { tono: 1.25, vol: 0.85, largo: 1.2, onda: "sine", armonico: 0.45, eco: 0.12 },
+    arcade: { tono: 1, vol: 0.55, largo: 0.8, onda: "square", ruidoComoTono: true },
+    andino: { tono: 1, vol: 0.9, largo: 1.5, onda: "sine", escala: true, vibrato: 0.012, eco: 0.18 }
+  };
+
   function crearSonidos(opciones) {
     opciones = opciones || {};
     const Ctor = opciones.AudioContext ||
       (typeof window !== "undefined" ? (window.AudioContext || window.webkitAudioContext) : null);
     let ctx = null;
     let activo = opciones.activo !== false;
+    let tema = TEMAS[opciones.tema] ? opciones.tema : "clasico";
 
     function contexto() {
       if (!Ctor) return null;
@@ -38,6 +59,17 @@
 
     /** Un tono con forma de "pluck": sube rápido y se apaga. */
     function tono(c, frecuencia, inicio, duracion, tipo, volumen) {
+      const T = TEMAS[tema];
+      frecuencia = afinar(frecuencia * T.tono, T.escala);
+      tipo = T.onda || tipo;
+      volumen = volumen * T.vol;
+      duracion = duracion * T.largo;
+      tonoCrudo(c, frecuencia, inicio, duracion, tipo, volumen, T.vibrato);
+      if (T.armonico) tonoCrudo(c, frecuencia * 2, inicio, duracion * 0.7, "sine", volumen * T.armonico, 0);
+      if (T.eco) tonoCrudo(c, frecuencia, inicio + T.eco, duracion, tipo, volumen * 0.35, T.vibrato);
+    }
+
+    function tonoCrudo(c, frecuencia, inicio, duracion, tipo, volumen, vibrato) {
       const osc = c.createOscillator();
       const ganancia = c.createGain();
       osc.type = tipo || "sine";
@@ -45,6 +77,16 @@
       ganancia.gain.setValueAtTime(0.0001, inicio);
       ganancia.gain.exponentialRampToValueAtTime(Math.max(0.0002, volumen), inicio + 0.008);
       ganancia.gain.exponentialRampToValueAtTime(0.0001, inicio + duracion);
+      if (vibrato && c.createOscillator) {
+        const lfo = c.createOscillator();
+        const prof = c.createGain();
+        lfo.frequency.value = 5.5;
+        prof.gain.value = frecuencia * vibrato;
+        lfo.connect(prof);
+        prof.connect(osc.frequency);
+        lfo.start(inicio);
+        lfo.stop(inicio + duracion + 0.02);
+      }
       osc.connect(ganancia);
       ganancia.connect(c.destination);
       osc.start(inicio);
@@ -53,6 +95,11 @@
 
     /** Un soplido corto de ruido filtrado (sonido de carta o de tela). */
     function ruido(c, inicio, duracion, volumen, frecuenciaFiltro) {
+      const T = TEMAS[tema];
+      // En arcade las cartas y el paño suenan como un "blip" de consola
+      if (T.ruidoComoTono) { tonoCrudo(c, (frecuenciaFiltro || 2500) / 3, inicio, Math.min(0.06, duracion), "square", volumen * 0.25, 0); return; }
+      volumen = volumen * T.vol;
+      frecuenciaFiltro = (frecuenciaFiltro || 2500) * T.tono;
       const muestras = Math.max(1, Math.floor(c.sampleRate * duracion));
       const buffer = c.createBuffer(1, muestras, c.sampleRate);
       const datos = buffer.getChannelData(0);
@@ -112,6 +159,11 @@
       premio: function (c, t) {
         [784, 988, 1175, 1568].forEach(function (f, i) { tono(c, f, t + i * 0.075, 0.23, "sine", 0.16); });
       },
+      // Riffle: dos mitades del mazo que se entrelazan (ráfaga de clics)
+      barajar: function (c, t) {
+        for (let i = 0; i < 14; i++) ruido(c, t + i * 0.035 + (i % 2) * 0.008, 0.03, 0.22, 2600 + (i % 3) * 500);
+        ruido(c, t + 0.56, 0.09, 0.3, 1800);
+      },
       ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
     };
 
@@ -138,6 +190,15 @@
         return true;
       },
 
+      /** Tema de sonido: "clasico", "suave", "casino", "arcade" o "andino" (acepta "sonido:x"). */
+      ponerTema: function (id) {
+        const k = String(id || "").replace(/^sonido:/, "");
+        tema = TEMAS[k] ? k : "clasico";
+        return tema;
+      },
+      tema: function () { return tema; },
+      TEMAS: Object.keys(TEMAS),
+
       activar: function (si) { activo = !!si; },
       estaActivo: function () { return activo; },
       alternar: function () { activo = !activo; return activo; },
@@ -145,7 +206,7 @@
     };
   }
 
-  const api = { crearSonidos: crearSonidos };
+  const api = { crearSonidos: crearSonidos, TEMAS: Object.keys(TEMAS), afinar: afinar };
   raiz.PokerSonidos = api;
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;

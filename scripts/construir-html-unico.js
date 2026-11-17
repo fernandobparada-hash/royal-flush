@@ -9,7 +9,7 @@ const raiz = path.join(__dirname, "..");
 const publico = path.join(raiz, "public");
 
 // El orden importa: cada archivo usa los anteriores
-const SCRIPTS = ["evaluador.js", "motor.js", "bots.js", "avatar.js", "historial.js", "sonidos.js", "utilidades.js", "interfaz.js"];
+const SCRIPTS = ["evaluador.js", "motor.js", "bots.js", "avatar.js", "tienda.js", "historial.js", "sonidos.js", "utilidades.js", "interfaz.js"];
 
 /** Reemplaza un trozo exacto y AVISA si no lo encuentra (antes fallaba en silencio). */
 function reemplazar(html, buscar, poner, nombre) {

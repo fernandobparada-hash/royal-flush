@@ -125,9 +125,157 @@
 
   /** Estilo de un bot: siempre el mismo para el mismo jugador. */
   function estiloDe(jugador) {
+    const per = personalidadDe(jugador);
+    if (per) return per.estilo;
     if (jugador && jugador.estiloBot && ESTILOS[jugador.estiloBot]) return ESTILOS[jugador.estiloBot];
     const clave = jugador ? (jugador.nombre || jugador.id) : "";
     return ESTILOS[LISTA_ESTILOS[hashTexto(clave) % LISTA_ESTILOS.length]];
+  }
+
+  /* ---------------------------------------------------------
+     PERSONALIDADES (v12)
+     Cada bot es un personaje: nombre, carácter, forma de hablar
+     y reglas de juego propias, encima de los parámetros de estilo.
+     --------------------------------------------------------- */
+  const PERSONALIDADES = {
+    roca: {
+      id: "roca", etiqueta: "🪨 Roca", tipo: "Tight-pasivo",
+      descripcion: "Solo juega manos premium y casi nunca farolea. Si sube, tiene algo.",
+      nombres: ["Roque", "Petrona", "Anselmo"],
+      estilo: { nombre: "roca", selectividad: 0.17, agresion: 0.6, farol: 0.0, paga: -0.06 },
+      frases: { saludo: ["Paciencia nomás.", "Buenas, a esperar cartas."], subir: ["Ahora sí, hermano."], pagar: ["Pago, pero con cuidado."], retirarse: ["Esa no es para mí.", "Me retiro, no hay apuro."], ganar: ["La paciencia paga.", "Te dije, cartas buenas nomás."], allin: ["Tengo todo, cumpa."] }
+    },
+    tiburon: {
+      id: "tiburon", etiqueta: "🦈 Tiburón", tipo: "Tight-agresivo (pro)",
+      descripcion: "Selectivo pero cuando entra, ataca. Usa la posición y lee la mesa.",
+      nombres: ["Ximena", "Iván", "Rebeca"],
+      estilo: { nombre: "tiburon", selectividad: 0.07, agresion: 1.5, farol: 0.08, paga: -0.02 },
+      frases: { saludo: ["Que empiece la clase."], subir: ["Subo. Pensalo bien.", "Esto es matemática, ¿ya?"], pagar: ["Veo."], retirarse: ["Hoy te la dejo."], ganar: ["Gracias por las fichas.", "Te leí, cumpa."], allin: ["Todo adentro. Decidí."] }
+    },
+    maniaco: {
+      id: "maniaco", etiqueta: "🤪 Loco", tipo: "Maniaco",
+      descripcion: "Sube casi todo, con cualquier cosa. Imposible de leer y un peligro para su stack.",
+      nombres: ["Wilber", "Jhoselin", "Tito"],
+      estilo: { nombre: "maniaco", selectividad: -0.3, agresion: 2.2, farol: 0.35, paga: 0.1 },
+      frases: { saludo: ["¡Hoy no me retiro ni a palos!"], subir: ["¡Subo! ¡Subo todo!", "¡A la carga, pues!"], pagar: ["Dale nomás."], retirarse: ["¡¿Qué?! Bueno, esta sí."], ganar: ["¡Jajaja, lo sabía!", "¡Así se juega, carajo!"], allin: ["¡ALL IN, wawitas!"] }
+    },
+    pagador: {
+      id: "pagador", etiqueta: "📞 Pagador", tipo: "Calling station",
+      descripcion: "Paga todo para ver qué tenés. Casi nunca se retira y casi nunca sube.",
+      nombres: ["Gumercindo", "Chela", "Pancho"],
+      estilo: { nombre: "pagador", selectividad: -0.2, agresion: 0.3, farol: 0.0, paga: 0.35 },
+      frases: { saludo: ["Yo vengo a ver cartas."], subir: ["Bueno, ya, subo un poquito."], pagar: ["Te pago nomás, a ver qué tenés.", "Ya, ya, pago."], retirarse: ["Uy, esta vez no."], ganar: ["¡Capaz salía mi carta, viste!"], allin: ["Ya fue, pago todo."] }
+    },
+    farolero: {
+      id: "farolero", etiqueta: "🎭 Farolero", tipo: "Farolero",
+      descripcion: "Farolea seguido, sobre todo cuando la mesa da miedo (color o escalera posibles).",
+      nombres: ["Chuto", "Marcela", "Cuentero"],
+      estilo: { nombre: "farolero", selectividad: -0.03, agresion: 1.25, farol: 0.3, paga: -0.02 },
+      frases: { saludo: ["Hoy vengo con suerte."], subir: ["¿Y si tengo color, eh?", "Creeme, tengo todo."], pagar: ["Te veo."], retirarse: ["No te creo, pero bueno."], ganar: ["¿Querés saber qué tenía? 😏", "Ni te imaginás."], allin: ["Mirá esa mesa. Da miedo, ¿no?"] }
+    },
+    lag: {
+      id: "lag", etiqueta: "⚡ LAG", tipo: "Suelto-agresivo",
+      descripcion: "Juega muchas manos y las juega fuerte, pero con cabeza.",
+      nombres: ["René", "Kathia", "Dani"],
+      estilo: { nombre: "lag", selectividad: -0.13, agresion: 1.65, farol: 0.15, paga: 0.03 },
+      frases: { saludo: ["A jugar rápido."], subir: ["Subo. ¿Otra vez vos?", "Juego todas, pero con cabeza."], pagar: ["Voy."], retirarse: ["Esta pasa."], ganar: ["Presión, presión."], allin: ["¡Vamos con todo!"] }
+    },
+    miedoso: {
+      id: "miedoso", etiqueta: "😰 Miedoso", tipo: "Tight-pasivo miedoso",
+      descripcion: "Juega poco y suelta las manos en cuanto alguien aprieta.",
+      nombres: ["Teodoro", "Asunta", "Juancito"],
+      estilo: { nombre: "miedoso", selectividad: 0.1, agresion: 0.5, farol: 0.01, paga: -0.15 },
+      frases: { saludo: ["Ay, juguemos tranquilos."], subir: ["Subo... ¿está bien?"], pagar: ["Pago, pero me da cosa."], retirarse: ["Uy, mucha plata... me voy.", "Ay, no sé, no sé."], ganar: ["¡¿Gané?! ¡Gané!"], allin: ["¡Ay, Diosito!"] }
+    },
+    trampero: {
+      id: "trampero", etiqueta: "🕸️ Trampero", tipo: "Slow-play y check-raise",
+      descripcion: "Con manos monstruo se hace el débil: pasa y después sube (check-raise).",
+      nombres: ["Ramiro", "Zoraida", "Zorro"],
+      estilo: { nombre: "trampero", selectividad: 0.04, agresion: 1.1, farol: 0.05, paga: 0.02 },
+      frases: { saludo: ["Yo solo miro, nomás."], subir: ["¿Apostaste? Qué lástima... subo.", "Caíste, cumpa."], pagar: ["Pago nomás... 😏"], retirarse: ["Me ganaste esta."], ganar: ["La trampa estaba puesta."], allin: ["Te estaba esperando."] }
+    },
+    novato: {
+      id: "novato", etiqueta: "🐣 Novato", tipo: "Novato",
+      descripcion: "Está aprendiendo: a veces se equivoca de botón y paga lo que no debe.",
+      nombres: ["Brayan", "Daniela", "Kevin"],
+      estilo: { nombre: "novato", selectividad: -0.08, agresion: 0.9, farol: 0.08, paga: 0.12 },
+      frases: { saludo: ["¿Escalera gana a color?"], subir: ["Ups, apreté mal.", "¿Así se sube?"], pagar: ["Pago, creo."], retirarse: ["¿Me retiré? Bueno."], ganar: ["¡Gané! ¿Gané?"], allin: ["¿Qué hace este botón? 😅"] }
+    },
+    calculador: {
+      id: "calculador", etiqueta: "🧮 Calculador", tipo: "Probabilidades puras",
+      descripcion: "Decide solo con números: paga si las odds del bote lo justifican, nunca farolea.",
+      nombres: ["Gonzalo", "Carmen", "Odilón"],
+      estilo: { nombre: "calculador", selectividad: 0.03, agresion: 1.0, farol: 0.0, paga: 0.0 },
+      frases: { saludo: ["Que la estadística nos acompañe."], subir: ["Valor esperado positivo."], pagar: ["Las odds no mienten.", "Equidad suficiente. Pago."], retirarse: ["Matemáticamente, me retiro."], ganar: ["Matemáticamente correcto."], allin: ["Equidad a favor. Todo."] }
+    }
+  };
+  const LISTA_PERSONALIDADES = ["roca", "tiburon", "maniaco", "pagador", "farolero", "lag", "miedoso", "trampero", "novato", "calculador"];
+
+  function personalidadDe(jugador) {
+    return jugador && jugador.personalidad && PERSONALIDADES[jugador.personalidad] ? PERSONALIDADES[jugador.personalidad] : null;
+  }
+
+  /** Mezcla variada de personalidades para n bots (sin repetir hasta agotar las 10). */
+  function repartirPersonalidades(n, rnd) {
+    rnd = rnd || Math.random;
+    const res = [];
+    while (res.length < n) {
+      const bolsa = LISTA_PERSONALIDADES.slice();
+      for (let i = bolsa.length - 1; i > 0; i--) {
+        const k = Math.floor(rnd() * (i + 1));
+        const t = bolsa[i]; bolsa[i] = bolsa[k]; bolsa[k] = t;
+      }
+      for (let i = 0; i < bolsa.length && res.length < n; i++) res.push(bolsa[i]);
+    }
+    return res;
+  }
+
+  /** Nombre y personalidad para un bot nuevo: { nombre, personalidad }. */
+  function crearBot(usados, personalidad, rnd) {
+    rnd = rnd || Math.random;
+    usados = usados || [];
+    const per = PERSONALIDADES[personalidad] || PERSONALIDADES[LISTA_PERSONALIDADES[Math.floor(rnd() * LISTA_PERSONALIDADES.length)]];
+    const libres = per.nombres.filter(function (n) { return usados.indexOf(n) < 0; });
+    let nombre = libres.length ? libres[Math.floor(rnd() * libres.length)] : per.nombres[0] + " " + (usados.length + 1);
+    return { nombre: nombre, personalidad: per.id };
+  }
+
+  /** Frase corta según el momento: saludo, subir, pagar, retirarse, ganar, allin. */
+  function fraseBot(personalidad, momento, rnd) {
+    rnd = rnd || Math.random;
+    const per = PERSONALIDADES[personalidad];
+    if (!per) return null;
+    const lista = per.frases[momento];
+    if (!lista || !lista.length) return null;
+    return lista[Math.floor(rnd() * lista.length)];
+  }
+
+  const PROB_CHAT = { saludo: 0.5, subir: 0.16, pagar: 0.08, retirarse: 0.08, ganar: 0.55, allin: 0.6 };
+  /**
+   * Frase que diría este bot ahora (o null). Respeta una probabilidad por
+   * momento para no llenar la mesa de mensajes.
+   */
+  function chatDeBot(jugador, momento, rnd) {
+    rnd = rnd || Math.random;
+    if (!jugador || !jugador.personalidad || !PERSONALIDADES[jugador.personalidad]) return null;
+    if (rnd() > (PROB_CHAT[momento] || 0)) return null;
+    return fraseBot(jugador.personalidad, momento, rnd);
+  }
+  function momentoDeAccion(tipo) {
+    return { igualar: "pagar", apostar: "subir", subir: "subir", "all-in": "allin", retirarse: "retirarse" }[tipo] || null;
+  }
+
+  /** ¿La mesa da miedo? (posible color, escalera o mesa doblada) */
+  function tableroMiedoso(comunitarias) {
+    if (!comunitarias || comunitarias.length < 3) return false;
+    const palos = {};
+    const nums = {};
+    comunitarias.forEach(function (c) { palos[c.palo] = (palos[c.palo] || 0) + 1; nums[c.numero] = (nums[c.numero] || 0) + 1; });
+    if (Object.keys(palos).some(function (p) { return palos[p] >= 3; })) return true;
+    if (Object.keys(nums).some(function (n) { return nums[n] >= 2; })) return true;
+    const orden = Object.keys(nums).map(Number).sort(function (a, b) { return a - b; });
+    for (let i = 0; i + 2 < orden.length; i++) if (orden[i + 2] - orden[i] <= 4) return true;
+    return false;
   }
 
   /* ---------------------------------------------------------
@@ -289,6 +437,18 @@
       return { tipo: "retirarse" };
     }
 
+    // ---- Reglas propias de cada personalidad (antes de la lógica general) ----
+    const per = personalidadDe(jugador);
+    if (per) {
+      const r = reglaPersonalidad(per.id, {
+        legales: legales, preflop: preflop, fuerza: fuerza, equity: equity, rel: rel, proyecta: proyecta,
+        porIgualar: porIgualar, bote: bote, bb: bb, potOdds: potOdds, azar2: rnd(), rnd: rnd,
+        comunitarias: comunitarias, apuestaMaxima: apuestaMaxima,
+        apuestaDe: apuestaDe, pagarOPasar: pagarOPasar, soltar: soltar
+      });
+      if (r) return r;
+    }
+
     // =====================================================
     // PREFLOP
     // =====================================================
@@ -396,6 +556,91 @@
     return { tipo: "retirarse" };
   }
 
+  /**
+   * Devuelve una acción si la personalidad tiene una regla para esta situación,
+   * o null para seguir con la lógica general (con los parámetros de su estilo).
+   */
+  function reglaPersonalidad(id, x) {
+    const L = x.legales;
+    const puedeAgredir = L.puedeApostar || L.puedeSubir;
+    const enfrentaApuesta = !L.puedePasar && x.porIgualar > 0;
+    const pagar = function () { return L.puedeIgualar ? { tipo: "igualar" } : x.pagarOPasar(); };
+    const a = x.azar2;
+    switch (id) {
+      case "maniaco":
+        if (puedeAgredir && a < (x.preflop ? 0.72 : 0.6)) return x.apuestaDe(x.preflop ? 0.9 : 0.8, a < 0.06);
+        if (enfrentaApuesta && (x.preflop || x.equity > x.potOdds * 0.5 || a < 0.75)) return pagar();
+        return null;
+      case "pagador":
+        if (enfrentaApuesta) {
+          const muyMal = x.preflop ? x.fuerza < 0.14 : (x.equity < 0.06 && x.porIgualar > x.bote);
+          if (!muyMal || a < 0.25) return pagar();
+          return { tipo: "retirarse" };
+        }
+        if (x.preflop && L.puedeIgualar) return { tipo: "igualar" };
+        if (puedeAgredir && !x.preflop && x.rel > 0.7 && a < 0.3) return x.apuestaDe(0.35, false);
+        if (L.puedePasar) return { tipo: "pasar" };
+        return null;
+      case "calculador": {
+        if (x.preflop) {
+          if (x.fuerza >= 0.74 && puedeAgredir) return x.apuestaDe(0.7, false);
+          if (enfrentaApuesta || L.puedeIgualar) return x.fuerza >= 0.46 + x.potOdds * 0.6 ? pagar() : x.soltar();
+          return L.puedePasar ? { tipo: "pasar" } : null;
+        }
+        if (L.puedePasar) return (x.equity > 0.62 && puedeAgredir) ? x.apuestaDe(0.6, false) : { tipo: "pasar" };
+        if (x.equity > 0.78 && puedeAgredir) return x.apuestaDe(0.75, false);
+        return x.equity >= x.potOdds + 0.01 ? pagar() : { tipo: "retirarse" };
+      }
+      case "trampero":
+        if (!x.preflop && L.puedePasar && x.rel >= 0.4 && a < 0.85) return { tipo: "pasar" };   // se hace el débil
+        if (!x.preflop && enfrentaApuesta && x.rel >= 0.4 && puedeAgredir && a < 0.9) return x.apuestaDe(0.95, x.rel > 0.9 && a < 0.2); // check-raise
+        if (x.preflop && x.fuerza >= 0.86 && L.puedeIgualar && x.apuestaMaxima <= x.bb && a < 0.6) return { tipo: "igualar" }; // limp con ases
+        return null;
+      case "miedoso":
+        if (enfrentaApuesta) {
+          const grande = x.preflop ? x.porIgualar >= x.bb * 3 : x.porIgualar >= x.bote * 0.35;
+          const aguanta = x.preflop ? x.fuerza >= 0.88 : x.rel >= 0.72;
+          if (grande && !aguanta) return { tipo: "retirarse" };
+        }
+        return null;
+      case "farolero":
+        if (!x.preflop && puedeAgredir && x.rel < 0.35) {
+          const miedo = tableroMiedoso(x.comunitarias);
+          if (L.puedePasar && a < (miedo ? 0.6 : 0.3)) return x.apuestaDe(miedo ? 0.75 : 0.55, false);
+          if (enfrentaApuesta && miedo && a < 0.18) return x.apuestaDe(0.85, false);
+        }
+        if (x.preflop && puedeAgredir && x.apuestaMaxima <= x.bb && a < 0.25) return x.apuestaDe(0.6, false);
+        return null;
+      case "novato":
+        if (a < 0.2) {
+          // Error de principiante: un botón cualquiera de los permitidos (sin all-in)
+          const ops = L.tipos.filter(function (t) { return t !== "all-in"; });
+          const t = ops[Math.floor(x.rnd() * ops.length)] || "pasar";
+          if (t === "apostar" || t === "subir") return x.apuestaDe(0.3 + x.rnd() * 0.7, false);
+          return { tipo: t };
+        }
+        if (enfrentaApuesta && x.porIgualar <= x.bote && a < 0.55) return pagar();
+        return null;
+      case "lag":
+        if (x.preflop && puedeAgredir && x.apuestaMaxima <= x.bb && x.fuerza >= 0.32 && a < 0.6) return x.apuestaDe(0.6, false);
+        return null;
+      case "tiburon":
+        if (x.preflop) {
+          if (puedeAgredir && x.fuerza >= 0.68 && a < 0.9) return x.apuestaDe(0.65, x.fuerza > 0.9 && a < 0.1);
+          if (x.fuerza < 0.68 && !L.puedePasar) return x.soltar();
+          return null;
+        }
+        if (puedeAgredir && L.puedePasar && (x.rel >= 0.2 || (x.proyecta && a < 0.6))) return x.apuestaDe(0.65, false);
+        if (puedeAgredir && enfrentaApuesta && x.rel >= 0.4 && a < 0.8) return x.apuestaDe(0.8, false);
+        return null;
+      case "roca":
+        if (x.preflop && x.fuerza < 0.66) return x.soltar();
+        if (!x.preflop && L.puedePasar && x.rel < 0.45) return { tipo: "pasar" };
+        return null;
+    }
+    return null;
+  }
+
   const api = {
     NOMBRES_BOT: NOMBRES_BOT,
     nombreBot: nombreBot,
@@ -405,6 +650,15 @@
     estiloDe: estiloDe,
     posicionRelativa: posicionRelativa,
     ESTILOS: ESTILOS,
+    PERSONALIDADES: PERSONALIDADES,
+    LISTA_PERSONALIDADES: LISTA_PERSONALIDADES,
+    personalidadDe: personalidadDe,
+    repartirPersonalidades: repartirPersonalidades,
+    crearBot: crearBot,
+    fraseBot: fraseBot,
+    chatDeBot: chatDeBot,
+    momentoDeAccion: momentoDeAccion,
+    tableroMiedoso: tableroMiedoso,
     decidir: decidir
   };
 

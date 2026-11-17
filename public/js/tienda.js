@@ -1,0 +1,191 @@
+/* =========================================================
+   MONEDAS Y TIENDA (solo cosmético, sin dinero real)
+   ---------------------------------------------------------
+   Monedero: { saldo, comprados[], tema, dorso, sonido, ganadoTotal,
+   racha, mejorRacha }.
+   Se guarda en el aparato (localStorage) y, como respaldo, en
+   el servidor (Key Value) con un código de monedero.
+   ========================================================= */
+(function (raiz, factory) {
+  const Avatar = (typeof module === "object" && module.exports) ? require("./avatar.js") : raiz.PokerAvatar;
+  const api = factory(Avatar);
+  if (typeof module === "object" && module.exports) module.exports = api;
+  raiz.PokerTienda = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Avatar) {
+  "use strict";
+
+  const SALDO_INICIAL = 300;
+  const CODIGO_TRUCO = "3174";        // +1000 monedas cada vez que se escribe (sin límite)
+  const PREMIO_TRUCO = 1000;
+  const MAX_SALDO = 1e9;
+
+  const TEMAS = [
+    { id: "tema:clasico", nombre: "Paño clásico", precio: 0, pano: "#1f8a50", pano2: "#0f5a32", borde: "#5a2e14" },
+    { id: "tema:azul", nombre: "Azul casino", precio: 150, pano: "#1f6fb2", pano2: "#0d3a66", borde: "#2a2f3a" },
+    { id: "tema:vino", nombre: "Vino tinto", precio: 150, pano: "#9b2335", pano2: "#56101c", borde: "#3a1a10" },
+    { id: "tema:purpura", nombre: "Noche púrpura", precio: 200, pano: "#6a3fb5", pano2: "#2e1563", borde: "#1c1430" },
+    { id: "tema:aguayo", nombre: "Aguayo andino", precio: 300, pano: "#c0392b", pano2: "#7b1f16", borde: "#2b5f3a", aguayo: true },
+    { id: "tema:oro", nombre: "Negro y oro", precio: 400, pano: "#2a2a2a", pano2: "#0b0b0b", borde: "#b8860b" }
+  ];
+  const DORSOS = [
+    { id: "dorso:azul", nombre: "Azul clásico", precio: 0, c1: "#1d3f8f", c2: "#0f2357", linea: "#e9c46a" },
+    { id: "dorso:rojo", nombre: "Rojo", precio: 100, c1: "#b3202f", c2: "#5e0e17", linea: "#f4e3b2" },
+    { id: "dorso:verde", nombre: "Verde", precio: 100, c1: "#1f7a46", c2: "#0c3d22", linea: "#e9c46a" },
+    { id: "dorso:negro", nombre: "Negro", precio: 150, c1: "#2b2b2b", c2: "#0a0a0a", linea: "#c0c0c0" },
+    { id: "dorso:aguayo", nombre: "Aguayo", precio: 250, c1: "#c0392b", c2: "#1e8449", linea: "#f1c40f", aguayo: true },
+    { id: "dorso:oro", nombre: "Dorado", precio: 300, c1: "#f2c14e", c2: "#9a6b06", linea: "#fff6c8" }
+  ];
+
+  // Temas de sonido: se fabrican con Web Audio (ver sonidos.js), no hay archivos
+  const SONIDOS = [
+    { id: "sonido:clasico", nombre: "Clásico", precio: 0, desc: "Clics de cartas y fichas de siempre." },
+    { id: "sonido:suave", nombre: "Suave", precio: 100, desc: "Tonos redondos y bajitos, para jugar de noche." },
+    { id: "sonido:casino", nombre: "Casino", precio: 200, desc: "Campanitas brillantes con eco de salón." },
+    { id: "sonido:arcade", nombre: "Arcade 8 bits", precio: 250, desc: "Pitidos de consola retro." },
+    { id: "sonido:andino", nombre: "Andino", precio: 300, desc: "Melodías pentatónicas tipo quena." }
+  ];
+
+  function catalogo() {
+    const lista = [];
+    Avatar.piezasDePago().forEach(function (p) { lista.push(Object.assign({ tipo: "avatar" }, p)); });
+    TEMAS.forEach(function (t) { lista.push(Object.assign({ tipo: "tema" }, t)); });
+    DORSOS.forEach(function (d) { lista.push(Object.assign({ tipo: "dorso" }, d)); });
+    SONIDOS.forEach(function (d) { lista.push(Object.assign({ tipo: "sonido" }, d)); });
+    return lista;
+  }
+  const POR_ID = {};
+  catalogo().forEach(function (it) { POR_ID[it.id] = it; });
+
+  function item(id) { return POR_ID[id] || null; }
+  function precioDe(id) { const it = item(id); return it ? it.precio : null; }
+
+  function nuevoMonedero() {
+    return { v: 1, saldo: SALDO_INICIAL, comprados: [], tema: "tema:clasico", dorso: "dorso:azul", sonido: "sonido:clasico", ganadoTotal: 0, manos: 0, racha: 0, mejorRacha: 0 };
+  }
+
+  /** Limpia un monedero que viene de afuera (localStorage o servidor). */
+  function normalizar(m) {
+    const base = nuevoMonedero();
+    if (!m || typeof m !== "object") return base;
+    const saldo = Math.floor(Number(m.saldo));
+    base.saldo = isFinite(saldo) ? Math.max(0, Math.min(MAX_SALDO, saldo)) : SALDO_INICIAL;
+    base.comprados = Array.isArray(m.comprados)
+      ? m.comprados.filter(function (id, i, arr) { return typeof id === "string" && POR_ID[id] && arr.indexOf(id) === i; })
+      : [];
+    base.tema = tiene(base, m.tema) ? m.tema : "tema:clasico";
+    base.dorso = tiene(base, m.dorso) ? m.dorso : "dorso:azul";
+    base.sonido = tiene(base, m.sonido) ? m.sonido : "sonido:clasico";
+    base.ganadoTotal = Math.max(0, Math.floor(Number(m.ganadoTotal) || 0));
+    base.racha = Math.max(0, Math.min(1e6, Math.floor(Number(m.racha) || 0)));
+    base.mejorRacha = Math.max(base.racha, Math.min(1e6, Math.floor(Number(m.mejorRacha) || 0)));
+    base.manos = Math.max(0, Math.floor(Number(m.manos) || 0));
+    return base;
+  }
+
+  function tiene(m, id) {
+    const it = item(id);
+    if (!it) return false;
+    return it.precio === 0 || (m.comprados || []).indexOf(id) >= 0;
+  }
+
+  function tienePieza(m, campo, valor) {
+    const p = Avatar.precio(campo, valor);
+    return p === 0 || (m.comprados || []).indexOf("avatar:" + campo + ":" + valor) >= 0;
+  }
+
+  /** Piezas del avatar que todavía no se compraron. */
+  function piezasBloqueadas(m, avatar) {
+    const a = Avatar.normalizar(avatar);
+    return Avatar.ORDEN.filter(function (c) { return !tienePieza(m, c, a[c]); })
+      .map(function (c) { return { campo: c, valor: a[c], id: "avatar:" + c + ":" + a[c], precio: Avatar.precio(c, a[c]) }; });
+  }
+
+  /** Avatar sin lo que no se compró (se usa al sentarse en la mesa). */
+  function avatarPermitido(m, avatar) {
+    const a = Avatar.normalizar(avatar);
+    piezasBloqueadas(m, a).forEach(function (p) { a[p.campo] = 0; });
+    return a;
+  }
+
+  function ganar(m, cantidad) {
+    cantidad = Math.max(0, Math.floor(Number(cantidad) || 0));
+    m.saldo = Math.min(MAX_SALDO, m.saldo + cantidad);
+    m.ganadoTotal += cantidad;
+    return m;
+  }
+
+  /**
+   * Monedas por una mano: +2 por jugarla, +10 por ganarla (+5 más si fue en showdown),
+   * +50 si ganaste con Póker, Escalera de color o Escalera real.
+   */
+  function premioMano(r) {
+    if (!r || !r.jugo) return 0;
+    let n = 2;
+    if (r.gano) n += 10 + (r.showdown ? 5 : 0);
+    if (r.gano && r.fuerte) n += 50;
+    return n;
+  }
+
+  function comprar(m, id) {
+    const it = item(id);
+    if (!it) return { ok: false, error: "Ese artículo no existe." };
+    if (tiene(m, id)) return { ok: false, error: "Ya lo tenés." };
+    if (m.saldo < it.precio) return { ok: false, error: "Te faltan " + (it.precio - m.saldo) + " monedas.", falta: it.precio - m.saldo };
+    m.saldo -= it.precio;
+    m.comprados.push(id);
+    return { ok: true, item: it };
+  }
+
+  function equipar(m, id) {
+    const it = item(id);
+    if (!it || !tiene(m, id)) return false;
+    if (it.tipo === "tema") m.tema = id;
+    else if (it.tipo === "dorso") m.dorso = id;
+    else if (it.tipo === "sonido") m.sonido = id;
+    else return false;
+    return true;
+  }
+
+  /**
+   * Racha de manos ganadas seguidas (no da monedas extra: solo se cuenta).
+   * r = { jugo, gano, retiro, gratis }:
+   *  - ganar (o repartir el bote) suma 1;
+   *  - perder en showdown o retirarse después de poner fichas por voluntad corta la racha;
+   *  - retirarse "gratis" (sin poner más que la ciega obligatoria) no la corta ni la suma;
+   *  - las manos en que no te repartieron cartas no cuentan.
+   * Devuelve { racha, mejor, nueva: true si es un récord, cambio: "+1" | "corte" | "igual" }.
+   */
+  function registrarRacha(m, r) {
+    let cambio = "igual";
+    if (r && r.jugo) {
+      if (r.gano) { m.racha = (m.racha || 0) + 1; cambio = "+1"; }
+      else if (!(r.retiro && r.gratis)) { if (m.racha) cambio = "corte"; m.racha = 0; }
+    }
+    const nueva = m.racha > (m.mejorRacha || 0);
+    if (nueva) m.mejorRacha = m.racha;
+    return { racha: m.racha, mejor: m.mejorRacha, nueva: nueva, cambio: cambio };
+  }
+
+  /** Códigos: 3174 da +1000 cada vez, sin límite. */
+  function canjear(m, codigo) {
+    const c = String(codigo || "").replace(/\s+/g, "");
+    if (c === CODIGO_TRUCO) {
+      ganar(m, PREMIO_TRUCO);
+      return { ok: true, monedas: PREMIO_TRUCO, mensaje: "¡+" + PREMIO_TRUCO + " monedas!" };
+    }
+    return { ok: false, mensaje: "Ese código no existe." };
+  }
+
+  function formatear(n) {
+    return String(Math.floor(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  return {
+    SALDO_INICIAL: SALDO_INICIAL, TEMAS: TEMAS, DORSOS: DORSOS, SONIDOS: SONIDOS, CODIGO_TRUCO: CODIGO_TRUCO,
+    registrarRacha: registrarRacha,
+    catalogo: catalogo, item: item, precioDe: precioDe,
+    nuevoMonedero: nuevoMonedero, normalizar: normalizar, tiene: tiene, tienePieza: tienePieza,
+    piezasBloqueadas: piezasBloqueadas, avatarPermitido: avatarPermitido,
+    ganar: ganar, premioMano: premioMano, comprar: comprar, equipar: equipar, canjear: canjear, formatear: formatear
+  };
+});

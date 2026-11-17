@@ -46,12 +46,19 @@
               <button type="button" id="btn-solo" class="btn block">Jugar solo</button>
               <button type="button" id="btn-publica" class="btn block">Mesa con desconocidos</button>
             </div>
+            <div id="barra-extras-menu" class="barra-extras-menu">
+              <span class="pill-monedas" title="Tus monedas (no son dinero real)">🪙 <strong class="saldo-monedas">0</strong></span>
+              <button type="button" id="btn-editar-avatar" class="btn chico">🎨 Editar avatar</button>
+              <button type="button" id="btn-tienda" class="btn chico">🛒 Tienda</button>
+              <button type="button" id="btn-mesas-vivo" class="btn chico">👁 Mesas en vivo</button>
+            </div>
             <details id="opciones-online" class="opciones-extra">
               <summary>Opciones</summary>
               <fieldset class="selector-asientos">
                 <legend>Tamaño de la mesa</legend>
                 <label><input type="radio" name="asientos-online" value="9" checked> 9 asientos</label>
                 <label><input type="radio" name="asientos-online" value="10"> 10 asientos</label>
+                <label><input type="radio" name="asientos-online" value="15"> 15 asientos</label>
               </fieldset>
               <fieldset class="selector-fichas" data-grupo="online">
                 <legend>Fichas iniciales</legend>
@@ -80,6 +87,14 @@
             </details>
           </div>
           <p class="disclaimer">Elegí las fichas en Opciones, de 10 a 50.000. No se usa dinero real.</p>
+          <div id="pie-menu" class="pie-menu">
+            <button type="button" id="btn-codigo-menu" class="btn chico ghost" aria-expanded="false" aria-controls="caja-codigo-menu">🎁 Código</button>
+            <div id="caja-codigo-menu" class="caja-codigo-menu" hidden>
+              <input id="input-codigo-menu" type="text" inputmode="numeric" maxlength="12" placeholder="Código de monedas" autocomplete="off" aria-label="Código de monedas">
+              <button type="button" id="btn-canjear-menu" class="btn chico primary">Canjear</button>
+              <p id="aviso-codigo-menu" class="hint centro" role="status"></p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -88,15 +103,77 @@
     <section id="pantalla-avatar" class="pantalla" hidden>
       <div class="auth-wrap">
         <div class="auth-box ancho-avatar">
-          <h2>Personaliza tu jugador</h2>
-          <p class="texto">Así te van a ver en la mesa. Podés saltarlo o pedir uno al azar.</p>
+          <div class="cabeza-tienda">
+            <h2>Personaliza tu jugador</h2>
+            <span class="pill-monedas">🪙 <strong class="saldo-monedas">0</strong></span>
+          </div>
+          <p class="texto">Así te van a ver en la mesa. Lo que tiene 🔒 se compra con monedas: tocalo para probártelo.</p>
           <div id="preview-avatar" class="preview-avatar"></div>
           <p id="nombre-preview-avatar" class="hint centro"></p>
+          <div id="aviso-bloqueadas" class="aviso-bloqueadas" hidden>
+            <span id="texto-bloqueadas"></span>
+            <button type="button" id="btn-comprar-bloqueadas" class="btn primary chico">Comprar</button>
+          </div>
           <div id="controles-avatar" class="controles-avatar"></div>
           <div class="stack-btns">
             <button type="button" id="btn-avatar-listo" class="btn primary block">Listo</button>
             <button type="button" id="btn-avatar-aleatorio" class="btn block">Aleatorio</button>
             <button type="button" id="btn-avatar-saltar" class="btn ghost block">Saltar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== TIENDA (monedas virtuales, sin dinero real) ========== -->
+    <section id="pantalla-tienda" class="pantalla" hidden>
+      <div class="auth-wrap">
+        <div class="auth-box ancho-tienda">
+          <div class="cabeza-tienda">
+            <h2>Tienda</h2>
+            <span class="pill-monedas">🪙 <strong class="saldo-monedas">0</strong></span>
+          </div>
+          <p class="hint">Las monedas se ganan jugando: +2 por mano, +10 si la ganás, +5 extra en showdown y +50 con póker o escalera de color. Solo sirven para cosas lindas; no son dinero real.</p>
+          <div class="tabs-tienda" role="tablist">
+            <button type="button" data-tab="avatar" class="activo">Avatar</button>
+            <button type="button" data-tab="tema">Mesas</button>
+            <button type="button" data-tab="dorso">Cartas</button>
+            <button type="button" data-tab="sonido">Sonidos</button>
+            <button type="button" data-tab="codigo">Códigos</button>
+          </div>
+          <div id="grilla-tienda" class="grilla-tienda"></div>
+          <div id="vista-codigos" class="vista-codigos" hidden>
+            <label class="campo-nombre" for="input-codigo-monedas">Código de regalo
+              <input id="input-codigo-monedas" type="text" inputmode="numeric" maxlength="12" placeholder="Escribí un código" autocomplete="off">
+            </label>
+            <button type="button" id="btn-canjear" class="btn primary block">Canjear</button>
+            <p id="aviso-canje" class="hint centro" role="status"></p>
+            <hr class="sep">
+            <p class="texto">Tu código de monedero: <strong id="codigo-monedero" class="codigo-monedero"></strong></p>
+            <p class="hint">Tus monedas y compras se guardan en este aparato y en el servidor. Con este código las recuperás en otro teléfono.</p>
+            <label class="campo-nombre" for="input-recuperar-monedero">Recuperar con código
+              <input id="input-recuperar-monedero" type="text" maxlength="24" placeholder="24 letras y números" autocomplete="off" spellcheck="false">
+            </label>
+            <button type="button" id="btn-recuperar-monedero" class="btn block">Recuperar</button>
+          </div>
+          <div class="stack-btns">
+            <button type="button" id="btn-tienda-avatar" class="btn block">🎨 Editar avatar</button>
+            <button type="button" id="btn-volver-tienda" class="btn ghost block">Volver</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== MESAS EN VIVO (para mirar) ========== -->
+    <section id="pantalla-vivo" class="pantalla" hidden>
+      <div class="auth-wrap">
+        <div class="auth-box ancho-tienda">
+          <h2>👁 Mesas en vivo</h2>
+          <p class="texto">Mesas públicas que se están jugando ahora. Mirás sin sentarte: ves las apuestas y las cartas que se muestran en el showdown, nunca las cartas privadas.</p>
+          <ul id="lista-mesas-vivo" class="lista-mesas-vivo"></ul>
+          <p id="aviso-vivo" class="hint centro" role="status"></p>
+          <div class="stack-btns">
+            <button type="button" id="btn-actualizar-vivo" class="btn block">Actualizar</button>
+            <button type="button" id="btn-volver-vivo" class="btn ghost block">Volver</button>
           </div>
         </div>
       </div>
@@ -111,6 +188,7 @@
           <legend>Tamaño de la mesa</legend>
           <label><input type="radio" name="asientos-solo" value="9" checked> 9 asientos</label>
           <label><input type="radio" name="asientos-solo" value="10"> 10 asientos</label>
+          <label><input type="radio" name="asientos-solo" value="15"> 15 asientos</label>
         </fieldset>
 
         <fieldset class="selector-fichas" data-grupo="solo">
@@ -180,6 +258,8 @@
         <button type="button" id="btn-salir-mesa" class="btn ghost compacto">Salir</button>
         <span class="brand-mini">Royal <span>Flush</span></span>
         <span id="info-sala" class="code-pill"></span>
+        <span id="info-espectadores" class="code-pill pill-espectadores" title="Gente mirando la mesa" hidden></span>
+        <span id="info-racha" class="code-pill pill-racha" title="Manos ganadas seguidas" hidden></span>
         <button type="button" id="btn-compartir-mesa" class="icon-btn" title="Copiar enlace de la mesa" aria-label="Copiar enlace de la mesa" hidden>🔗</button>
         <button type="button" id="btn-abrir-chat" class="icon-btn" title="Frases rápidas" aria-label="Abrir chat">💬</button>
         <button type="button" id="btn-abrir-historial" class="icon-btn" title="Historial de manos" aria-label="Historial de manos">📜</button>
@@ -366,7 +446,18 @@
           <button type="button" id="btn-cerrar-chat" class="icon-btn" aria-label="Cerrar">✕</button>
         </div>
         <div id="frases-chat" class="frases-chat"></div>
+        <form id="form-chat" class="form-chat" autocomplete="off">
+          <input id="input-chat" type="text" maxlength="80" placeholder="Escribí un mensaje (máx. 80)" aria-label="Mensaje de chat" enterkeyhint="send">
+          <span id="cuenta-chat" class="cuenta-chat" aria-hidden="true">0/80</span>
+          <button type="submit" id="btn-enviar-chat" class="btn chico primary">Enviar</button>
+        </form>
+        <p id="aviso-chat" class="hint" role="status"></p>
         <ul id="log-chat" class="log-chat"></ul>
+      </div>
+
+      <div id="barra-sin-fichas" class="barra-sin-fichas" hidden>
+        <span>Te quedaste sin fichas.</span>
+        <button type="button" id="btn-recargar-sin-fichas" class="btn primary">💰 Recargar</button>
       </div>
 
       <div id="panel-acciones" hidden>
@@ -448,6 +539,7 @@
   <script src="/js/motor.js"></script>
   <script src="/js/bots.js"></script>
   <script src="/js/avatar.js"></script>
+  <script src="/js/tienda.js"></script>
   <script src="/js/historial.js"></script>
   <script src="/js/sonidos.js"></script>
   <script src="/js/utilidades.js"></script>

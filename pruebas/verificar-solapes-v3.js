@@ -104,9 +104,9 @@ async function montar(page, asientos, faseOpt) {
   }
 
   console.log("=== ESCRITORIO / HORIZONTAL ===");
-  await correr(VIEWPORTS, [9, 10]);
+  await correr(VIEWPORTS, [9, 10, 15]);
   console.log("=== TELEFONOS ===");
-  await correr(PHONES, [9, 10]);
+  await correr(PHONES, [9, 10, 15]);
 
   // screenshots
   async function foto(name, w, h, asientos, faseOpt) {
@@ -121,6 +121,8 @@ async function montar(page, asientos, faseOpt) {
   await foto("v3-compu-1024x550.png", 1024, 550, 10, { fase: "preflop", todasApuestas: true, forzarAcciones: true });
   await foto("v3-compu-1366.png", 1366, 650, 9, { fase: "river", forzarAcciones: true });
   await foto("v3-compu-10asientos.png", 1440, 800, 10, { fase: "preflop", todasApuestas: true, forzarAcciones: true });
+  await foto("v3-compu-15asientos.png", 1440, 800, 15, { fase: "preflop", todasApuestas: true, forzarAcciones: true });
+  await foto("v3-iphone-15asientos.png", 390, 844, 15, { fase: "preflop", todasApuestas: true, forzarAcciones: true });
 
   await browser.close();
   console.log("\n==== RESUMEN " + ok + "/" + casos + " ok, fallos=" + fallos.length + " ====");

@@ -4,11 +4,11 @@
    - Siempre intenta la red primero: si hay internet se usa lo último del servidor.
    - NUNCA toca /ws (la conexión en vivo), /api ni /salud. */
 "use strict";
-const CACHE = "royal-flush-v11";
+const CACHE = "royal-flush-v12";
 const ARCHIVOS = [
   "/", "/estilo.css", "/manifest.json", "/favicon.ico", "/favicon-32.png",
   "/icono-192.png", "/icono-512.png", "/apple-touch-icon.png",
-  "/js/evaluador.js", "/js/motor.js", "/js/bots.js", "/js/avatar.js", "/js/historial.js",
+  "/js/evaluador.js", "/js/motor.js", "/js/bots.js", "/js/avatar.js", "/js/tienda.js", "/js/historial.js",
   "/js/sonidos.js", "/js/utilidades.js", "/js/interfaz.js"
 ];
 

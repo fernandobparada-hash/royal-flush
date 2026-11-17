@@ -107,6 +107,8 @@
 
   function guardarAvatar(a) {
     ui.avatar = Avatar.normalizar(a || ui.avatar || Avatar.porDefecto());
+    // Lo que no se compró no se lleva a la mesa
+    if (window.PokerTienda && ui.monedero) ui.avatar = window.PokerTienda.avatarPermitido(ui.monedero, ui.avatar);
     try { localStorage.setItem(LS_AVATAR, JSON.stringify(ui.avatar)); } catch (e) { /* */ }
     return ui.avatar;
   }
@@ -429,7 +431,7 @@
   }
 
   function mostrar(idPantalla) {
-    const ids = ["pantalla-menu", "pantalla-avatar", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
+    const ids = ["pantalla-menu", "pantalla-avatar", "pantalla-tienda", "pantalla-vivo", "pantalla-solo", "pantalla-online", "pantalla-sala", "pantalla-mesa"];
     for (let i = 0; i < ids.length; i++) {
       const el = $(ids[i]);
       if (!el) continue;
@@ -553,62 +555,29 @@
     return "";
   }
 
-  function pintarPreviewAvatar() {
-    const caja = $("preview-avatar");
-    if (!caja || !Avatar) return;
-    caja.innerHTML = Avatar.svg(ui.avatar, 132);
-    if ($("nombre-preview-avatar")) $("nombre-preview-avatar").textContent = nombreJugador(false);
-  }
-
-  function montarControlesAvatar() {
-    const caja = $("controles-avatar");
-    if (!caja || !Avatar) return;
-    caja.innerHTML = "";
-    const campos = Avatar.CAMPOS;
-    const labels = Avatar.LABELS;
-    Object.keys(campos).forEach(function (campo) {
-      const fila = document.createElement("div");
-      fila.className = "fila-avatar-opcion";
-      const tit = document.createElement("strong");
-      const nombresCampo = { cara: "Cara", piel: "Piel", pelo: "Pelo", colorPelo: "Color de pelo", ojos: "Ojos", cejas: "Cejas", boca: "Boca", barba: "Barba", lentes: "Lentes", aretes: "Aretes", camisa: "Camisa", fondo: "Fondo" };
-      tit.textContent = nombresCampo[campo] || campo;
-      fila.appendChild(tit);
-      const chips = document.createElement("div");
-      chips.className = "opciones-chips";
-      const ops = labels[campo] || [];
-      for (let i = 0; i < campos[campo]; i++) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = ops[i] || String(i + 1);
-        if (ui.avatar && ui.avatar[campo] === i) b.className = "activo";
-        b.addEventListener("click", function () {
-          ui.avatar = Avatar.normalizar(ui.avatar);
-          ui.avatar[campo] = i;
-          guardarAvatar(ui.avatar);
-          montarControlesAvatar();
-          pintarPreviewAvatar();
-        });
-        chips.appendChild(b);
-      }
-      fila.appendChild(chips);
-      caja.appendChild(fila);
-    });
-  }
-
   function abrirPersonalizar(luego) {
     ui.despuesAvatar = luego || null;
     if (!ui.avatar) ui.avatar = Avatar.porDefecto();
+    ui.avatarEdicion = Avatar.normalizar(ui.avatar);
     mostrar("pantalla-avatar");
     montarControlesAvatar();
     pintarPreviewAvatar();
   }
 
   function terminarAvatar(saltar) {
+    if (!saltar && piezasBloqueadasEdicion().length) {
+      toast("Comprá lo que tiene 🔒 o elegí otra opción.", "err");
+      pintarAvisoBloqueadas();
+      return;
+    }
     if (saltar && !localStorage.getItem(LS_AVATAR)) {
       guardarAvatar(Avatar.aleatorio(nombreJugador(false)));
-    } else {
+    } else if (saltar) {
       guardarAvatar(ui.avatar || Avatar.porDefecto());
+    } else {
+      guardarAvatar(ui.avatarEdicion || ui.avatar || Avatar.porDefecto());
     }
+    ui.avatarEdicion = null;
     const fn = ui.despuesAvatar;
     ui.despuesAvatar = null;
     if (typeof fn === "function") fn();
@@ -647,6 +616,401 @@
     }
   }
 
+  /* =========================================================
+     v12: MONEDAS VIRTUALES, TIENDA Y MESAS EN VIVO
+     Las monedas son solo cosméticas (no son dinero real).
+     ========================================================= */
+  const Tienda = window.PokerTienda;
+  const LS_MONEDERO = "rf_monedero";
+  const LS_MONEDERO_ID = "rf_monedero_id";
+
+  function idMonedero() {
+    let id = "";
+    try { id = localStorage.getItem(LS_MONEDERO_ID) || ""; } catch (e) { /* */ }
+    if (!/^[a-f0-9]{24}$/.test(id)) {
+      const bytes = new Uint8Array(12);
+      if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
+      else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+      id = Array.prototype.map.call(bytes, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+      try { localStorage.setItem(LS_MONEDERO_ID, id); } catch (e) { /* */ }
+    }
+    return id;
+  }
+
+  function cargarMonedero() {
+    if (!Tienda) return;
+    let guardado = null;
+    try { guardado = JSON.parse(localStorage.getItem(LS_MONEDERO) || "null"); } catch (e) { guardado = null; }
+    ui.monedero = guardado ? Tienda.normalizar(guardado) : Tienda.nuevoMonedero();
+    if (!guardado) guardarMonedero();
+    else { pintarSaldo(); aplicarCosmeticos(); }
+  }
+
+  function guardarMonedero(sinRespaldo) {
+    if (!Tienda || !ui.monedero) return;
+    try { localStorage.setItem(LS_MONEDERO, JSON.stringify(ui.monedero)); } catch (e) { /* */ }
+    pintarSaldo();
+    aplicarCosmeticos();
+    if (!sinRespaldo) programarRespaldoMonedero();
+  }
+
+  /** Copia en el servidor (Key Value) unos segundos después del último cambio. */
+  function programarRespaldoMonedero() {
+    if (location.protocol === "file:" || !window.fetch) return;
+    clearTimeout(ui.timerRespaldo);
+    ui.timerRespaldo = setTimeout(function () {
+      fetch("/api/monedero/" + idMonedero(), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ monedero: ui.monedero })
+      }).catch(function () { /* sin conexión: queda en el aparato */ });
+    }, 1200);
+  }
+
+  function pintarSaldo() {
+    if (!ui.monedero) return;
+    const txt = Tienda.formatear(ui.monedero.saldo);
+    document.querySelectorAll(".saldo-monedas").forEach(function (el) { el.textContent = txt; });
+  }
+
+  function aplicarCosmeticos() {
+    if (!ui.monedero) return;
+    const raiz = document.documentElement;
+    raiz.setAttribute("data-tema", ui.monedero.tema.split(":")[1] || "clasico");
+    raiz.setAttribute("data-dorso", ui.monedero.dorso.split(":")[1] || "azul");
+    if (sonidos && sonidos.ponerTema) sonidos.ponerTema(ui.monedero.sonido);
+  }
+
+  /** Monedas por la mano que acaba de terminar (una sola vez por mano; los espectadores no ganan). */
+  function premiarMano(estado) {
+    if (!Tienda || !ui.monedero || !estado || ui.espectador) return 0;
+    const r = estado.resultadoShowdown;
+    if (!r) return 0;
+    const yo = (estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    if (!yo || !(yo.cartas && yo.cartas.length)) return 0;
+    const clave = (ui.modo === "solo" ? "solo" : (ui.codigo || "")) + ":" + estado.manosJugadas;
+    if (ui.ultimaManoPremiada === clave) return 0;
+    ui.ultimaManoPremiada = clave;
+    const mio = (r.ganadores || []).find(function (g) { return g.id === ui.tuId; });
+    const bb = Number(estado.ciegaGrande) || 0;
+    const racha = Tienda.registrarRacha(ui.monedero, {
+      jugo: true,
+      gano: !!mio,
+      retiro: !!yo.retirado,
+      // Retirarse habiendo puesto como mucho una ciega grande no corta la racha
+      gratis: !!yo.retirado && (Number(yo.aportado) || 0) <= bb
+    });
+    pintarRacha(racha);
+    const n = Tienda.premioMano({ jugo: true, gano: !!mio, showdown: !r.sinShowdown, fuerte: !!(mio && MANO_FUERTE.test(mio.descripcion || "")) });
+    if (!n) return 0;
+    Tienda.ganar(ui.monedero, n);
+    ui.monedero.manos++;
+    guardarMonedero();
+    mostrarGanancia(n);
+    return n;
+  }
+
+  /** Contador de manos ganadas seguidas en la barra de la mesa. */
+  function pintarRacha(r) {
+    const el = $("info-racha");
+    if (!el || !ui.monedero) return;
+    const n = r ? r.racha : (ui.monedero.racha || 0);
+    el.hidden = ui.espectador || n < 1;
+    el.textContent = "🔥 " + n;
+    el.title = "Manos ganadas seguidas: " + n + " · Récord: " + (ui.monedero.mejorRacha || 0);
+    el.classList.toggle("racha-caliente", n >= 3);
+    if (r && r.cambio === "+1" && n >= 3) toast((r.nueva ? "¡Récord! " : "") + "🔥 Racha de " + n + " manos ganadas seguidas", "ok");
+    if (r && r.cambio === "corte") toast("Se cortó tu racha.", "");
+  }
+
+  function mostrarGanancia(n) {
+    const pant = $("pantalla-mesa");
+    if (!pant || pant.hidden) return;
+    const el = document.createElement("div");
+    el.className = "ganancia-monedas";
+    el.textContent = "+" + n + " 🪙";
+    pant.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 1900);
+  }
+
+  /* ---------- Editor de avatar (con piezas que se compran) ---------- */
+
+  function pintarPreviewAvatar() {
+    const caja = $("preview-avatar");
+    if (!caja || !Avatar) return;
+    caja.innerHTML = Avatar.svg(ui.avatarEdicion || ui.avatar, 132);
+    const ed = Avatar.normalizar(ui.avatarEdicion || ui.avatar);
+    if ($("nombre-preview-avatar")) {
+      $("nombre-preview-avatar").textContent = nombreJugador(false) +
+        (ed.cabeza ? " · Con «" + Avatar.LABELS.cabeza[ed.cabeza] + "» se ven el sombrero" + (ed.cabeza === 1 ? "" : " y los lentes") + "; lo demás queda tapado." : "");
+    }
+    pintarAvisoBloqueadas();
+  }
+
+  function piezasBloqueadasEdicion() {
+    if (!Tienda || !ui.monedero) return [];
+    return Tienda.piezasBloqueadas(ui.monedero, ui.avatarEdicion || ui.avatar);
+  }
+
+  function pintarAvisoBloqueadas() {
+    const caja = $("aviso-bloqueadas");
+    if (!caja) return;
+    const bl = piezasBloqueadasEdicion();
+    caja.hidden = !bl.length;
+    if (!bl.length) return;
+    const total = bl.reduce(function (s, p) { return s + p.precio; }, 0);
+    const nombres = bl.map(function (p) { return Avatar.LABELS[p.campo][p.valor]; }).join(", ");
+    $("texto-bloqueadas").textContent = "Te estás probando: " + nombres + ".";
+    const btn = $("btn-comprar-bloqueadas");
+    const alcanza = ui.monedero.saldo >= total;
+    btn.disabled = !alcanza;
+    btn.textContent = alcanza ? "Comprar por 🪙 " + Tienda.formatear(total) : "Te faltan 🪙 " + Tienda.formatear(total - ui.monedero.saldo);
+  }
+
+  function comprarBloqueadas() {
+    const bl = piezasBloqueadasEdicion();
+    const total = bl.reduce(function (s, p) { return s + p.precio; }, 0);
+    if (!bl.length || ui.monedero.saldo < total) return;
+    bl.forEach(function (p) { Tienda.comprar(ui.monedero, p.id); });
+    guardarMonedero();
+    guardarAvatar(ui.avatarEdicion);
+    sonar("premio");
+    toast("¡Comprado! Ya es tuyo.", "ok");
+    montarControlesAvatar();
+    pintarPreviewAvatar();
+  }
+
+  function montarControlesAvatar() {
+    const caja = $("controles-avatar");
+    if (!caja || !Avatar) return;
+    const scroll = caja.scrollTop;
+    caja.innerHTML = "";
+    if (!ui.avatarEdicion) ui.avatarEdicion = Avatar.normalizar(ui.avatar);
+    const a = ui.avatarEdicion;
+    (Avatar.ORDEN || Object.keys(Avatar.CAMPOS)).forEach(function (campo) {
+      const fila = document.createElement("div");
+      fila.className = "fila-avatar-opcion";
+      const tit = document.createElement("strong");
+      tit.textContent = (Avatar.NOMBRES_CAMPO && Avatar.NOMBRES_CAMPO[campo]) || campo;
+      fila.appendChild(tit);
+      const chips = document.createElement("div");
+      chips.className = "opciones-chips";
+      const ops = Avatar.LABELS[campo] || [];
+      for (let i = 0; i < Avatar.CAMPOS[campo]; i++) {
+        const b = document.createElement("button");
+        b.type = "button";
+        const nombre = ops[i] || String(i + 1);
+        const precio = Avatar.precio ? Avatar.precio(campo, i) : 0;
+        const tiene = !Tienda || !ui.monedero || Tienda.tienePieza(ui.monedero, campo, i);
+        if (precio > 0 && !tiene) {
+          b.className = "bloqueado";
+          b.innerHTML = "🔒 " + escapar(nombre) + ' <span class="chip-precio">🪙' + precio + "</span>";
+          b.title = (Avatar.esExclusivo && Avatar.esExclusivo(campo, i) ? "Exclusivo: solo con monedas. " : "") + "Cuesta " + precio + " monedas. Tocalo para probártelo.";
+          if (Avatar.esExclusivo && Avatar.esExclusivo(campo, i)) b.classList.add("exclusivo");
+          b.dataset.precio = String(precio);
+        } else {
+          b.textContent = nombre;
+          if (precio > 0) b.classList.add("comprado");
+        }
+        if (a[campo] === i) b.classList.add("activo");
+        b.dataset.campo = campo;
+        b.dataset.valor = String(i);
+        b.addEventListener("click", function () {
+          ui.avatarEdicion = Avatar.normalizar(ui.avatarEdicion);
+          ui.avatarEdicion[campo] = i;
+          if (!piezasBloqueadasEdicion().length) guardarAvatar(ui.avatarEdicion);
+          montarControlesAvatar();
+          pintarPreviewAvatar();
+        });
+        chips.appendChild(b);
+      }
+      fila.appendChild(chips);
+      caja.appendChild(fila);
+    });
+    caja.scrollTop = scroll;
+  }
+
+  /* ---------- Tienda ---------- */
+
+  function abrirTienda(tab) {
+    ui.tabTienda = tab || ui.tabTienda || "avatar";
+    mostrar("pantalla-tienda");
+    pintarTienda();
+  }
+
+  function pintarTienda() {
+    if (!Tienda || !ui.monedero) return;
+    const tab = ui.tabTienda;
+    document.querySelectorAll(".tabs-tienda button").forEach(function (b) { b.classList.toggle("activo", b.dataset.tab === tab); });
+    const grilla = $("grilla-tienda");
+    const codigos = $("vista-codigos");
+    pintarSaldo();
+    if (tab === "codigo") {
+      grilla.hidden = true;
+      codigos.hidden = false;
+      $("codigo-monedero").textContent = idMonedero();
+      return;
+    }
+    grilla.hidden = false;
+    codigos.hidden = true;
+    const base = Avatar.normalizar(ui.avatar);
+    let html = "";
+    Tienda.catalogo().filter(function (it) { return it.tipo === tab; }).forEach(function (it) {
+      const tiene = Tienda.tiene(ui.monedero, it.id);
+      let muestra = "";
+      let enUso = false;
+      if (it.tipo === "avatar") {
+        const prueba = Object.assign({}, base);
+        prueba[it.campo] = it.valor;
+        muestra = Avatar.svg(prueba, 76);
+        enUso = base[it.campo] === it.valor;
+      } else if (it.tipo === "tema") {
+        muestra = '<div class="muestra-tema" data-tema="' + it.id.split(":")[1] + '"><span>♠</span></div>';
+        enUso = ui.monedero.tema === it.id;
+      } else if (it.tipo === "sonido") {
+        muestra = '<div class="muestra-sonido"><span aria-hidden="true">🎵</span><small>' + escapar(it.desc || "") + '</small><button type="button" class="btn chico ghost" data-accion="probar" data-id="' + it.id + '">▶ Probar</button></div>';
+        enUso = ui.monedero.sonido === it.id;
+      } else {
+        muestra = '<div class="muestra-dorso" data-dorso="' + it.id.split(":")[1] + '"><div class="carta-dorso"></div><div class="carta-dorso"></div></div>';
+        enUso = ui.monedero.dorso === it.id;
+      }
+      let boton;
+      if (!tiene) boton = '<button type="button" class="btn chico ' + (ui.monedero.saldo >= it.precio ? "primary" : "") + '" data-accion="comprar" data-id="' + it.id + '">🪙 ' + Tienda.formatear(it.precio) + "</button>";
+      else if (enUso) boton = '<button type="button" class="btn chico ghost" data-accion="quitar" data-id="' + it.id + '"' + (it.tipo === "avatar" ? "" : " disabled") + ">" + (it.tipo === "avatar" ? "Quitar" : "En uso ✓") + "</button>";
+      else boton = '<button type="button" class="btn chico" data-accion="usar" data-id="' + it.id + '">Usar</button>';
+      html += '<div class="item-tienda' + (tiene ? " tiene" : "") + (enUso ? " en-uso" : "") + (it.exclusivo ? " exclusivo" : "") + '" data-id="' + it.id + '">' +
+        (it.exclusivo ? '<span class="sello-exclusivo" title="Solo se consigue con monedas">★ Exclusivo</span>' : "") +
+        '<div class="muestra">' + muestra + "</div>" +
+        '<div class="nombre-item">' + escapar(it.nombre) + "</div>" +
+        (it.tipo === "avatar" ? '<div class="campo-item">' + escapar(Avatar.NOMBRES_CAMPO[it.campo] || "") + "</div>" : "") +
+        boton + "</div>";
+    });
+    grilla.innerHTML = html;
+  }
+
+  function accionTienda(accion, id) {
+    const it = Tienda.item(id);
+    if (!it) return;
+    if (accion === "probar") {
+      if (!sonidos) return;
+      const antes = sonidos.tema();
+      const estaba = sonidos.estaActivo();
+      sonidos.activar(true);
+      sonidos.ponerTema(id);
+      sonidos.reproducir("ficha");
+      setTimeout(function () { sonidos.reproducir("ganar"); }, 250);
+      setTimeout(function () { sonidos.ponerTema(antes); sonidos.activar(estaba); }, 1100);
+      return;
+    }
+    if (accion === "comprar") {
+      const r = Tienda.comprar(ui.monedero, id);
+      if (!r.ok) { toast(r.error, "err"); return; }
+      sonar("premio");
+      toast("¡Compraste " + it.nombre + "!", "ok");
+      accion = "usar";
+    }
+    if (accion === "usar") {
+      if (it.tipo === "avatar") {
+        const a = Avatar.normalizar(ui.avatar);
+        a[it.campo] = it.valor;
+        guardarAvatar(a);
+        ui.avatarEdicion = null;
+      } else {
+        Tienda.equipar(ui.monedero, id);
+      }
+    } else if (accion === "quitar" && it.tipo === "avatar") {
+      const a = Avatar.normalizar(ui.avatar);
+      a[it.campo] = 0;
+      guardarAvatar(a);
+      ui.avatarEdicion = null;
+    }
+    guardarMonedero();
+    pintarTienda();
+  }
+
+  function canjearCodigo(idInput, idAviso) {
+    const inp = $(idInput || "input-codigo-monedas");
+    const r = Tienda.canjear(ui.monedero, inp ? inp.value : "");
+    const aviso = $(idAviso || "aviso-canje");
+    if (aviso) {
+      aviso.textContent = r.mensaje;
+      aviso.className = "hint centro " + (r.ok ? "form-ok" : "form-err");
+    }
+    if (r.ok) {
+      guardarMonedero();
+      sonar("premio");
+      toast(r.mensaje + " Tenés " + Tienda.formatear(ui.monedero.saldo) + ".", "ok");
+    }
+  }
+
+  function alternarCodigoMenu() {
+    const caja = $("caja-codigo-menu");
+    if (!caja) return;
+    caja.hidden = !caja.hidden;
+    if ($("btn-codigo-menu")) $("btn-codigo-menu").setAttribute("aria-expanded", String(!caja.hidden));
+    if (!caja.hidden && $("input-codigo-menu")) $("input-codigo-menu").focus();
+  }
+
+  function recuperarMonedero() {
+    const inp = $("input-recuperar-monedero");
+    const id = String((inp && inp.value) || "").trim().toLowerCase();
+    if (!/^[a-f0-9]{24}$/.test(id)) { toast("El código tiene 24 letras y números (0-9, a-f).", "err"); return; }
+    fetch("/api/monedero/" + id).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) { toast(d.mensaje || "No encontré ese monedero.", "err"); return; }
+      ui.monedero = Tienda.normalizar(d.monedero);
+      try { localStorage.setItem(LS_MONEDERO_ID, id); } catch (e) { /* */ }
+      guardarMonedero(true);
+      guardarAvatar(ui.avatar);
+      toast("Recuperaste " + Tienda.formatear(ui.monedero.saldo) + " monedas.", "ok");
+      pintarTienda();
+    }).catch(function () { toast("No me pude conectar al servidor.", "err"); });
+  }
+
+  /* ---------- Mesas en vivo (para mirar) ---------- */
+
+  function abrirMesasVivo() {
+    mostrar("pantalla-vivo");
+    cargarMesasVivo();
+    clearInterval(ui.timerVivo);
+    ui.timerVivo = setInterval(function () {
+      if ($("pantalla-vivo").hidden) { clearInterval(ui.timerVivo); return; }
+      cargarMesasVivo();
+    }, 5000);
+  }
+
+  function cargarMesasVivo() {
+    const lista = $("lista-mesas-vivo");
+    const aviso = $("aviso-vivo");
+    if (location.protocol === "file:") {
+      if (aviso) aviso.textContent = "Para ver mesas en vivo abrí el juego desde el servidor.";
+      return;
+    }
+    fetch("/api/mesas-publicas", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) {
+      const mesas = (d && d.mesas) || [];
+      if (aviso) aviso.textContent = mesas.length ? "" : "Ahora no hay mesas públicas jugando. Probá en un rato o abrí una con «Mesa con desconocidos».";
+      lista.innerHTML = mesas.map(function (m) {
+        return '<li class="mesa-vivo">' +
+          '<div class="mesa-vivo-info"><strong>' + escapar(m.codigo) + "</strong>" +
+          '<span class="mesa-vivo-estado ' + (m.enJuego ? "en-juego" : "") + '">' + (m.enJuego ? "● Jugando" : "Esperando") + "</span>" +
+          '<span class="mesa-vivo-datos">👥 ' + m.jugadores + "/" + m.asientos + " · 👁 " + m.espectadores + " · Ciegas " + escapar(m.ciegas) + "</span>" +
+          '<span class="mesa-vivo-nombres">' + escapar(m.nombres.join(", ")) + (m.jugadores > m.nombres.length ? "…" : "") + "</span></div>" +
+          '<button type="button" class="btn chico primary" data-mirar="' + escapar(m.codigo) + '"' + (m.lleno ? " disabled" : "") + ">" + (m.lleno ? "Llena" : "Mirar") + "</button>" +
+          "</li>";
+      }).join("");
+    }).catch(function () {
+      if (aviso) aviso.textContent = "No me pude conectar al servidor.";
+    });
+  }
+
+  function pintarEspectadores() {
+    const el = $("info-espectadores");
+    if (!el) return;
+    const n = ui.espectadores || 0;
+    el.hidden = !(ui.modo === "online" && n > 0);
+    el.textContent = "👁 " + n;
+    el.title = n === 1 ? "1 persona mirando" : n + " personas mirando";
+  }
+
   /* ---------- Navegación del menú ---------- */
 
   function irMenu() {
@@ -654,6 +1018,9 @@
     cerrarWS(false);
     ui.modo = "menu";
     ui.espectador = false;
+    ui.espectadores = 0;
+    pintarEspectadores();
+    pintarSaldo();
     ui.turnoLimite = null;
     ui.turnoDe = null;
     ui.ultimaCiegaGrande = null;
@@ -712,14 +1079,16 @@
     ui.modo = "solo";
     ui.codigo = null;
     ui.ultimaCiegaGrande = null;
+    ui.recargaSoloPendiente = 0;
     if (ui.historial) ui.historial.limpiar();
 
     mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
     const usados = [nombreJugador(false)];
+    const pers = Bots.repartirPersonalidades(n - 1);
     for (let i = 1; i < n; i++) {
-      const nom = Bots.nombreBot(usados);
-      usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
+      const bot = Bots.crearBot(usados, pers[i - 1]);
+      usados.push(bot.nombre);
+      mesa.sentar({ id: "bot-" + i, nombre: bot.nombre, tipo: "bot", personalidad: bot.personalidad, asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(bot.nombre) : null });
     }
 
     mesa.on(alEventoLocal);
@@ -816,7 +1185,14 @@
   function programarNuevaMano() {
     if (ui.timerNuevaMano) clearTimeout(ui.timerNuevaMano);
     ui.timerNuevaMano = setTimeout(function () {
-      if (ui.modo === "solo" && ui.mesa) ui.mesa.iniciarMano();
+      if (ui.modo === "solo" && ui.mesa) {
+        if (ui.recargaSoloPendiente) {
+          const yo = ui.mesa.jugadorPorId(ui.tuId);
+          if (yo) yo.fichas += ui.recargaSoloPendiente;
+          ui.recargaSoloPendiente = 0;
+        }
+        ui.mesa.iniciarMano();
+      }
     }, 5500);
   }
 
@@ -836,6 +1212,7 @@
       const legales = ui.mesa.accionesLegales(id);
       const decision = Bots.decidir(legales, j, ui.mesa.estadoPublico(id));
       ui.mesa.accion(id, decision.tipo, decision.cantidad);
+      chatPersonalidad(j, Bots.momentoDeAccion(decision.tipo));
     }, delay);
   }
 
@@ -931,15 +1308,17 @@
     const vertical = esVerticalEstrecho();
     const s = vertical ? Math.min(W / 720, H / 1200) : Math.min(W / 1200, H / 720);
     const compacto = s < 0.52 || H < 400 || W < 760;
-    const nFactor = (total >= 10 ? 0.88 : 1) * (compacto ? 0.82 : 1) * (H < 340 || W < 640 ? 0.86 : 1);
+    const nFactor = (total >= 15 ? 0.74 : (total >= 10 ? 0.88 : 1)) * (compacto ? 0.82 : 1) * (H < 340 || W < 640 ? 0.86 : 1);
     const cardW = clamp(Math.round(s * 56 * nFactor), 12, 52);
     const cardH = Math.round(cardW * 1.38);
     const ownW = clamp(Math.round(cardW * 1.18), 14, 62);
     const ownH = Math.round(ownW * 1.38);
     const commW = clamp(Math.round(s * 62 * (compacto ? 0.9 : 1)), 14, 68);
     const commH = Math.round(commW * 1.4);
-    const infoW = clamp(Math.round(s * (total >= 10 ? 112 : 126) * nFactor), 46, 138);
-    const infoH = clamp(Math.round(s * (compacto ? 44 : 52)), 22, 54);
+    const infoW = clamp(Math.round(s * (total >= 15 ? 118 : (total >= 10 ? 112 : 126)) * nFactor), total >= 15 ? 42 : 46, 138);
+    // Avatar del asiento: más grande en la compu (v12), chico en el teléfono y en mesas de 15
+    const tamAvatar = clamp(Math.round(s * (total >= 15 ? 36 : 48) * (compacto ? 0.78 : 1)), total >= 15 ? 16 : 20, 50);
+    const infoH = clamp(Math.round(s * (compacto ? 44 : 52) * (total >= 15 ? 0.86 : 1)), 22, 54) + Math.round(tamAvatar / 2);
     const betW = clamp(Math.round(s * 52), 28, 72);
     const betH = clamp(Math.round(s * 20), 12, 24);
     const dealerW = clamp(Math.round(s * 108 * (compacto ? 0.85 : 1)), 32, 112);
@@ -948,7 +1327,7 @@
     return {
       W: W, H: H, s: s, vertical: vertical,
       cardW: cardW, cardH: cardH, ownW: ownW, ownH: ownH,
-      commW: commW, commH: commH, infoW: infoW, infoH: infoH,
+      commW: commW, commH: commH, infoW: infoW, infoH: infoH, tamAvatar: tamAvatar,
       betW: betW, betH: betH, dealerW: dealerW, dealerH: dealerH, vaso: vaso
     };
   }
@@ -964,6 +1343,7 @@
     m.infoW0 = Math.min(Math.max(m.infoW, minPropio), Math.round(m.W * 0.26));
     mesa.style.setProperty("--ancho-info", m.infoW + "px");
     mesa.style.setProperty("--ancho-propio", m.infoW0 + "px");
+    mesa.style.setProperty("--tam-avatar", m.tamAvatar + "px");
   }
 
   function calcularLayout(estado, mesa) {
@@ -998,7 +1378,7 @@
     const centroH = m.commH + 16 + m.betH;
     const centro = caja(cx, cy + H * 0.04, commAncho + 8, centroH);
 
-    const gap = vertical ? 1.05 : (total >= 10 ? 0.92 : 0.82);
+    const gap = vertical ? (total >= 15 ? 0.9 : 1.05) : (total >= 15 ? 0.62 : (total >= 10 ? 0.92 : 0.82));
 
     const seats = [];
     for (let i = 0; i < total; i++) {
@@ -1359,6 +1739,17 @@
     };
   }
 
+  /** Caja del jugador incluyendo el avatar que sobresale arriba (v12). */
+  function cajaInfoConAvatar(info, mr) {
+    const b = cajaDesdeEl(info, mr);
+    const av = info.querySelector && info.querySelector(".avatar-asiento");
+    if (!av) return b;
+    const a = cajaDesdeEl(av, mr);
+    const left = Math.min(b.left, a.left), right = Math.max(b.right, a.right);
+    const top = Math.min(b.top, a.top), bottom = Math.max(b.bottom, a.bottom);
+    return { x: (left + right) / 2, y: (top + bottom) / 2, w: right - left, h: bottom - top, left: left, right: right, top: top, bottom: bottom };
+  }
+
   function ajustarDesdeMedidas(L, estado) {
     const mesa = $("mesa-oval");
     if (!mesa) return;
@@ -1382,7 +1773,7 @@
       const cartas = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"]');
       const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
       const ap = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"]');
-      if (info) S.info = cajaDesdeEl(info, mr);
+      if (info) S.info = cajaInfoConAvatar(info, mr);
       if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
       else if (cartas && cartas.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartas, mr);
       if (apInner || ap) {
@@ -1439,7 +1830,7 @@
           document.querySelector('.pieza-info[data-asiento="' + S.i + '"]');
         const cartasInner = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"] .cartas-asiento');
         const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
-        if (info) S.info = cajaDesdeEl(info, mr);
+        if (info) S.info = cajaInfoConAvatar(info, mr);
         if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
         if (apInner) { S.bet = cajaDesdeEl(apInner, mr); S.mBetW = S.bet.w; S.mBetH = S.bet.h; }
       }
@@ -1493,6 +1884,8 @@
     push($("centro-mesa"), "centro");
     document.querySelectorAll(".pieza-info").forEach(function (el) {
       push(el.querySelector(".info-jugador") || el, "info");
+      // El avatar sobresale arriba de la caja: también tiene que tener lugar
+      if (el.querySelector(".avatar-asiento")) push(el.querySelector(".avatar-asiento"), "avatar");
     });
     document.querySelectorAll(".pieza-cartas").forEach(function (el) {
       if (el.querySelector(".carta, .carta-dorso")) push(el.querySelector(".cartas-asiento") || el, "cartas");
@@ -1517,7 +1910,10 @@
     }
     for (let i = 0; i < items.length; i++) {
       for (let j = i + 1; j < items.length; j++) {
-        if (hit(items[i], items[j])) pares.push(items[i].id + " ∩ " + items[j].id);
+        const A = items[i], B = items[j];
+        const mismoAsiento = A.id.split("-")[1] != null && A.id.split("-")[1] === B.id.split("-")[1];
+        if (mismoAsiento && ((A.name === "avatar" && B.name === "info") || (A.name === "info" && B.name === "avatar"))) continue;
+        if (hit(A, B)) pares.push(A.id + " ∩ " + B.id);
       }
     }
     const fuera = items.filter(function (b) {
@@ -1538,11 +1934,16 @@
     ui.estado = estado;
     if (!estado) return;
 
+    pintarSinFichas(estado);
+    pintarRacha(null);
     pintarTuMano(estado);
     actualizarOrientacionMesa();
     const total = estado.asientosTotales;
     const oval = $("mesa-oval");
-    if (oval) oval.classList.toggle("asientos-10", total === 10);
+    if (oval) {
+      oval.classList.toggle("asientos-10", total === 10);
+      oval.classList.toggle("asientos-15", total >= 15);
+    }
     document.documentElement.classList.add("en-mesa");
     const ganadores = (estado.resultadoShowdown && estado.resultadoShowdown.ganadores)
       ? estado.resultadoShowdown.ganadores.map(function (g) { return g.id; })
@@ -1580,7 +1981,11 @@
       let htmlInfo = '<div class="info-jugador">';
       htmlInfo += '<span class="anillo-turno" aria-hidden="true"><svg viewBox="0 0 36 36" preserveAspectRatio="none"><circle cx="18" cy="18" r="16.2" pathLength="120"></circle></svg></span>';
       if (j) {
-        if (Avatar && j.avatar) htmlInfo += '<div class="avatar-asiento">' + Avatar.svg(j.avatar, 30) + "</div>";
+        if (Avatar && j.avatar) htmlInfo += '<div class="avatar-asiento">' + Avatar.svg(j.avatar, 48) + "</div>";
+        const per = j.personalidad && Bots && Bots.PERSONALIDADES ? Bots.PERSONALIDADES[j.personalidad] : null;
+        if (per) {
+          htmlInfo += '<span class="tag-personalidad" data-personalidad="' + per.id + '" title="' + escapar(per.etiqueta + " · " + per.tipo + ": " + per.descripcion) + '">' + escapar(per.etiqueta.split(" ")[0]) + "</span>";
+        }
         htmlInfo += '<div class="insignias">';
         if (j.esBoton) htmlInfo += '<span class="insignia" title="Botón del dealer">D</span>';
         if (j.esSB) htmlInfo += '<span class="insignia sb" title="Ciega pequeña">SB</span>';
@@ -1807,6 +2212,7 @@
     if (fuerte) sonar("jugadon");
     else sonarResultado(estado);
     chatBotsOcasional("win");
+    premiarMano(estado);
     const capa = $("celebracion");
     if (!capa) return;
     clearTimeout(ui.timerCelebracion);
@@ -1842,6 +2248,7 @@
 
     const origen = rectRelativo(origenEl, mesa);
     capa.innerHTML = "";
+    await animarBarajado(capa, origen);
 
     for (let i = 0; i < secuencia.length; i++) {
       const paso = secuencia[i];
@@ -1862,6 +2269,29 @@
     }
     await esperar(350);
     capa.innerHTML = "";
+  }
+
+  /**
+   * Riffle: el crupier parte el mazo en dos, las mitades se entrelazan
+   * con un arco y se juntan (≈0,7 s). Sin animación si el aparato pide menos movimiento.
+   */
+  async function animarBarajado(capa, origen) {
+    if (!capa || movimientoReducido()) return;
+    const caja = document.createElement("div");
+    caja.className = "riffle";
+    caja.setAttribute("aria-hidden", "true");
+    caja.style.left = Math.round(origen.x) + "px";
+    caja.style.top = Math.round(origen.y + 40) + "px";
+    let html = "";
+    for (let i = 0; i < 12; i++) {
+      const lado = i % 2 ? "der" : "izq";
+      html += '<div class="carta-dorso riffle-carta ' + lado + '" style="--i:' + Math.floor(i / 2) + '"></div>';
+    }
+    caja.innerHTML = html;
+    capa.appendChild(caja);
+    sonar("barajar");
+    await esperar(720);
+    if (caja.parentNode) caja.parentNode.removeChild(caja);
   }
 
   async function animarComunitarias(nuevas) {
@@ -2048,6 +2478,11 @@
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
     if (msg.publica != null) ui.publica = !!msg.publica;
     if (msg.cuentas) recibirCuentas(msg);
+    if (msg.espectadores != null) {
+      ui.espectadores = msg.espectadores;
+      pintarEspectadores();
+    }
+    if (msg.tipo === "espectadores") return;
 
     if (msg.turnoRestanteMs !== undefined) {
       ui.turnoLimite = msg.turnoRestanteMs == null ? null : Date.now() + msg.turnoRestanteMs;
@@ -2100,6 +2535,7 @@
       if (msg.codigoError === "sala-inexistente") {
         borrarSesionSala();
       }
+      if (/^chat-/.test(msg.codigoError || "") && $("aviso-chat")) $("aviso-chat").textContent = msg.mensaje;
       if ((msg.codigoError === "recarga-minima" || /recargar|mínimo/i.test(msg.mensaje || "")) && $("aviso-recarga")) {
         $("aviso-recarga").textContent = msg.mensaje;
       }
@@ -2250,7 +2686,7 @@
         const cara = (Avatar && j.avatar) ? Avatar.svg(j.avatar, 28) : "";
         li.innerHTML = cara + "<span>" + escapar(j.nombre) +
           (j.id === ui.tuId ? " (tú)" : "") +
-          (j.tipo === "bot" ? ' <span class="papel">bot</span>' : "") +
+          (j.tipo === "bot" ? ' <span class="papel">' + ((j.personalidad && Bots.PERSONALIDADES[j.personalidad]) ? escapar(Bots.PERSONALIDADES[j.personalidad].etiqueta) : "bot") + "</span>" : "") +
           (msg.anfitrionId === j.id ? ' <span class="papel">anfitrión</span>' : "") +
           (j.conectado === false ? ' <span class="papel">reconectando…</span>' : "") +
           "</span>";
@@ -2409,6 +2845,36 @@
     });
   }
 
+  function pintarCuentaChat() {
+    const inp = $("input-chat");
+    if (!inp || !$("cuenta-chat")) return;
+    $("cuenta-chat").textContent = Array.from(inp.value).length + "/" + (Util.MAX_CHAT || 80);
+  }
+
+  function enviarTextoChat() {
+    const inp = $("input-chat");
+    const aviso = $("aviso-chat");
+    if (!inp) return;
+    const texto = Util.limpiarChat(inp.value);
+    if (aviso) aviso.textContent = "";
+    if (!texto) { if (aviso) aviso.textContent = "Escribí algo antes de mandar."; return; }
+    if (ui.espectador) { if (aviso) aviso.textContent = "Mirando no se puede chatear."; return; }
+    const ahora = Date.now();
+    if (ui.ultimoChatPropio && ahora - ui.ultimoChatPropio < 2000) {
+      if (aviso) aviso.textContent = "Esperá un segundo antes de mandar otro mensaje.";
+      return;
+    }
+    ui.ultimoChatPropio = ahora;
+    if (ui.modo === "online") {
+      enviarWS({ tipo: "chat", texto: texto });
+    } else {
+      const yo = ui.estado && (ui.estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+      mostrarFrase({ frase: texto, libre: true, deId: ui.tuId, deNombre: yo ? yo.nombre : nombreJugador(false), deAsiento: yo ? yo.asiento : 0 });
+    }
+    inp.value = "";
+    pintarCuentaChat();
+  }
+
   function enviarFrase(frase) {
     if (ui.modo === "online") {
       enviarWS({ tipo: "chat", frase: frase });
@@ -2418,8 +2884,26 @@
     }
   }
 
+  /** Frase de un bot con personalidad (solo; online las manda el servidor). */
+  function chatPersonalidad(j, momento) {
+    if (!j || !momento || ui.modo !== "solo") return;
+    const ahora = Date.now();
+    if (ui.ultimoChatBot && ahora - ui.ultimoChatBot < 2500) return;
+    const frase = Bots.chatDeBot(j, momento);
+    if (!frase) return;
+    ui.ultimoChatBot = ahora;
+    setTimeout(function () {
+      mostrarFrase({ frase: frase, deNombre: j.nombre, deAsiento: j.asiento, deId: j.id });
+    }, 250);
+  }
+
   function chatBotsOcasional(motivo) {
     if (ui.modo !== "solo" || !ui.estado) return;
+    if (motivo === "win" && ui.mesa && ui.mesa.resultadoShowdown) {
+      const g = (ui.mesa.resultadoShowdown.ganadores || [])[0];
+      const jg = g && ui.mesa.jugadorPorId(g.id);
+      if (jg && jg.tipo === "bot" && jg.personalidad) { chatPersonalidad(jg, "ganar"); return; }
+    }
     if (Math.random() > 0.35) return;
     const bots = (ui.estado.jugadores || []).filter(function (j) { return j.tipo === "bot"; });
     if (!bots.length) return;
@@ -2717,9 +3201,43 @@
     if (tab === "grupo") pintarGrupo();
   }
 
+  /** En solo no hay cuentas en Bs con otros: la recarga suma fichas al toque (o en la próxima mano). */
+  function recargarSolo(bs) {
+    const j = ui.mesa && ui.mesa.jugadorPorId(ui.tuId);
+    if (!j) return;
+    const fichas = bs * fichasPorBs();
+    const enJuego = j.enMano && !j.retirado && ui.mesa.fase && ui.mesa.fase !== "entre-manos" && ui.mesa.fase !== "esperando";
+    if (enJuego) {
+      ui.recargaSoloPendiente = (ui.recargaSoloPendiente || 0) + fichas;
+      toast("Se suman " + fichas + " fichas al empezar la próxima mano.", "ok");
+    } else {
+      j.fichas += fichas;
+      toast("Recargaste " + bs + " Bs (" + fichas + " fichas).", "ok");
+    }
+    sonar("premio");
+    if ($("panel-cuentas")) $("panel-cuentas").hidden = true;
+    renderMesa(ui.mesa.estadoPublico(ui.tuId));
+  }
+
+  function pintarSinFichas(estado) {
+    const barra = $("barra-sin-fichas");
+    if (!barra) return;
+    const yo = estado && !ui.espectador && (estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    const yoC = ui.cuentas && (ui.cuentas.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    const pendiente = (ui.modo === "solo" ? ui.recargaSoloPendiente : (yoC && yoC.pendienteFichas)) || 0;
+    const terminada = ui.modo === "online" && ui.cuentas && ui.cuentas.partidaTerminada;
+    const enJuego = yo && yo.enMano && !yo.retirado && estado.fase && estado.fase !== "entre-manos" && estado.fase !== "esperando";
+    barra.hidden = !(yo && yo.fichas <= 0 && !enJuego && !pendiente && !terminada && (ui.modo === "solo" || ui.modo === "online"));
+    document.body.classList.toggle("con-barra-sin-fichas", !barra.hidden);
+  }
+
   function abrirCuentas(tab) {
     const panel = $("panel-cuentas");
     if (!panel) return;
+    const solo = ui.modo === "solo";
+    if ($("tab-resumen")) $("tab-resumen").hidden = solo;
+    if ($("tab-grupo")) $("tab-grupo").hidden = solo;
+    if (solo) tab = "recargar";
     if ($("panel-chat")) $("panel-chat").hidden = true;
     panel.hidden = false;
     mostrarTabCuentas(tab || "recargar");
@@ -2742,11 +3260,11 @@
       toast(msg, "err");
       return;
     }
-    if (ui.modo !== "online") {
-      const msg = "Las recargas son solo en las mesas online, con amigos.";
-      if (aviso) aviso.textContent = msg;
+    if (ui.modo === "solo") {
+      recargarSolo(bs);
       return;
     }
+    if (ui.modo !== "online") return;
     enviarWS({ tipo: "recargar", cantidadBs: bs });
   }
 
@@ -2763,6 +3281,42 @@
   function iniciarUI() {
     registrarServiceWorker();
     cargarPreferencias();
+    cargarMonedero();
+    if (ui.avatar && Tienda && ui.monedero) ui.avatar = Tienda.avatarPermitido(ui.monedero, ui.avatar);
+    if ($("btn-editar-avatar")) $("btn-editar-avatar").addEventListener("click", function () { abrirPersonalizar(irMenu); });
+    if ($("btn-tienda")) $("btn-tienda").addEventListener("click", function () { abrirTienda(); });
+    if ($("btn-tienda-avatar")) $("btn-tienda-avatar").addEventListener("click", function () { abrirPersonalizar(function () { abrirTienda(); }); });
+    if ($("btn-volver-tienda")) $("btn-volver-tienda").addEventListener("click", irMenu);
+    document.querySelectorAll(".tabs-tienda button").forEach(function (b) {
+      b.addEventListener("click", function () { ui.tabTienda = b.dataset.tab; pintarTienda(); });
+    });
+    if ($("grilla-tienda")) $("grilla-tienda").addEventListener("click", function (ev) {
+      const b = ev.target.closest("button[data-accion]");
+      if (b) accionTienda(b.dataset.accion, b.dataset.id);
+    });
+    if ($("btn-canjear")) $("btn-canjear").addEventListener("click", function () { canjearCodigo(); });
+    if ($("input-codigo-monedas")) $("input-codigo-monedas").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo(); });
+    if ($("btn-codigo-menu")) $("btn-codigo-menu").addEventListener("click", alternarCodigoMenu);
+    if ($("btn-canjear-menu")) $("btn-canjear-menu").addEventListener("click", function () { canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
+    if ($("input-codigo-menu")) $("input-codigo-menu").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
+    if ($("form-chat")) $("form-chat").addEventListener("submit", function (ev) { ev.preventDefault(); enviarTextoChat(); });
+    if ($("input-chat")) {
+      $("input-chat").addEventListener("input", pintarCuentaChat);
+      // Las teclas del chat no deben disparar los atajos de la mesa (R, C…)
+      $("input-chat").addEventListener("keydown", function (ev) { ev.stopPropagation(); });
+    }
+    if ($("btn-recargar-sin-fichas")) $("btn-recargar-sin-fichas").addEventListener("click", function () { abrirCuentas("recargar"); });
+    if ($("btn-recuperar-monedero")) $("btn-recuperar-monedero").addEventListener("click", recuperarMonedero);
+    if ($("btn-comprar-bloqueadas")) $("btn-comprar-bloqueadas").addEventListener("click", comprarBloqueadas);
+    if ($("btn-mesas-vivo")) $("btn-mesas-vivo").addEventListener("click", abrirMesasVivo);
+    if ($("btn-actualizar-vivo")) $("btn-actualizar-vivo").addEventListener("click", cargarMesasVivo);
+    if ($("btn-volver-vivo")) $("btn-volver-vivo").addEventListener("click", irMenu);
+    if ($("lista-mesas-vivo")) $("lista-mesas-vivo").addEventListener("click", function (ev) {
+      const b = ev.target.closest("button[data-mirar]");
+      if (!b) return;
+      if ($("input-codigo")) $("input-codigo").value = b.dataset.mirar;
+      mirarCodigo();
+    });
     iniciarSelectoresFichas();
     if ($("btn-solo")) $("btn-solo").addEventListener("click", function () {
       conNombreYAvatar(function () { irSolo(); });
@@ -2806,7 +3360,8 @@
     });
     if ($("btn-avatar-listo")) $("btn-avatar-listo").addEventListener("click", function () { terminarAvatar(false); });
     if ($("btn-avatar-aleatorio")) $("btn-avatar-aleatorio").addEventListener("click", function () {
-      guardarAvatar(Avatar.aleatorio());
+      ui.avatarEdicion = Avatar.aleatorio();
+      if (!piezasBloqueadasEdicion().length) guardarAvatar(ui.avatarEdicion);
       montarControlesAvatar();
       pintarPreviewAvatar();
     });
@@ -2909,10 +3464,12 @@
     mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: (ui.avatar || (Avatar && Avatar.aleatorio(nombre))) });
     const usados = [nombre];
     const largos = ["Maximiliano", "Juan Esteban", "Valentina M.", "Ana-Sofía", "Roberto Carlos", "Isabel María", "Diego Armando", "Chris"];
+    const pers = Bots.repartirPersonalidades(n - 1);
     for (let i = 1; i < n; i++) {
-      const nom = opt.nombresLargos ? (largos[i - 1] || Bots.nombreBot(usados)) : Bots.nombreBot(usados);
+      const bot = Bots.crearBot(usados, pers[i - 1]);
+      const nom = opt.nombresLargos ? (largos[i - 1] || bot.nombre) : bot.nombre;
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", personalidad: bot.personalidad, asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
     ui.mesa = mesa;
     ui.tuId = "humano";

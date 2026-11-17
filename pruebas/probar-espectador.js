@@ -102,7 +102,8 @@ async function esperar(ws, tipo, ms) {
   await dormir(400);
   const errores = esp.mensajes.filter(function (m) { return m.tipo === "error"; });
   ok("Un espectador no puede actuar, chatear, iniciar ni recargar (" + errores.length + " rechazos)", errores.length === 4);
-  ok("Y no se emite ningún chat en la mesa por su culpa", !tipos(anfi).includes("chat"));
+  // (desde v12 los bots con personalidad hablan solos: esos mensajes llevan bot: true)
+  ok("Y no se emite ningún chat en la mesa por su culpa", !anfi.mensajes.some(function (m) { return m.tipo === "chat" && !m.bot; }));
 
   // Irse no afecta a la partida
   enviar(esp, { tipo: "salir" });

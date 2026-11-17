@@ -26,7 +26,24 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  const MAX_CHAT = 80;
+  /**
+   * Limpia un mensaje de chat escrito a mano: quita caracteres de control,
+   * invisibles y de dirección, junta espacios y corta en 80 caracteres
+   * (cuenta emojis como uno). Devuelve "" si no queda nada.
+   * El texto se muestra siempre escapado (nunca como HTML).
+   */
+  function limpiarChat(texto) {
+    let t = String(texto == null ? "" : texto);
+    t = t.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, " ");
+    t = t.replace(/\s+/g, " ").trim();
+    const letras = Array.from(t);
+    if (letras.length > MAX_CHAT) t = letras.slice(0, MAX_CHAT).join("").trim();
+    return t;
   }
 
   function clamp(n, a, b) {
@@ -111,6 +128,8 @@
     formatearFichas: formatearFichas,
     formatearBs: formatearBs,
     escapar: escapar,
+    limpiarChat: limpiarChat,
+    MAX_CHAT: MAX_CHAT,
     clamp: clamp,
     rectsSeSolapan: rectsSeSolapan,
     caja: caja,

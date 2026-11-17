@@ -141,6 +141,24 @@ const avisos = [];
 for (let i = 0; i < 5; i++) { jugarRapido(cuenta); avisos.push(cuenta.estadoPublico().manosParaSubirCiegas); }
 ok("La cuenta atrás va 3,2,1,0 y se reinicia: " + avisos.join(","), avisos.join(",") === "3,2,1,0,3", avisos.join(","));
 
+console.log("\n--- v12: fichas de un retirado que nadie igualó ---");
+(function () {
+  const M = require("../public/js/motor.js");
+  const mesa = new M.Mesa({ asientos: 9, fichasIniciales: 1000 });
+  mesa.sentar({ id: "a", nombre: "A", asiento: 0 });
+  mesa.sentar({ id: "b", nombre: "B", asiento: 1 });
+  mesa.sentar({ id: "c", nombre: "C", asiento: 2 });
+  // A apostó 100 y se retiró; B fue all-in por 60 y C igualó 60 (también all-in)
+  const A = mesa.jugadorPorId("a"), B = mesa.jugadorPorId("b"), C = mesa.jugadorPorId("c");
+  A.aportado = 100; A.retirado = true;
+  B.aportado = 60; C.aportado = 60;
+  const botes = mesa.calcularBotes();
+  const total = botes.reduce(function (s, x) { return s + x.cantidad; }, 0);
+  ok("Ninguna ficha se pierde: los botes suman todo lo aportado (220)", total === 220, JSON.stringify(botes));
+  ok("Todos los botes tienen a alguien que los pueda ganar", botes.every(function (x) { return x.elegibles.length > 0; }));
+  ok("Los 40 de más de A van al bote de B y C", botes.length === 1 && botes[0].cantidad === 220 && botes[0].elegibles.sort().join(",") === "b,c", JSON.stringify(botes));
+})();
+
 console.log("\n========================================");
 console.log("Aciertos: " + aciertos + "   Fallos: " + fallos);
 console.log("========================================");

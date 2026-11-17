@@ -1273,3 +1273,238 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 /* Fichas de apuestas: un pequeño rebote al reunirse en el bote */
 .ficha-voladora { transition: left .52s cubic-bezier(.18,.72,.25,1), top .52s cubic-bezier(.18,.72,.25,1), opacity .48s ease; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .ficha-voladora { transition: none !important; } }
+
+/* --------- v12: avatar del asiento más grande, etiqueta de personalidad, mesa de 15 --------- */
+#mesa-oval .avatar-asiento {
+  width: var(--tam-avatar, 30px); height: var(--tam-avatar, 30px);
+  border-width: 2px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.08);
+}
+#mesa-oval .info-jugador { padding-top: calc(var(--tam-avatar, 30px) / 2 + 3px); }
+.tag-personalidad {
+  position: absolute; top: 2px; right: 3px;
+  font-size: 12px; line-height: 1; cursor: help;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.6));
+}
+#mesa-oval.asientos-15 .info-jugador { padding-left: 3px; padding-right: 3px; padding-bottom: 3px; border-radius: 8px; border-width: 1.5px; }
+#mesa-oval.asientos-15 .nombre-jugador { font-size: 10.5px; }
+#mesa-oval.asientos-15 .fichas-jugador { font-size: 10px; }
+#mesa-oval.asientos-15 .estado-jugador { font-size: 9px; min-height: 0; }
+#mesa-oval.asientos-15 .insignias { transform: translateX(-50%) scale(0.78); }
+#mesa-oval.asientos-15 .tag-personalidad { font-size: 10px; top: 1px; right: 1px; }
+#mesa-oval.asientos-15 .pieza-info.propio .nombre-jugador { font-size: 11px; }
+
+/* --------- v12: monedas, tienda, editor con candados, mesas en vivo --------- */
+.btn.chico { min-height: 36px; padding: 0.3em 0.75em; font-size: 0.84rem; border-radius: 10px; }
+.barra-extras-menu {
+  display: flex; flex-wrap: wrap; gap: 0.4em; align-items: center; justify-content: center;
+  margin-top: 0.75em; padding-top: 0.75em; border-top: 1px dashed var(--linea);
+}
+.pill-monedas {
+  display: inline-flex; align-items: center; gap: 0.3em; white-space: nowrap;
+  background: linear-gradient(180deg, #3a2d08, #241b04); color: #ffe39a;
+  border: 1px solid #8a6a14; border-radius: 999px; padding: 0.25em 0.7em; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cabeza-tienda { display: flex; align-items: center; justify-content: space-between; gap: 0.6em; }
+.cabeza-tienda h2 { margin: 0; }
+.auth-box.ancho-tienda { max-width: 760px; }
+.auth-box.ancho-avatar { max-width: 640px; }
+.tabs-tienda { display: flex; gap: 0.3em; margin: 0.6em 0; flex-wrap: wrap; }
+.tabs-tienda button {
+  flex: 1 1 0; min-height: 38px; border-radius: 10px; border: 1px solid var(--linea);
+  background: var(--panel2); color: var(--texto); font-weight: 700; cursor: pointer;
+}
+.tabs-tienda button.activo { background: var(--oro); color: #1f1600; border-color: transparent; }
+.grilla-tienda {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.5em;
+  max-height: min(56vh, 560px); overflow: auto; padding: 2px;
+}
+.item-tienda {
+  background: var(--panel2); border: 1px solid var(--linea); border-radius: 12px;
+  padding: 0.5em 0.4em; display: flex; flex-direction: column; align-items: center; gap: 0.25em; text-align: center;
+}
+.item-tienda.en-uso { border-color: var(--oro); box-shadow: 0 0 0 1px var(--oro) inset; }
+.item-tienda .muestra { height: 80px; display: flex; align-items: center; justify-content: center; }
+.item-tienda .muestra .avatar-svg { width: 76px; height: 76px; }
+.nombre-item { font-weight: 800; font-size: 0.82rem; line-height: 1.15; }
+.campo-item { font-size: 0.7rem; color: var(--muted); }
+.item-tienda .btn { width: 100%; margin-top: auto; }
+.muestra-tema {
+  width: 96px; height: 64px; border-radius: 32px; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 50% 45%, var(--pano1), var(--pano2) 55%, var(--pano3));
+  border: 5px solid var(--borde-mesa); box-shadow: inset 0 0 12px rgba(0,0,0,.5);
+  color: rgba(0,0,0,.25); font-size: 1.3rem;
+}
+.muestra-dorso { display: flex; gap: 4px; }
+.muestra-dorso .carta-dorso { width: 34px; height: 48px; font-size: 14px; border-radius: 5px; }
+.vista-codigos { display: grid; gap: 0.5em; margin: 0.5em 0; }
+.codigo-monedero { font-family: ui-monospace, monospace; letter-spacing: 0.04em; word-break: break-all; color: var(--oro); }
+.sep { border: 0; border-top: 1px dashed var(--linea); margin: 0.4em 0; }
+.form-ok { color: #8ef0b0; }
+.form-err { color: #ffb3b3; }
+
+/* Editor de avatar: piezas que se compran */
+.opciones-chips button.bloqueado { background: #261d08; border-color: #6d5414; color: #e9d9a8; }
+.opciones-chips button.bloqueado.activo { background: #f2c14e; color: #1f1600; }
+.opciones-chips button.comprado::after { content: " ✓"; color: #8ef0b0; }
+.opciones-chips button.comprado.activo::after { color: #1f6b3a; }
+.chip-precio { font-size: 0.72rem; font-weight: 800; opacity: 0.9; margin-left: 0.15em; }
+.aviso-bloqueadas {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5em;
+  background: #2a2008; border: 1px solid #8a6a14; border-radius: 10px; padding: 0.45em 0.6em;
+  font-size: 0.82rem; margin: 0.3em 0; text-align: left;
+}
+.aviso-bloqueadas[hidden] { display: none; }
+.aviso-bloqueadas .btn { white-space: nowrap; flex-shrink: 0; }
+
+/* Mesas en vivo */
+.lista-mesas-vivo { list-style: none; display: grid; gap: 0.45em; margin: 0.6em 0; max-height: min(56vh, 520px); overflow: auto; padding: 0; }
+.mesa-vivo {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.6em;
+  background: var(--panel2); border: 1px solid var(--linea); border-radius: 12px; padding: 0.55em 0.7em; text-align: left;
+}
+.mesa-vivo-info { display: grid; gap: 0.1em; min-width: 0; }
+.mesa-vivo-info strong { font-family: ui-monospace, monospace; letter-spacing: 0.08em; color: var(--oro); }
+.mesa-vivo-estado { font-size: 0.75rem; color: var(--muted); font-weight: 700; }
+.mesa-vivo-estado.en-juego { color: #8ef0b0; }
+.mesa-vivo-datos { font-size: 0.8rem; }
+.mesa-vivo-nombres { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill-espectadores { color: #cfe8ff; }
+.pill-espectadores[hidden] { display: none; }
+
+/* +N monedas al terminar la mano */
+.ganancia-monedas {
+  position: absolute; right: 12px; top: 52px; z-index: 40; pointer-events: none;
+  background: linear-gradient(180deg, #3a2d08, #241b04); color: #ffe39a; border: 1px solid #8a6a14;
+  border-radius: 999px; padding: 0.3em 0.8em; font-weight: 800; font-size: 0.95rem;
+  animation: ganancia-sube 1.9s ease-out forwards;
+}
+@keyframes ganancia-sube {
+  0% { transform: translateY(10px); opacity: 0; }
+  15% { transform: none; opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-14px); opacity: 0; }
+}
+
+/* Temas de mesa (paño y borde): variables que heredan los gradientes del SVG */
+:root, [data-tema="clasico"] { --pano1: #239157; --pano2: #1b7a46; --pano3: #0f5530; --motivo: #064a20; --borde-mesa: #5a2e14; }
+[data-tema="azul"] { --pano1: #2f86cf; --pano2: #1f6aab; --pano3: #0d3a66; --motivo: #0a2f57; --borde-mesa: #2a2f3a; }
+[data-tema="vino"] { --pano1: #b8324a; --pano2: #962439; --pano3: #56101c; --motivo: #3d0a12; --borde-mesa: #3a1a10; }
+[data-tema="purpura"] { --pano1: #8656d1; --pano2: #6a3fb5; --pano3: #2e1563; --motivo: #1f0d47; --borde-mesa: #1c1430; }
+[data-tema="aguayo"] { --pano1: #d8483a; --pano2: #b8321f; --pano3: #7b1f16; --motivo: #f1c40f; --borde-mesa: #2b5f3a; }
+[data-tema="oro"] { --pano1: #3a3a3a; --pano2: #262626; --pano3: #0b0b0b; --motivo: #b8860b; --borde-mesa: #b8860b; }
+[id^="feltLuz"] stop:nth-child(1) { stop-color: var(--pano1); }
+[id^="feltLuz"] stop:nth-child(2) { stop-color: var(--pano2); }
+[id^="feltLuz"] stop:nth-child(3) { stop-color: var(--pano3); }
+[id^="feltMotivo"] path { stroke: var(--motivo); }
+[id^="feltMotivo"] text { fill: var(--motivo); }
+[data-tema="aguayo"] [id^="feltMotivo"] path:nth-child(2) { stroke: #2ecc71; }
+[data-tema="oro"] [id^="madera"] stop:nth-child(odd) { stop-color: #d4a017; }
+[data-tema="oro"] [id^="madera"] stop:nth-child(even) { stop-color: #7a5a06; }
+[data-tema="aguayo"] [id^="madera"] stop:nth-child(odd) { stop-color: #2b5f3a; }
+[data-tema="aguayo"] [id^="madera"] stop:nth-child(even) { stop-color: #173a22; }
+
+/* Dorsos de las cartas */
+:root, [data-dorso="azul"] { --dorso-c1: #16325f; --dorso-c2: #0f2348; --dorso-linea: #f4d35e; }
+[data-dorso="rojo"] { --dorso-c1: #a81d2c; --dorso-c2: #6e0f19; --dorso-linea: #f4e3b2; }
+[data-dorso="verde"] { --dorso-c1: #1f7a46; --dorso-c2: #0c3d22; --dorso-linea: #e9c46a; }
+[data-dorso="negro"] { --dorso-c1: #2b2b2b; --dorso-c2: #0a0a0a; --dorso-linea: #c0c0c0; }
+[data-dorso="aguayo"] { --dorso-c1: #c0392b; --dorso-c2: #1e8449; --dorso-linea: #f1c40f; }
+[data-dorso="oro"] { --dorso-c1: #e0ad35; --dorso-c2: #9a6b06; --dorso-linea: #fff6c8; }
+.carta-dorso, .carta.dorso {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.18), transparent 58%),
+    repeating-linear-gradient(45deg, var(--dorso-c1) 0 7px, var(--dorso-c2) 7px 14px);
+  border-color: var(--dorso-linea);
+}
+.carta-dorso::after, .carta.dorso::after { color: var(--dorso-linea); }
+[data-dorso="aguayo"] .carta-dorso, [data-dorso="aguayo"].carta-dorso {
+  background: repeating-linear-gradient(0deg, #c0392b 0 5px, #f1c40f 5px 7px, #1e8449 7px 12px, #8e44ad 12px 14px, #c0392b 14px 18px);
+}
+@media (max-width: 420px) {
+  .barra-extras-menu .btn.chico { flex: 1 1 45%; }
+  .grilla-tienda { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+}
+/* El avatar sobresale arriba: se baja la caja para que caja+avatar queden centrados en su lugar */
+#mesa-oval .pieza-info { transform: translate(-50%, calc(-50% + var(--tam-avatar, 30px) / 4)); }
+/* Las insignias D / SB / BB van abajo de la caja, así no tapan la cara del avatar */
+#mesa-oval .insignias { top: auto; bottom: -8px; }
+#mesa-oval .info-jugador { padding-bottom: 9px; }
+#mesa-oval.asientos-15 .info-jugador { padding-bottom: 8px; }
+@media (max-height: 420px) {
+  #mesa-oval.asientos-15 .info-jugador { padding-bottom: 5px; }
+  #mesa-oval.asientos-15 .insignias { bottom: -6px; transform: translateX(-50%) scale(0.7); }
+}
+
+/* =========================================================
+   v12 (2): código en el pie del menú, chat escrito, racha,
+   barra "sin fichas", riffle, temas de sonido y exclusivos
+   ========================================================= */
+.pie-menu {
+  display: flex; flex-direction: column; align-items: center; gap: 0.45em;
+  margin-top: 0.6em; padding-top: 0.6em; border-top: 1px dashed var(--linea);
+}
+.caja-codigo-menu { display: flex; flex-wrap: wrap; gap: 0.4em; justify-content: center; align-items: center; width: 100%; }
+.caja-codigo-menu[hidden] { display: none; }
+.caja-codigo-menu input { flex: 1 1 140px; max-width: 220px; min-width: 0; }
+.caja-codigo-menu .hint { flex-basis: 100%; margin: 0; min-height: 1.2em; }
+
+/* Chat escrito */
+.form-chat { display: flex; gap: 0.4em; align-items: center; margin-top: 0.55em; }
+.form-chat input { flex: 1 1 auto; min-width: 0; padding: 0.5em 0.65em; }
+.cuenta-chat { font-size: 0.72rem; color: var(--suave, #9fb5aa); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+#aviso-chat { min-height: 1.1em; margin: 0.25em 0 0; font-size: 0.78rem; color: #ffd0d0; }
+.pieza-globo { max-width: 170px; }
+.globo-chat { white-space: normal; overflow-wrap: anywhere; word-break: break-word; max-width: 170px; }
+.log-chat li { overflow-wrap: anywhere; }
+@media (max-width: 520px) { .pieza-globo, .globo-chat { max-width: 130px; } .globo-chat { font-size: 0.7rem; } }
+
+/* Racha */
+.pill-racha { color: #ffd59a; border-color: #8a5a14; }
+.pill-racha.racha-caliente { color: #fff; background: linear-gradient(180deg, #c2410c, #7c2d12); animation: latido-racha 1.6s ease-in-out infinite; }
+@keyframes latido-racha { 50% { transform: scale(1.07); } }
+
+/* Barra al quedarse sin fichas (abajo, en el lugar de los botones de jugar) */
+.barra-sin-fichas {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.6em;
+  margin: 0 auto; width: min(920px, 100%); padding: 8px 10px; flex-shrink: 0; z-index: 30; position: relative;
+  background: rgba(0,0,0,0.5); border: 1px solid #8a6a14; border-radius: 14px; color: #ffe39a; font-weight: 700;
+}
+.barra-sin-fichas[hidden] { display: none !important; }
+.barra-sin-fichas .btn { margin: 0; }
+
+/* Riffle: dos mitades que se entrelazan */
+.riffle { position: absolute; width: 0; height: 0; z-index: 22; pointer-events: none; }
+.riffle-carta {
+  position: absolute; width: var(--carta-j, 52px); height: var(--carta-j-h, 74px);
+  margin: 0; left: 0; top: 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,.35);
+  transform: translate(-50%, -50%);
+}
+.riffle-carta.izq { animation: riffle-izq 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms); }
+.riffle-carta.der { animation: riffle-der 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms + 9ms); }
+@keyframes riffle-izq {
+  0% { transform: translate(-50%, -50%); }
+  30% { transform: translate(-115%, calc(-50% - var(--i) * 1px)) rotate(-14deg); }
+  60% { transform: translate(-80%, calc(-60% - var(--i) * 2px)) rotate(-24deg); }
+  100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
+}
+@keyframes riffle-der {
+  0% { transform: translate(-50%, -50%); }
+  30% { transform: translate(15%, calc(-50% - var(--i) * 1px)) rotate(14deg); }
+  60% { transform: translate(-20%, calc(-60% - var(--i) * 2px)) rotate(24deg); }
+  100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
+}
+@media (prefers-reduced-motion: reduce) { .riffle { display: none; } }
+
+/* Tienda: sonidos y exclusivos */
+.muestra-sonido { display: flex; flex-direction: column; align-items: center; gap: 0.3em; padding: 0.3em; text-align: center; }
+.muestra-sonido > span { font-size: 1.8rem; line-height: 1; }
+.muestra-sonido small { font-size: 0.7rem; color: var(--suave, #9fb5aa); line-height: 1.2; }
+.item-tienda { position: relative; }
+.item-tienda.exclusivo { border-color: #d4a72c; box-shadow: 0 0 0 1px #d4a72c inset, 0 0 14px rgba(212,167,44,.35); }
+.sello-exclusivo {
+  position: absolute; top: 4px; left: 4px; z-index: 2; font-size: 0.62rem; font-weight: 800; letter-spacing: .02em;
+  background: linear-gradient(180deg, #ffe08a, #b8860b); color: #2a1c00; border-radius: 999px; padding: 0.1em 0.5em;
+}
+.opciones-chips button.exclusivo { border-color: #d4a72c; }

@@ -6,10 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "construir": "node scripts/construir-html-unico.js",
-    "test": "node pruebas/probar-evaluador.js && node pruebas/probar-motor.js && node pruebas/probar-botes.js && node pruebas/probar-bots.js && node pruebas/probar-limites.js && node pruebas/probar-utilidades.js && node pruebas/probar-historial.js && node pruebas/probar-avatar.js && node pruebas/verificar-html-unico.js",
-    "test:online": "node pruebas/probar-sala.js && node pruebas/probar-online-v6.js && node pruebas/probar-cuentas.js && node pruebas/probar-espectador.js && node pruebas/probar-turno.js && node pruebas/probar-persistencia.js && node pruebas/probar-kv.js",
+    "test": "node pruebas/probar-evaluador.js && node pruebas/probar-motor.js && node pruebas/probar-botes.js && node pruebas/probar-bots.js && node pruebas/probar-limites.js && node pruebas/probar-utilidades.js && node pruebas/probar-historial.js && node pruebas/probar-avatar.js && node pruebas/probar-tienda.js && node pruebas/probar-personalidades.js && node pruebas/verificar-html-unico.js",
+    "test:online": "node pruebas/probar-sala.js && node pruebas/probar-online-v6.js && node pruebas/probar-cuentas.js && node pruebas/probar-espectador.js && node pruebas/probar-turno.js && node pruebas/probar-persistencia.js && node pruebas/probar-kv.js && node pruebas/probar-v12-online.js && node pruebas/probar-espectador-vivo.js",
     "test:seguridad": "node pruebas/probar-seguridad.js",
-    "test:navegador": "node pruebas/probar-navegador.js && node pruebas/probar-navegador-turno.js"
+    "test:navegador": "node pruebas/probar-navegador.js && node pruebas/probar-navegador-turno.js && node pruebas/probar-navegador-v12.js"
   },
   "engines": {
     "node": ">=18"

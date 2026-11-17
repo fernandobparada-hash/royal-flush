@@ -47,6 +47,7 @@ function serializarSala(sala, manoEnCurso) {
       tipo: j.tipo,
       nombre: j.nombre,
       avatar: j.avatar || null,
+      personalidad: j.personalidad || null,
       asiento: j.asiento,
       fichas: fichas,
       token: j.token || null

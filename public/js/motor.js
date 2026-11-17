@@ -78,7 +78,8 @@
       conectado: true,
       ultimaAccion: null,
       token: datos.token || null,
-      avatar: datos.avatar || null
+      avatar: datos.avatar || null,
+      personalidad: datos.personalidad || null
     };
   }
 
@@ -89,6 +90,9 @@
    */
   function Mesa(opciones) {
     opciones = opciones || {};
+    // Solo para pruebas: un generador con semilla hace repetibles los repartos.
+    // En el juego real no se pasa y se usa el azar criptográfico del evaluador.
+    this.aleatorioMazo = typeof opciones.aleatorioMazo === "function" ? opciones.aleatorioMazo : null;
     this.asientosTotales = opciones.asientos || 9;
     const fichasNorm = normalizarFichas(opciones.fichasIniciales != null ? opciones.fichasIniciales : FICHAS_INICIALES);
     this.fichasIniciales = fichasNorm.error ? FICHAS_INICIALES : fichasNorm.fichas;
@@ -170,6 +174,7 @@
       asiento: asiento,
       fichas: datos.fichas != null ? datos.fichas : this.fichasIniciales,
       avatar: datos.avatar || null,
+      personalidad: datos.personalidad || null,
       token: datos.token || null
     });
     this.porAsiento[asiento] = jugador;
@@ -274,7 +279,7 @@
     this.comunitarias = [];
     this.botes = [];
     this.resultadoShowdown = null;
-    this.mazo = Ev.barajar(Ev.crearMazo());
+    this.mazo = Ev.barajar(Ev.crearMazo(), this.aleatorioMazo || undefined);
     this.mensaje = "";
 
     if (this.botonDealer == null || !this.porAsiento[this.botonDealer] || !this.porAsiento[this.botonDealer].enMano) {
@@ -677,6 +682,7 @@
 
     const botes = [];
     let previo = 0;
+    let sinDueno = 0;
     for (let n = 0; n < niveles.length; n++) {
       const nivel = niveles[n];
       const participantes = lista.filter(function (j) { return j.aportado >= nivel; });
@@ -685,7 +691,16 @@
         .filter(function (j) { return !j.retirado; })
         .map(function (j) { return j.id; });
       if (cantidad > 0) {
-        botes.push({ cantidad: cantidad, elegibles: elegibles });
+        if (elegibles.length) {
+          botes.push({ cantidad: cantidad + sinDueno, elegibles: elegibles });
+          sinDueno = 0;
+        } else if (botes.length) {
+          // Lo que puso de más alguien que después se retiró y nadie igualó
+          // (todos los de ese nivel se retiraron): va al bote de abajo.
+          botes[botes.length - 1].cantidad += cantidad;
+        } else {
+          sinDueno += cantidad;
+        }
       }
       previo = nivel;
     }
@@ -842,6 +857,7 @@
         esSB: self.asientoSB === j.asiento,
         esBB: self.asientoBB === j.asiento,
         avatar: j.avatar || null,
+        personalidad: j.personalidad || null,
         conectado: j.conectado !== false
       };
     });

@@ -23,6 +23,8 @@ const Motor = require("./public/js/motor.js");
 const Bots = require("./public/js/bots.js");
 const Avatar = require("./public/js/avatar.js");
 const Limites = require("./servidor/limites.js");
+const Almacen = require("./servidor/almacen.js");
+const Persistencia = require("./servidor/persistencia.js");
 
 const PORT = process.env.PORT || 3000;
 const RAPIDO = process.env.POKER_RAPIDO === "1";
@@ -56,12 +58,34 @@ const limiteEntrar = Limites.crearLimitador(30 * FACTOR_LIMITES, 60000);  // int
 const limiteCrear = Limites.crearLimitador(10 * FACTOR_LIMITES, 60000);   // salas nuevas por IP
 const conexionesPorIp = new Limites.ContadorConexiones(MAX_CONEXIONES_POR_IP);
 
+/* ---- Dónde se guardan las mesas y los grupos (ver servidor/almacen.js) ---- */
+const almacen = Almacen.crearAlmacen(process.env);
+// Secreto para firmar las copias de seguridad que guarda el teléfono del anfitrión.
+// Debe ser el mismo tras un reinicio: se toma de POKER_SECRETO o se deriva de la
+// dirección del almacén (que no cambia mientras exista).
+const SECRETO_COPIAS = process.env.POKER_SECRETO ||
+  ((process.env.REDIS_URL || process.env.POKER_ALMACEN_ARCHIVO)
+    ? crypto.createHash("sha256").update("rf-copias:" + (process.env.REDIS_URL || process.env.POKER_ALMACEN_ARCHIVO)).digest("hex")
+    : crypto.randomBytes(32).toString("hex"));
+const VIDA_SALA_S = 3 * 24 * 3600;      // una mesa se puede recuperar hasta 3 días después
+const VIDA_GRUPO_S = 400 * 24 * 3600;   // los grupos duran más de un año sin uso
+const GUARDAR_TRAS_MS = RAPIDO ? 30 : 400;
+const TIPOS_QUE_GUARDAN = new Set(["sala-actualizada", "recarga", "partida-terminada", "showdown",
+  "ganador-sin-showdown", "mano-iniciada", "nueva-partida", "grupo-actualizado"]);
+console.log("Almacén:", almacen.tipo, almacen.persistente ? "(las mesas sobreviven a reinicios)" : "(solo en memoria)");
+
 const app = express();
 app.disable("x-powered-by");
 app.use(Limites.cabecerasSeguras);
+// El service worker tiene que poder actualizarse siempre
+app.get("/sw.js", function (req, res) {
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Service-Worker-Allowed", "/");
+  res.sendFile(path.join(__dirname, "public", "sw.js"));
+});
 app.use(express.static(path.join(__dirname, "public")));
 app.get("/salud", function (req, res) {
-  res.json({ ok: true, salas: salas.size });
+  res.json({ ok: true, salas: salas.size, almacen: almacen.tipo });
 });
 app.get("/m/:codigo", function (req, res) {
   res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -72,18 +96,46 @@ app.get("/api/sala/:codigo", function (req, res) {
     return;
   }
   const codigo = normalizarCodigo(req.params.codigo);
-  const sala = salas.get(codigo);
-  if (!sala) {
-    res.status(404).json({ ok: false, mensaje: "La sala ya no existe, crea una nueva" });
+  obtenerSala(codigo).then(function (sala) {
+    if (!sala) {
+      res.status(404).json({ ok: false, mensaje: "La sala ya no existe, crea una nueva" });
+      return;
+    }
+    res.json({
+      ok: true,
+      codigo: sala.codigo,
+      publica: sala.publica,
+      partidaIniciada: sala.partidaIniciada,
+      jugadores: sala.mesa.jugadores().length,
+      asientos: sala.mesa.asientosTotales
+    });
+  });
+});
+
+/*
+ * Copia de seguridad de un grupo que guardó el teléfono del anfitrión.
+ * Solo se acepta si la firma es nuestra (nadie puede inventar resultados).
+ * Si el almacén perdió el grupo, se recupera; si no, se unen las dos copias.
+ */
+app.post("/api/grupo/copia", express.json({ limit: "256kb" }), function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
     return;
   }
-  res.json({
-    ok: true,
-    codigo: sala.codigo,
-    publica: sala.publica,
-    partidaIniciada: sala.partidaIniciada,
-    jugadores: sala.mesa.jugadores().length,
-    asientos: sala.mesa.asientosTotales
+  const copia = req.body && req.body.copia;
+  if (!Persistencia.verificarFirma(SECRETO_COPIAS, copia) || !copia.datos.codigo) {
+    res.status(400).json({ ok: false, mensaje: "Esa copia del grupo no es válida." });
+    return;
+  }
+  const codigo = String(copia.datos.codigo);
+  almacen.leer("grupo:" + codigo).then(function (actual) {
+    const unido = Persistencia.fusionarGrupos(actual, copia.datos);
+    return almacen.guardar("grupo:" + codigo, unido, VIDA_GRUPO_S).then(function () {
+      res.json({ ok: true, recuperado: !actual, grupo: Persistencia.vistaGrupo(unido) });
+    });
+  }).catch(function (e) {
+    console.error("copia grupo:", e.message);
+    res.status(503).json({ ok: false, mensaje: "No se pudo guardar el grupo ahora." });
   });
 });
 
@@ -183,6 +235,7 @@ function transmitir(sala, tipo, extra) {
     payload.esEspectador = true;
     enviar(ws, payload);
   }
+  if (TIPOS_QUE_GUARDAN.has(tipo)) programarGuardado(sala);
 }
 
 function payloadEspectador(sala, ws) {
@@ -232,7 +285,7 @@ function luego(sala, ms, fn) {
 }
 
 function crearSala(opciones) {
-  const codigo = codigoUnico();
+  const codigo = opciones.codigo || codigoUnico();
   const sala = {
     codigo: codigo,
     publica: !!opciones.publica,
@@ -253,8 +306,14 @@ function crearSala(opciones) {
     timerLimpieza: null,
     cuentas: [],
     partidaTerminada: false,
-    terminarAlFinal: false
+    terminarAlFinal: false,
+    partidaNum: 1,             // "otra partida" en la misma mesa suma 1
+    partidasCerradas: [],      // resultados de las partidas ya terminadas (cuentas de la noche)
+    grupo: null,               // { codigo, nombre } si el anfitrión guarda las cuentas en un grupo
+    grupoRegistradas: [],
+    timerGuardar: null
   };
+  sala.ciegasIniciales = { pequena: sala.mesa.ciegaPequena, grande: sala.mesa.ciegaGrande };
   engancharMesa(sala);
   salas.set(codigo, sala);
   console.log("Sala creada", codigo, sala.publica ? "pública" : "privada");
@@ -295,6 +354,8 @@ function engancharMesa(sala) {
 function empezarMano(sala) {
   if (sala.partidaTerminada) return;
   acreditarPendientes(sala);
+  // Fichas al empezar la mano: si el servidor se reinicia a mitad, se devuelven estas
+  sala.mesa.jugadores().forEach(function (j) { j.fichasInicioMano = j.fichas; });
   const r = sala.mesa.iniciarMano();
   if (r && r.error) {
     transmitir(sala, "esperando", { mensaje: r.error });
@@ -400,6 +461,8 @@ function programarLimpieza(sala) {
     limpiarTimers(sala);
     cerrarEspectadores(sala);
     salas.delete(sala.codigo);
+    if (sala.timerGuardar) { clearTimeout(sala.timerGuardar); sala.timerGuardar = null; }
+    almacen.borrar("sala:" + sala.codigo).catch(function () { /* */ });
     console.log("Sala borrada (sin humanos)", sala.codigo);
     return;
   }
@@ -487,12 +550,21 @@ function snapshotCuentas(sala) {
       conectado: c.conectado !== false && !c.seFue
     };
   });
+  // Cuentas de la noche: todas las partidas de esta mesa (las cerradas + la actual)
+  const actual = sala.partidaTerminada ? [] : (sala.cuentas || []).map(function (c, i) {
+    return { token: c.token, nombre: jugadores[i].nombre, resultadoBs: jugadores[i].resultadoBs };
+  });
+  const cerradas = sala.partidasCerradas || [];
   return {
     fichasPorBs: FICHAS_POR_BS,
     minBs: MIN_RECARGA_BS,
     partidaTerminada: !!sala.partidaTerminada,
     terminarAlFinal: !!sala.terminarAlFinal,
     avisoBote: !!sala.avisoBote,
+    partidaNum: sala.partidaNum || 1,
+    partidasCerradas: cerradas.length,
+    noche: Persistencia.totalesNoche(cerradas, actual),
+    grupo: sala.grupo ? { codigo: sala.grupo.codigo, nombre: sala.grupo.nombre } : null,
     jugadores: jugadores
   };
 }
@@ -589,13 +661,247 @@ function manoEnCurso(sala) {
 }
 
 function finalizarPartida(sala) {
+  // Si se termina con una mano a medias, esa mano se congela: nadie más actúa (ni el reloj
+  // de turno ni los bots), así las fichas ya no se mueven después de cerrar las cuentas.
+  const aMedias = manoEnCurso(sala);
+  for (let i = 0; i < sala.timers.length; i++) clearTimeout(sala.timers[i]);
+  sala.timers = [];
+  sala.turnoVigilado = null;
+  if (aMedias) {
+    // La mano a medias se anula: cada uno recupera lo que tenía al empezarla (también lo
+    // que había en el bote). Así las cuentas siempre cuadran: lo que unos ganan, otros lo deben.
+    sala.mesa.jugadores().forEach(function (j) {
+      if (j.enMano && typeof j.fichasInicioMano === "number") j.fichas = j.fichasInicioMano;
+      j.apuestaRonda = 0;
+      j.aportado = 0;
+    });
+    sala.mesa.boteTotal = 0;
+    sala.mesa.botes = [];
+    sala.mesa.apuestaMaxima = 0;
+    sala.mesa.fase = "entre-manos";
+    sala.mesa.turnoId = null;
+    sala.mesa.faltanPorHablar = [];
+    sala.mesa.mensaje = "Partida terminada. La mano que se estaba jugando se anuló y cada uno recuperó lo que había apostado.";
+  }
+  // Primero se pasan las fichas finales a las cuentas (sincronizarCuentas no toca una partida cerrada)
+  acreditarPendientes(sala);
+  sincronizarCuentas(sala);
   sala.partidaTerminada = true;
   sala.terminarAlFinal = false;
   sala.partidaIniciada = false;
-  acreditarPendientes(sala);
-  sincronizarCuentas(sala);
-  console.log("Partida terminada en", sala.codigo);
-  transmitir(sala, "partida-terminada", { cuentas: snapshotCuentas(sala) });
+  // Guardamos el resultado de esta partida para las cuentas de la noche (y del grupo)
+  const foto = snapshotCuentas(sala);
+  sala.partidasCerradas.push(Persistencia.cerrarPartida(sala.partidaNum || 1, foto.jugadores, sala.cuentas));
+  console.log("Partida terminada en", sala.codigo, "(partida " + (sala.partidaNum || 1) + ")");
+  transmitir(sala, "partida-terminada", aMedias
+    ? { cuentas: snapshotCuentas(sala), mensajeCuentas: "La mano que se estaba jugando se anuló: cada uno recuperó lo que había apostado." }
+    : { cuentas: snapshotCuentas(sala) });
+  if (sala.grupo) registrarEnGrupo(sala);
+}
+
+/* =========================================================
+   OTRA PARTIDA (revancha) EN LA MISMA MESA
+   Las cuentas de la partida empiezan de cero (cada uno vuelve a
+   "comprar" las fichas iniciales) y las de la noche se van sumando.
+   ========================================================= */
+function otraPartida(sala) {
+  limpiarTimers(sala);
+  const mesa = sala.mesa;
+  mesa.ciegaPequena = sala.ciegasIniciales.pequena;
+  mesa.ciegaGrande = sala.ciegasIniciales.grande;
+  mesa.nivelCiegas = 1;
+  mesa.manosJugadas = 0;
+  mesa.fase = "esperando";
+  mesa.comunitarias = [];
+  mesa.turnoId = null;
+  mesa.resultadoShowdown = null;
+  mesa.boteTotal = 0;
+  mesa.botes = [];
+  mesa.apuestaMaxima = 0;
+  mesa.faltanPorHablar = [];
+  mesa.subidaMinima = mesa.ciegaGrande;
+  mesa.mensaje = "";
+  sala.cuentas = [];
+  mesa.jugadores().forEach(function (j) {
+    j.fichas = mesa.fichasIniciales;
+    j.cartas = [];
+    j.enMano = false;
+    j.retirado = false;
+    j.allIn = false;
+    j.apuestaRonda = 0;
+    j.aportado = 0;
+    j.ultimaAccion = null;
+    j.reveladas = false;
+    if (j.tipo === "humano") registrarSitio(sala, j, false);
+  });
+  sala.partidaNum = (sala.partidaNum || 1) + 1;
+  sala.partidaTerminada = false;
+  sala.terminarAlFinal = false;
+  sala.avisoBote = false;
+  sala.partidaIniciada = true;
+  console.log("Otra partida en", sala.codigo, "(partida " + sala.partidaNum + ")");
+  transmitir(sala, "nueva-partida", {
+    mensaje: "¡Empieza la partida " + sala.partidaNum + "! Todos vuelven a tener " + mesa.fichasIniciales + " fichas."
+  });
+  empezarMano(sala);
+}
+
+/* =========================================================
+   GUARDAR Y RECUPERAR MESAS (para cuando Render se duerme)
+   ========================================================= */
+function programarGuardado(sala) {
+  if (!salas.has(sala.codigo) || sala.timerGuardar) return;
+  sala.timerGuardar = setTimeout(function () {
+    sala.timerGuardar = null;
+    if (!salas.has(sala.codigo)) return;
+    let datos;
+    try {
+      datos = Persistencia.serializarSala(sala, manoEnCurso(sala));
+    } catch (e) {
+      console.error("No se pudo preparar la sala para guardar:", e.message);
+      return;
+    }
+    almacen.guardar("sala:" + sala.codigo, datos, VIDA_SALA_S).catch(function (e) {
+      console.error("No se pudo guardar la sala", sala.codigo + ":", e.message);
+    });
+  }, GUARDAR_TRAS_MS);
+}
+
+/** Reconstruye una sala a partir de lo guardado. Nadie está conectado todavía. */
+function restaurarSala(datos) {
+  const m = datos.mesa;
+  const sala = crearSala({
+    codigo: datos.codigo,
+    publica: datos.publica,
+    asientos: m.asientos,
+    anfitrionId: null,
+    ciegas: { fichasIniciales: m.fichasIniciales, ciegaPequena: m.ciegaPequena, ciegaGrande: m.ciegaGrande, subirCiegasCada: m.subirCiegasCada }
+  });
+  sala.ciegasIniciales = m.ciegasIniciales || sala.ciegasIniciales;
+  sala.mesa.nivelCiegas = m.nivelCiegas || 1;
+  sala.mesa.manosJugadas = m.manosJugadas || 0;
+  sala.mesa.botonDealer = m.botonDealer == null ? null : m.botonDealer;
+  const idPorToken = new Map();
+  (datos.jugadores || []).forEach(function (d) {
+    const id = d.tipo === "bot" && d.id ? d.id : nuevoId();
+    const r = sala.mesa.sentar({ id: id, nombre: d.nombre, tipo: d.tipo, asiento: d.asiento, fichas: d.fichas, avatar: d.avatar, token: d.token });
+    if (r && r.jugador) {
+      r.jugador.token = d.token || null;
+      if (d.tipo === "humano") r.jugador.conectado = false;
+      if (d.token) idPorToken.set(d.token, r.jugador.id);
+    }
+  });
+  sala.cuentas = (datos.cuentas || []).map(function (c) {
+    return {
+      token: c.token, id: idPorToken.get(c.token) || null, nombre: c.nombre,
+      recargadoBs: c.recargadoBs, fichas: c.fichas, pendienteFichas: c.pendienteFichas || 0,
+      seFue: !!c.seFue, conectado: false, avatar: c.avatar || null
+    };
+  });
+  sala.anfitrionId = (datos.anfitrionToken && idPorToken.get(datos.anfitrionToken)) || null;
+  sala.partidaIniciada = !!datos.partidaIniciada;
+  sala.partidaTerminada = !!datos.partidaTerminada;
+  sala.avisoBote = !!datos.avisoBote;
+  sala.partidaNum = datos.partidaNum || 1;
+  sala.partidasCerradas = datos.partidasCerradas || [];
+  sala.grupo = datos.grupo || null;
+  sala.grupoRegistradas = datos.grupoRegistradas || [];
+  sala.restaurada = true;
+  sala.manoAnulada = !!datos.manoAnulada;
+  console.log("Sala recuperada del almacén", sala.codigo, datos.manoAnulada ? "(se anuló la mano a medias)" : "");
+  programarLimpieza(sala);
+  return sala;
+}
+
+const cargando = new Map();
+/** La sala de ese código: de la memoria o, si el servidor se reinició, del almacén. */
+function obtenerSala(codigo) {
+  if (!codigo) return Promise.resolve(null);
+  if (salas.has(codigo)) return Promise.resolve(salas.get(codigo));
+  if (!almacen.persistente) return Promise.resolve(null);
+  if (cargando.has(codigo)) return cargando.get(codigo);
+  const p = almacen.leer("sala:" + codigo).then(function (datos) {
+    if (salas.has(codigo)) return salas.get(codigo);
+    if (!datos || datos.version !== Persistencia.VERSION) return null;
+    return restaurarSala(datos);
+  }).catch(function (e) {
+    console.error("No se pudo leer la sala", codigo + ":", e.message);
+    return null;
+  }).then(function (sala) {
+    cargando.delete(codigo);
+    return sala;
+  });
+  cargando.set(codigo, p);
+  return p;
+}
+
+/** Tras recuperar una sala que estaba jugando, se sigue cuando vuelven los jugadores. */
+function quizasReanudar(sala, ws) {
+  if (!sala.restaurada) return;
+  if (sala.manoAnulada && ws && !ws.avisadoRecuperada) {
+    ws.avisadoRecuperada = true;
+    enviar(ws, { tipo: "recuperada", mensaje: "La mesa se recuperó tras un reinicio del servidor. La mano que estaba a medias se anuló y cada uno recuperó sus fichas." });
+  } else if (ws && !ws.avisadoRecuperada) {
+    ws.avisadoRecuperada = true;
+    enviar(ws, { tipo: "recuperada", mensaje: "La mesa se recuperó tras un reinicio del servidor." });
+  }
+  if (!sala.partidaIniciada || sala.partidaTerminada || sala.mesa.fase !== "esperando" || sala.reanudando) return;
+  const humanos = sala.mesa.jugadores().filter(function (j) { return j.tipo === "humano"; });
+  const conectados = humanos.filter(function (j) { return j.conectado !== false; }).length;
+  const hayBots = sala.mesa.jugadores().some(function (j) { return j.tipo === "bot"; });
+  if (conectados >= Math.min(2, humanos.length) || (conectados >= 1 && hayBots)) {
+    sala.reanudando = true;
+    luego(sala, RAPIDO ? 50 : 2500, function () {
+      sala.reanudando = false;
+      sala.restaurada = false;
+      if (sala.partidaIniciada && !sala.partidaTerminada && sala.mesa.fase === "esperando") empezarMano(sala);
+    });
+  }
+}
+
+/* =========================================================
+   GRUPOS: cuentas guardadas entre noches
+   ========================================================= */
+function codigoGrupo() {
+  const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let c = "";
+  for (let i = 0; i < 6; i++) c += letras[crypto.randomInt(letras.length)];
+  return c;
+}
+
+function normalizarCodigoGrupo(crudo) {
+  return String(crudo || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+}
+
+/** Manda a la sala la vista del grupo y al anfitrión la copia firmada. */
+function avisarGrupo(sala, grupo, soloWs) {
+  const vista = Persistencia.vistaGrupo(grupo);
+  const copia = { datos: grupo, firma: Persistencia.firmar(SECRETO_COPIAS, grupo) };
+  const destinos = soloWs ? [[soloWs.jugadorId, soloWs]] : Array.from(sala.clientes.entries());
+  for (let i = 0; i < destinos.length; i++) {
+    const id = destinos[i][0], ws = destinos[i][1];
+    const msg = { tipo: "grupo", grupo: vista };
+    if (id === sala.anfitrionId) msg.copia = copia;
+    enviar(ws, msg);
+  }
+}
+
+/** Añade al grupo las partidas cerradas de la sala que todavía no estaban. */
+function registrarEnGrupo(sala, soloWs) {
+  if (!sala.grupo) return Promise.resolve(null);
+  const codigo = sala.grupo.codigo;
+  return almacen.leer("grupo:" + codigo).then(function (g) {
+    g = g || Persistencia.nuevoGrupo(codigo, sala.grupo.nombre);
+    Persistencia.agregarAlGrupo(g, sala.codigo, sala.partidasCerradas || []);
+    return almacen.guardar("grupo:" + codigo, g, VIDA_GRUPO_S).then(function () {
+      avisarGrupo(sala, g, soloWs);
+      return g;
+    });
+  }).catch(function (e) {
+    console.error("grupo:", e.message);
+    if (soloWs) enviar(soloWs, { tipo: "error", mensaje: "No se pudo guardar el grupo ahora. Probá de nuevo en un momento." });
+    return null;
+  });
 }
 
 function meta(sala) {
@@ -689,6 +995,7 @@ function recostar(ws, hallado) {
     programarLimpieza(sala);
     entregarEstado(sala, ws);
     transmitir(sala, "sala-actualizada");
+    quizasReanudar(sala, ws);
     return true;
   }
   const viejo = sala.clientes.get(jugador.id);
@@ -706,9 +1013,12 @@ function recostar(ws, hallado) {
   }
   sala.clientes.set(jugador.id, ws);
   programarLimpieza(sala);
+  if (!sala.anfitrionId) sala.anfitrionId = jugador.id;   // sala recuperada sin anfitrión conectado
   console.log("Reconexión", jugador.nombre, "en", sala.codigo);
   entregarEstado(sala, ws);
   transmitir(sala, "sala-actualizada");
+  quizasReanudar(sala, ws);
+  if (sala.grupo) registrarEnGrupo(sala, ws);
   return true;
 }
 
@@ -737,6 +1047,23 @@ function manejar(ws, msg) {
     return;
   }
 
+  // Si la sala no está en memoria (el servidor se durmió o se reinició), se busca en el almacén
+  // y se vuelve a procesar el mismo mensaje. _cargada evita repetirlo más de una vez.
+  if ((tipo === "reconectar" || tipo === "unirse" || tipo === "mirar") && !msg._cargada) {
+    const codigoBuscado = normalizarCodigo(msg.codigo);
+    const yaEsta = tipo === "reconectar" ? buscarPorToken(String(msg.token || "")) : salas.get(codigoBuscado);
+    if (!yaEsta && codigoBuscado.length === 5 && almacen.persistente) {
+      obtenerSala(codigoBuscado).then(function () {
+        if (ws.readyState !== 1) return;
+        try { manejar(ws, Object.assign({}, msg, { _cargada: true })); } catch (e) {
+          console.error(e);
+          enviar(ws, { tipo: "error", mensaje: "Error interno del servidor." });
+        }
+      });
+      return;
+    }
+  }
+
   if (tipo === "reconectar") {
     const token = String(msg.token || "");
     const hallado = buscarPorToken(token);
@@ -748,7 +1075,7 @@ function manejar(ws, msg) {
     return;
   }
 
-  if (tipo === "crear-privada" || tipo === "unirse" || tipo === "unirse-publica" || tipo === "mirar") {
+  if ((tipo === "crear-privada" || tipo === "unirse" || tipo === "unirse-publica" || tipo === "mirar") && !msg._cargada) {
     const lim = tipo === "unirse" ? limiteEntrar : (tipo === "crear-privada" ? limiteCrear : limiteEntrar);
     if (!lim.permitir(ws.ip)) {
       enviar(ws, { tipo: "error", mensaje: "Demasiados intentos seguidos, espera un minuto." });
@@ -924,7 +1251,7 @@ function manejar(ws, msg) {
 
   if (tipo === "iniciar") {
     if (sala.partidaTerminada) {
-      enviar(ws, { tipo: "error", mensaje: "Esta partida ya cerró las cuentas. Creá una sala nueva para jugar otra." });
+      enviar(ws, { tipo: "error", mensaje: "Esta partida ya cerró las cuentas. El anfitrión puede empezar «Otra partida» desde las cuentas." });
       return;
     }
     if (sala.anfitrionId !== ws.jugadorId) {
@@ -1046,10 +1373,78 @@ function manejar(ws, msg) {
       transmitir(sala, "partida-terminada", { cuentas: snapshotCuentas(sala) });
       return;
     }
-    if (manoEnCurso(sala)) {
-      sala.avisoBote = true;
-    }
     finalizarPartida(sala);
+    return;
+  }
+
+  if (tipo === "otra-partida") {
+    if (sala.anfitrionId !== ws.jugadorId) {
+      enviar(ws, { tipo: "error", mensaje: "Solo el anfitrión puede empezar otra partida." });
+      return;
+    }
+    if (!sala.partidaTerminada) {
+      enviar(ws, { tipo: "error", mensaje: "Primero hay que terminar esta partida y ver las cuentas." });
+      return;
+    }
+    const conGente = sala.mesa.jugadores().length;
+    if (conGente < 2) {
+      enviar(ws, { tipo: "error", mensaje: "Se necesitan al menos 2 jugadores en la mesa para otra partida." });
+      return;
+    }
+    otraPartida(sala);
+    return;
+  }
+
+  if (tipo === "grupo") {
+    const accion = String(msg.accion || "");
+    if (accion === "ver") {
+      if (!sala.grupo) { enviar(ws, { tipo: "grupo", grupo: null }); return; }
+      almacen.leer("grupo:" + sala.grupo.codigo).then(function (g) {
+        if (g) avisarGrupo(sala, g, ws);
+        else enviar(ws, { tipo: "grupo", grupo: null, perdido: sala.grupo });
+      }).catch(function () { enviar(ws, { tipo: "error", mensaje: "No se pudo leer el grupo ahora." }); });
+      return;
+    }
+    if (sala.anfitrionId !== ws.jugadorId) {
+      enviar(ws, { tipo: "error", mensaje: "Solo el anfitrión puede elegir el grupo donde se guardan las cuentas." });
+      return;
+    }
+    if (accion === "quitar") {
+      sala.grupo = null;
+      transmitir(sala, "grupo-actualizado", { grupo: null });
+      return;
+    }
+    if (accion === "crear") {
+      const nombre = String(msg.nombre || "").replace(/[<>]/g, "").trim().slice(0, 40);
+      if (nombre.length < 2) {
+        enviar(ws, { tipo: "error", codigoError: "grupo", mensaje: "Ponele un nombre al grupo (al menos 2 letras)." });
+        return;
+      }
+      sala.grupo = { codigo: codigoGrupo(), nombre: nombre };
+      registrarEnGrupo(sala).then(function () {
+        transmitir(sala, "grupo-actualizado", { grupo: sala.grupo });
+      });
+      return;
+    }
+    if (accion === "usar") {
+      const codigo = normalizarCodigoGrupo(msg.codigo);
+      if (codigo.length !== 6) {
+        enviar(ws, { tipo: "error", codigoError: "grupo", mensaje: "El código del grupo tiene 6 letras o números." });
+        return;
+      }
+      almacen.leer("grupo:" + codigo).then(function (g) {
+        if (!g) {
+          enviar(ws, { tipo: "error", codigoError: "grupo-no-existe", codigo: codigo, mensaje: "No encuentro ese grupo. Si lo tenías guardado en este teléfono, se intentará recuperar." });
+          return;
+        }
+        sala.grupo = { codigo: g.codigo, nombre: g.nombre };
+        registrarEnGrupo(sala).then(function () {
+          transmitir(sala, "grupo-actualizado", { grupo: sala.grupo });
+        });
+      }).catch(function () { enviar(ws, { tipo: "error", mensaje: "No se pudo leer el grupo ahora." }); });
+      return;
+    }
+    enviar(ws, { tipo: "error", mensaje: "Acción de grupo desconocida." });
     return;
   }
 

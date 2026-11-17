@@ -31,7 +31,7 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   host.on("message", function (d) {
     const m = JSON.parse(d.toString());
     if (m.tipo === "en-sala" && !codigo) codigo = m.codigo;
-    if (m.estado && m.tuId && m.estado.turnoId === m.tuId && m.estado.acciones) {
+    if (m.tipo === "turno" && m.estado && m.tuId && m.estado.turnoId === m.tuId && m.estado.acciones) {
       host.send(JSON.stringify({ tipo: "accion", accion: m.estado.acciones.puedePasar ? "pasar" : "retirarse" }));
     }
   });

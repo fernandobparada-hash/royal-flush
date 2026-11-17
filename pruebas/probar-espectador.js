@@ -62,7 +62,8 @@ async function esperar(ws, tipo, ms) {
   // El anfitrión juega solo: pasa si puede y si no se retira (así la partida no se queda esperándolo)
   anfi.on("message", function (d) {
     let m; try { m = JSON.parse(d.toString()); } catch (e) { return; }
-    if (m.estado && m.tuId && m.estado.turnoId === m.tuId && m.estado.acciones) {
+    // Solo al empezar su turno (evento "turno"): así no responde varias veces por el mismo turno
+    if (m.tipo === "turno" && m.estado && m.tuId && m.estado.turnoId === m.tuId && m.estado.acciones) {
       enviar(anfi, { tipo: "accion", accion: m.estado.acciones.puedePasar ? "pasar" : "retirarse" });
     }
   });

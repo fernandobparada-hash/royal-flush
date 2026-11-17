@@ -59,7 +59,9 @@
     historial: Historial ? Historial.crearHistorial(50) : null,
     historialSala: null,
     ultimaCiegaGrande: null,
-    espectador: false
+    espectador: false,
+    turnoLimite: null,   // momento (reloj de este navegador) en que se acaba el turno del que tiene el reloj
+    turnoDe: null
   };
 
   const LS_NOMBRE = "rf_nombre";
@@ -215,6 +217,85 @@
 
   /* ---------- Historial de manos ---------- */
 
+  /* ---------- Reloj de turno (modo online) ---------- */
+
+  function pintarReloj() {
+    const el = $("reloj-turno");
+    if (!el) return;
+    const e = ui.estado;
+    if (!ui.turnoLimite || !e || ui.modo !== "online" || !e.turnoId || e.turnoId !== ui.turnoDe) {
+      el.hidden = true;
+      return;
+    }
+    const seg = Math.max(0, Math.ceil((ui.turnoLimite - Date.now()) / 1000));
+    const suyo = e.turnoId === ui.tuId;
+    const j = (e.jugadores || []).find(function (x) { return x.id === e.turnoId; });
+    el.textContent = suyo ? "⏱ Te quedan " + seg + " s" : "⏱ " + (j ? j.nombre : "") + " · " + seg + " s";
+    el.classList.toggle("urgente", suyo && seg <= 5);
+    el.hidden = false;
+  }
+
+  /* ---------- Tu mano en vivo ("Tu mano: Pareja de ases · proyecto de color") ---------- */
+
+  function pintarTuMano(estado) {
+    const el = $("tu-mano");
+    if (!el) return;
+    const yo = (estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    const comunes = estado.comunitarias || [];
+    const propias = yo && yo.cartas ? yo.cartas.filter(function (c) { return !c.oculta; }) : [];
+    const enJuego = yo && yo.enMano && !yo.retirado && propias.length === 2 && comunes.length >= 3 && !estado.resultadoShowdown;
+    if (!enJuego) {
+      el.hidden = true;
+      return;
+    }
+    const todas = propias.concat(comunes);
+    let t = "Tu mano: " + Ev.describirMano(Ev.mejorMano(todas));
+    if (comunes.length < 5) {
+      const dr = Ev.detectarProyectadas(todas);
+      if (dr.color) t += " · proyecto de color";
+      else if (dr.escaleraAbierta) t += " · proyecto de escalera";
+    }
+    el.textContent = t;
+    el.hidden = false;
+  }
+
+  /* ---------- Atajos de teclado ---------- */
+
+  function iniciarAtajos() {
+    document.addEventListener("keydown", function (ev) {
+      if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const t = ev.target;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" ||
+          (t.tagName === "INPUT" && t.type !== "range" && t.type !== "checkbox"))) return;
+      const panel = $("panel-acciones");
+      if (!panel || panel.hidden || !$("pantalla-mesa") || $("pantalla-mesa").hidden) return;
+      function usable(id) {
+        const b = $(id);
+        return (b && !b.hidden && !b.disabled && b.offsetParent !== null) ? b : null;
+      }
+      const k = String(ev.key || "").toLowerCase();
+      let boton = null;
+      if (k === "r" || k === "f") {
+        if (usable("btn-pasar")) {   // retirarse cuando pasar es gratis casi nunca es lo que quieres
+          ev.preventDefault();
+          toast("Puedes pasar gratis: pulsa C.", "ok");
+          return;
+        }
+        boton = usable("btn-retirarse");
+      } else if (k === "c") {
+        boton = usable("btn-pasar") || usable("btn-igualar");
+      } else if (k === "s") {
+        boton = usable("btn-subir");
+      } else if (k === "a" && ev.shiftKey) {
+        boton = usable("btn-allin");
+      }
+      if (boton) {
+        ev.preventDefault();
+        boton.click();
+      }
+    });
+  }
+
   function registrarHistorial(estado) {
     if (!ui.historial || !estado) return;
     const entrada = ui.historial.registrar(estado, ui.tuId);
@@ -226,6 +307,16 @@
     if (!caja) return;
     caja.textContent = "";
     const lista = ui.historial ? ui.historial.lista() : [];
+    const resumen = $("resumen-historial");
+    if (resumen) {
+      if (lista.length && Historial) {
+        const r = Historial.resumenSesion(lista);
+        resumen.textContent = "Últimas " + r.manos + (r.manos === 1 ? " mano" : " manos") + ": ganaste " + r.ganadas +
+          (r.mejorPremio ? " · tu mejor premio " + formatearFichas(r.mejorPremio) : "");
+      } else {
+        resumen.textContent = "";
+      }
+    }
     if (!lista.length) {
       const p = document.createElement("p");
       p.className = "historial-vacio";
@@ -560,6 +651,8 @@
     cerrarWS(false);
     ui.modo = "menu";
     ui.espectador = false;
+    ui.turnoLimite = null;
+    ui.turnoDe = null;
     ui.ultimaCiegaGrande = null;
     if ($("panel-historial")) $("panel-historial").hidden = true;
     limpiarAvisos();
@@ -1441,6 +1534,7 @@
     ui.estado = estado;
     if (!estado) return;
 
+    pintarTuMano(estado);
     actualizarOrientacionMesa();
     const total = estado.asientosTotales;
     const oval = $("mesa-oval");
@@ -1861,6 +1955,13 @@
     if (msg.esAnfitrion != null) ui.esAnfitrion = !!msg.esAnfitrion;
     if (msg.publica != null) ui.publica = !!msg.publica;
     if (msg.cuentas) recibirCuentas(msg);
+
+    if (msg.turnoRestanteMs !== undefined) {
+      ui.turnoLimite = msg.turnoRestanteMs == null ? null : Date.now() + msg.turnoRestanteMs;
+      ui.turnoDe = msg.turnoDe || null;
+    }
+    if (msg.tipo === "turno-limite") { pintarReloj(); return; }
+    if (msg.tipo === "aviso-turno") { toast(msg.mensaje || "Se acabó tu tiempo.", "err"); return; }
 
     if (msg.tipo === "pong") return;
 
@@ -2421,6 +2522,8 @@
       pintarPreviewAvatar();
     });
     if ($("btn-avatar-saltar")) $("btn-avatar-saltar").addEventListener("click", function () { terminarAvatar(true); });
+    iniciarAtajos();
+    setInterval(pintarReloj, 250);
     if ($("btn-abrir-historial")) $("btn-abrir-historial").addEventListener("click", abrirHistorial);
     if ($("btn-cerrar-historial")) $("btn-cerrar-historial").addEventListener("click", function () { $("panel-historial").hidden = true; });
     if ($("btn-sonido")) {

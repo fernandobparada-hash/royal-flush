@@ -63,6 +63,13 @@ if (conCartas) {
 const linea = H.lineaResumen(lista[0]);
 ok("La línea de resumen menciona la mano, el bote y al ganador (" + linea + ")", /^Mano 12 · Bote \d+ · /.test(linea) && linea.indexOf(lista[0].ganadores[0].nombre) >= 0);
 ok("Una carta oculta se muestra como ??", H.textoCarta({ oculta: true }) === "??");
+const resumen = H.resumenSesion(lista);
+const ganadasEsperadas = lista.filter(function (e) { return e.gane; }).length;
+const mejorEsperado = Math.max.apply(null, lista.map(function (e) { return e.miPremio; }));
+ok("resumenSesion cuenta las manos y las ganadas (" + resumen.manos + " manos, " + resumen.ganadas + " ganadas)", resumen.manos === 5 && resumen.ganadas === ganadasEsperadas);
+ok("resumenSesion da tu mejor premio (" + resumen.mejorPremio + ")", resumen.mejorPremio === mejorEsperado);
+ok("Tu premio solo cuenta lo que ganaste tú", lista.every(function (e) { return e.gane ? e.miPremio > 0 : e.miPremio === 0; }));
+ok("resumenSesion de una lista vacía no falla", H.resumenSesion([]).manos === 0 && H.resumenSesion([]).mejorPremio === 0);
 hist.limpiar();
 ok("limpiar() lo vacía", hist.cantidad() === 0);
 

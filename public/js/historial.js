@@ -58,7 +58,8 @@
           descripcion: x.descripcion || ""
         };
       }),
-      gane: !!tuId && ganadores.some(function (g) { return g.id === tuId; })
+      gane: !!tuId && ganadores.some(function (g) { return g.id === tuId; }),
+      miPremio: !tuId ? 0 : ganadores.reduce(function (s, g) { return g.id === tuId ? s + g.premio : s; }, 0)
     };
   }
 
@@ -71,6 +72,16 @@
       ? " con " + e.ganadores[0].descripcion
       : (e.sinShowdown ? " (todos se retiraron)" : "");
     return "Mano " + e.mano + " · Bote " + e.bote + " · " + quien + con;
+  }
+
+  /** Resumen de una lista de entradas: cuántas manos, cuántas ganaste y tu mejor premio. */
+  function resumenSesion(lista) {
+    let ganadas = 0, mejor = 0;
+    for (let i = 0; i < lista.length; i++) {
+      if (lista[i].gane) ganadas++;
+      if ((lista[i].miPremio || 0) > mejor) mejor = lista[i].miPremio;
+    }
+    return { manos: lista.length, ganadas: ganadas, mejorPremio: mejor };
   }
 
   function crearHistorial(maximo) {
@@ -97,6 +108,7 @@
     crearHistorial: crearHistorial,
     resumirMano: resumirMano,
     lineaResumen: lineaResumen,
+    resumenSesion: resumenSesion,
     textoCarta: textoCarta
   };
 

@@ -64,6 +64,13 @@ Texas Hold'em No Limit, ciegas 5 / 10, 1000 fichas al empezar.
   (sin pasarse de la mitad de las fichas iniciales). La mesa avisa cuántas manos faltan.
 - **Solo mirar (espectador):** en *Opciones* escribe el código de una mesa y pulsa **Solo mirar**.
   Ves la partida, pero sin cartas privadas, sin cuentas y sin poder jugar ni chatear. Hasta 20 por mesa.
+- **Reloj de turno (modo online):** tienes 30 segundos para actuar; si no, pasas (si es gratis) o te retiras
+  solo, para que nadie bloquee la mesa. Quien deja agotar 2 turnos seguidos pasa a tener solo 8 segundos.
+  Se ve una cuenta atrás bajo el bote. Se puede cambiar con la variable `POKER_TURNO_MS` (en milisegundos).
+- **Atajos de teclado:** `C` pasa o iguala, `R` (o `F`) te retira, `S` sube y `Mayús + A` va all-in.
+  Si pasar es gratis, `R` no te retira (te lo recuerda), para evitar errores.
+- **«Tu mano» en vivo:** desde el flop, bajo la mesa se lee qué llevas ahora («Pareja de ases», «Color»...) y si tienes
+  un proyecto de color o de escalera.
 - **Historial de manos (📜):** guarda las últimas 50 manos: quién ganó, con qué, el bote y las cartas de la mesa.
 - **Sonido (🔊):** clics de cartas, fichas, aviso de tu turno y melodía al ganar. Se fabrican en el navegador
   (no hay archivos de audio) y se pueden silenciar; se recuerda tu elección.
@@ -96,7 +103,7 @@ npm test             # pruebas rápidas, sin servidor ni navegador (evaluador, m
 Con el servidor en marcha en modo rápido (`POKER_RAPIDO=1 npm start`), en otra terminal:
 
 ```bash
-npm run test:online      # sala privada, reconexión, cuentas en Bs, espectador y torneo
+npm run test:online      # sala privada, reconexión, cuentas en Bs, espectador/torneo y reloj de turno
 # si el servidor usa otro puerto, pásalo a cada prueba, por ejemplo:
 node pruebas/probar-sala.js http://localhost:4567
 ```
@@ -111,7 +118,7 @@ npm run test:seguridad   # en otra
 Pruebas en un navegador real (necesitan Playwright: `npm i -D playwright && npx playwright install chromium`):
 
 ```bash
-npm run test:navegador                                   # modo solo, torneo, sonido, historial
+npm run test:navegador                                   # modo solo (torneo, sonido, historial, atajos) y reloj de turno
 node pruebas/probar-navegador-espectador.js http://localhost:3000   # con el servidor en marcha
 ```
 

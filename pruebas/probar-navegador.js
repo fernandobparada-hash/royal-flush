@@ -63,6 +63,35 @@ function ok(desc, cond, extra) {
   await pagina.click("#btn-cerrar-historial");
   ok("El panel de historial se puede cerrar", await pagina.isHidden("#panel-historial"));
 
+  // Atajos de teclado y "Tu mano": jugamos con la tecla C (pasar o igualar) hasta ver el flop
+  console.log("  ... probando atajos de teclado (tecla C) y la línea «Tu mano»");
+  let probadoRetirar = false, visteTuMano = false, usoAtajo = false;
+  const limiteAtajos = Date.now() + 90000;
+  while (Date.now() < limiteAtajos) {
+    const terminada = await pagina.evaluate(function () { const m = document.getElementById("mensaje-mesa"); return !!(m && m.className === "premio"); });
+    if (terminada) break;
+    if (await pagina.isVisible("#tu-mano")) { visteTuMano = true; break; }
+    if (await pagina.isVisible("#panel-acciones")) {
+      if (!probadoRetirar && await pagina.isVisible("#btn-pasar")) {
+        probadoRetirar = true;
+        await pagina.keyboard.press("r");
+        await pagina.waitForTimeout(300);
+        ok("Con «pasar» gratis, la tecla R NO te retira por accidente", await pagina.isVisible("#panel-acciones"));
+      }
+      await pagina.keyboard.press("c");
+      usoAtajo = true;
+      await pagina.waitForTimeout(700);
+    }
+    await pagina.waitForTimeout(300);
+  }
+  ok("La tecla C juega tu turno (pasar o igualar)", usoAtajo);
+  if (visteTuMano) {
+    const textoMano = await pagina.textContent("#tu-mano");
+    ok("Aparece «Tu mano: ...» al salir el flop (\"" + textoMano.trim() + "\")", /^Tu mano: .+/.test(textoMano));
+  } else {
+    console.log("  --  (omitido «Tu mano»: la mano terminó antes de salir el flop)");
+  }
+
   // Jugamos una mano retirándonos o pasando para que termine pronto
   console.log("  ... jugando una mano completa (puede tardar un minuto)");
   const limite = Date.now() + 150000;
@@ -70,6 +99,12 @@ function ok(desc, cond, extra) {
   while (Date.now() < limite && !fin) {
     const panelVisible = await pagina.isVisible("#panel-acciones");
     if (panelVisible) {
+      if (!probadoRetirar && await pagina.isVisible("#btn-pasar")) {
+        probadoRetirar = true;
+        await pagina.keyboard.press("r");
+        await pagina.waitForTimeout(300);
+        ok("Con «pasar» gratis, la tecla R NO te retira por accidente", await pagina.isVisible("#panel-acciones"));
+      }
       if (await pagina.isEnabled("#btn-pasar") && await pagina.isVisible("#btn-pasar")) await pagina.click("#btn-pasar");
       else if (await pagina.isEnabled("#btn-retirarse")) await pagina.click("#btn-retirarse");
     }

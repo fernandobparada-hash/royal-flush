@@ -1165,3 +1165,24 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 .fila-historial .ganador-linea { margin-top: 0.25em; }
 .historial-vacio { color: var(--muted); text-align: center; margin: 1em 0; }
 #btn-sonido[aria-pressed="false"] { opacity: 0.55; }
+
+/* ---------- Reloj de turno, tu mano, resumen ---------- */
+.reloj-turno {
+  display: inline-block; margin-top: 0.35em; padding: 0.15em 0.8em;
+  border-radius: 999px; border: 1px solid var(--linea);
+  background: rgba(8, 18, 14, 0.8); color: var(--texto);
+  font-size: 0.85rem; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.reloj-turno.urgente { border-color: #ff6b6b; color: #ffc2c2; animation: latido-reloj 1s ease-in-out infinite; }
+@keyframes latido-reloj { 50% { background: rgba(120, 20, 20, 0.85); } }
+@media (prefers-reduced-motion: reduce) { .reloj-turno.urgente { animation: none; } }
+.tu-mano { margin: 0.2em 0 0; text-align: center; font-size: 0.95rem; font-weight: 600; color: #e9c46a; }
+.resumen-historial { margin: 0 0 0.6em; color: var(--muted); font-size: 0.85rem; text-align: center; }
+
+/* Barra de la mesa en móviles estrechos: que quepa en una sola fila */
+@media (max-width: 480px) and (orientation: portrait) {
+  .barra-mesa { gap: 4px; }
+  .barra-mesa .brand-mini { display: none; }
+  .barra-mesa .icon-btn { min-width: 34px; font-size: 1rem; }
+  .barra-mesa .code-pill { padding: 0.1em 0.45em; font-size: 0.78rem; letter-spacing: 0.02em; }
+}

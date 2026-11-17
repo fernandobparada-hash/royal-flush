@@ -32,6 +32,10 @@ const DELAY_BOT_MAX = RAPIDO ? 0 : 1400;
 const DELAY_ENTRE_MANOS = RAPIDO ? 80 : 5500;
 const GRACE_MS = RAPIDO ? 30000 : 12 * 60 * 1000;
 const FOLD_DESCONEXION_MS = RAPIDO ? 400 : 25000;
+// Tiempo máximo para actuar en el modo online (si no, pasa o se retira solo). Se puede cambiar con POKER_TURNO_MS.
+const TURNO_MS = Number(process.env.POKER_TURNO_MS) || (RAPIDO ? 20000 : 30000);
+// Quien ya dejó pasar 2 turnos seguidos sin actuar tiene menos tiempo (probablemente se fue)
+const TURNO_AUSENTE_MS = Number(process.env.POKER_TURNO_AUSENTE_MS) || Math.min(TURNO_MS, 8000);
 const CHAT_COOLDOWN_MS = 2000;
 const FICHAS_POR_BS = 10;
 const MIN_RECARGA_BS = 10;
@@ -242,6 +246,8 @@ function crearSala(opciones) {
     }),
     clientes: new Map(),
     espectadores: new Map(),   // gente que solo mira: ve la mesa pero no juega ni ve cartas privadas
+    seqTurno: 0,               // contador para distinguir un turno de otro
+    turnoVigilado: null,       // { id, marca, vence }: de quién es el reloj que corre ahora
     partidaIniciada: false,
     timers: [],
     timerLimpieza: null,
@@ -296,9 +302,50 @@ function empezarMano(sala) {
   });
 }
 
+/**
+ * Reloj de turno para humanos: si pasa el tiempo sin que actúen, pasan (si es gratis) o se retiran.
+ * Así una persona que se distrae o se va no deja la mesa bloqueada para siempre.
+ */
+function armarTurnoHumano(sala, j) {
+  const v = sala.turnoVigilado;
+  if (v && v.id === j.id && j.marcaTurno === v.marca) return; // ya está corriendo para este turno
+  const marca = ++sala.seqTurno;
+  const ms = (j.timeoutsSeguidos || 0) >= 2 ? TURNO_AUSENTE_MS : TURNO_MS;
+  j.marcaTurno = marca;
+  sala.turnoVigilado = { id: j.id, marca: marca, vence: Date.now() + ms };
+  j.timerTurno = luego(sala, ms, function () {
+    if (j.marcaTurno !== marca || sala.mesa.turnoId !== j.id) return;
+    j.marcaTurno = null;
+    sala.turnoVigilado = null;
+    const legales = sala.mesa.accionesLegales(j.id);
+    const tipo = legales.puedePasar ? "pasar" : "retirarse";
+    j.timeoutsSeguidos = (j.timeoutsSeguidos || 0) + 1;
+    const ws = sala.clientes.get(j.id);
+    sala.mesa.accion(j.id, tipo);
+    if (ws) {
+      enviar(ws, {
+        tipo: "aviso-turno",
+        mensaje: tipo === "pasar" ? "Se acabó tu tiempo: pasaste automáticamente." : "Se acabó tu tiempo: te retiraste automáticamente."
+      });
+    }
+    programarBots(sala);
+  });
+  // Avisamos a todos de que el reloj ya corre (el evento "turno" llegó un instante antes)
+  transmitir(sala, "turno-limite");
+}
+
+function cancelarTurnoHumano(sala, j) {
+  if (j) {
+    j.marcaTurno = null;
+    if (j.timerTurno) clearTimeout(j.timerTurno);
+    j.timerTurno = null;
+  }
+  sala.turnoVigilado = null;
+}
+
 function programarBots(sala) {
   const id = sala.mesa.turnoId;
-  if (!id) return;
+  if (!id) { sala.turnoVigilado = null; return; }
   const j = sala.mesa.jugadorPorId(id);
   if (!j) return;
   if (j.tipo === "humano" && j.conectado === false) {
@@ -312,7 +359,12 @@ function programarBots(sala) {
     });
     return;
   }
+  if (j.tipo === "humano") {
+    armarTurnoHumano(sala, j);
+    return;
+  }
   if (j.tipo !== "bot") return;
+  sala.turnoVigilado = null;
   const espera = DELAY_BOT_MIN + Math.random() * Math.max(0, DELAY_BOT_MAX - DELAY_BOT_MIN);
   luego(sala, espera, function () {
     if (sala.mesa.turnoId !== id) return;
@@ -555,6 +607,11 @@ function meta(sala) {
     ciegaPequena: sala.mesa.ciegaPequena,
     ciegaGrande: sala.mesa.ciegaGrande,
     subirCiegasCada: sala.mesa.subirCiegasCada,
+    // Reloj de turno: solo vale mientras el turno siga siendo de quien tiene el reloj
+    turnoRestanteMs: (sala.turnoVigilado && sala.mesa.turnoId === sala.turnoVigilado.id)
+      ? Math.max(0, sala.turnoVigilado.vence - Date.now())
+      : null,
+    turnoDe: (sala.turnoVigilado && sala.mesa.turnoId === sala.turnoVigilado.id) ? sala.turnoVigilado.id : null,
     cuentas: snapshotCuentas(sala)
   };
 }
@@ -894,6 +951,9 @@ function manejar(ws, msg) {
       enviar(ws, { tipo: "error", mensaje: r.error, estado: sala.mesa.estadoPublico(ws.jugadorId) });
       return;
     }
+    const actuo = sala.mesa.jugadorPorId(ws.jugadorId);
+    if (actuo) actuo.timeoutsSeguidos = 0;
+    cancelarTurnoHumano(sala, actuo);
     programarBots(sala);
     return;
   }
@@ -1053,7 +1113,7 @@ wss.on("connection", function (ws, req) {
     ws.close(1013, "Demasiadas conexiones");
     return;
   }
-  ws.limiteMensajes = Limites.crearLimitador(MAX_MENSAJES_VENTANA, VENTANA_MENSAJES_MS);
+  ws.limiteMensajes = Limites.crearLimitador(MAX_MENSAJES_VENTANA * FACTOR_LIMITES, VENTANA_MENSAJES_MS);
   ws.avisosExceso = 0;
   ws.on("error", function () { /* mensaje demasiado grande o conexión rota: se cierra sola */ });
   ws.jugadorId = nuevoId();

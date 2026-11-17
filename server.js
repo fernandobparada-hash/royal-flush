@@ -195,6 +195,20 @@ app.put("/api/monedero/:id", express.json({ limit: "16kb" }), function (req, res
   }).catch(function () { res.status(503).json({ ok: false, mensaje: "No se pudo guardar el monedero ahora." }); });
 });
 
+// Borrar un monedero del servidor (solo con su código, que es la misma llave que permite
+// leerlo o pisarlo con PUT). Las monedas del aparato no se tocan.
+app.delete("/api/monedero/:id", function (req, res) {
+  if (!limiteApi.permitir(Limites.ipDe(req, CONFIAR_PROXY))) {
+    res.status(429).json({ ok: false, mensaje: "Demasiadas consultas, espera un momento." });
+    return;
+  }
+  const id = String(req.params.id || "").toLowerCase();
+  if (!codigoMonederoValido(id)) { res.status(400).json({ ok: false, mensaje: "Ese código de monedero no es válido." }); return; }
+  almacen.borrar("monedero:" + id).then(function () {
+    res.json({ ok: true });
+  }).catch(function () { res.status(503).json({ ok: false, mensaje: "No se pudo borrar el monedero ahora." }); });
+});
+
 /*
  * Copia de seguridad de un grupo que guardó el teléfono del anfitrión.
  * Solo se acepta si la firma es nuestra (nadie puede inventar resultados).

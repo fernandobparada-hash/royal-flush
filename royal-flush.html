@@ -1498,18 +1498,27 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   margin: 0; left: 0; top: 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,.35);
   transform: translate(-50%, -50%);
 }
-.riffle-carta.izq { animation: riffle-izq 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms); }
-.riffle-carta.der { animation: riffle-der 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms + 9ms); }
+.riffle-carta.izq { animation: riffle-izq 1.4s cubic-bezier(.35,.6,.3,1) both; animation-delay: calc(var(--i) * 12ms); }
+.riffle-carta.der { animation: riffle-der 1.4s cubic-bezier(.35,.6,.3,1) both; animation-delay: calc(var(--i) * 12ms + 6ms); }
+/* Dos tandas de riffle: partir → arquear → entrelazar, dos veces, y cuadrar el mazo */
 @keyframes riffle-izq {
-  0% { transform: translate(-50%, -50%); }
-  30% { transform: translate(-115%, calc(-50% - var(--i) * 1px)) rotate(-14deg); }
-  60% { transform: translate(-80%, calc(-60% - var(--i) * 2px)) rotate(-24deg); }
+  0%   { transform: translate(-50%, -50%); }
+  12%  { transform: translate(-118%, calc(-50% - var(--i) * 1px)) rotate(-10deg); }
+  26%  { transform: translate(-95%, calc(-62% - var(--i) * 2px)) rotate(-26deg); }
+  40%  { transform: translate(-52%, calc(-50% - var(--i) * 2px)) rotate(-3deg); }
+  52%  { transform: translate(-118%, calc(-50% - var(--i) * 1px)) rotate(-10deg); }
+  66%  { transform: translate(-95%, calc(-62% - var(--i) * 2px)) rotate(-26deg); }
+  80%  { transform: translate(-52%, calc(-50% - var(--i) * 2px)) rotate(-3deg); }
   100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
 }
 @keyframes riffle-der {
-  0% { transform: translate(-50%, -50%); }
-  30% { transform: translate(15%, calc(-50% - var(--i) * 1px)) rotate(14deg); }
-  60% { transform: translate(-20%, calc(-60% - var(--i) * 2px)) rotate(24deg); }
+  0%   { transform: translate(-50%, -50%); }
+  12%  { transform: translate(18%, calc(-50% - var(--i) * 1px)) rotate(10deg); }
+  26%  { transform: translate(-5%, calc(-62% - var(--i) * 2px)) rotate(26deg); }
+  40%  { transform: translate(-48%, calc(-50% - var(--i) * 2px - 1px)) rotate(3deg); }
+  52%  { transform: translate(18%, calc(-50% - var(--i) * 1px)) rotate(10deg); }
+  66%  { transform: translate(-5%, calc(-62% - var(--i) * 2px)) rotate(26deg); }
+  80%  { transform: translate(-48%, calc(-50% - var(--i) * 2px - 1px)) rotate(3deg); }
   100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
 }
 @media (prefers-reduced-motion: reduce) { .riffle { display: none; } }
@@ -1525,6 +1534,12 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   background: linear-gradient(180deg, #ffe08a, #b8860b); color: #2a1c00; border-radius: 999px; padding: 0.1em 0.5em;
 }
 .opciones-chips button.exclusivo { border-color: #d4a72c; }
+.reglas-monedas { margin: 0.4em 0 0.6em; }
+.reglas-monedas summary { cursor: pointer; color: #ffe39a; font-weight: 700; }
+.reglas-monedas ul { margin: 0.4em 0 0.2em; padding-left: 1.2em; }
+.reglas-monedas li { margin: 0.15em 0; }
+.item-tienda .muestra.muestra-alta { height: auto; min-height: 80px; }
+.muestra-sonido .btn { width: auto; margin-top: 0.15em; }
 
   </style>
 </head>
@@ -1589,6 +1604,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
                 </div>
               </fieldset>
               <label class="opcion-torneo"><input type="checkbox" id="torneo-online"> Modo torneo: las ciegas se duplican cada 10 manos</label>
+              <label class="opcion-torneo"><input type="checkbox" id="opcion-barajado" checked> Animación de barajado antes de repartir</label>
               <div class="fila-codigo" id="caja-tengo-codigo">
                 <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
                 <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
@@ -1642,7 +1658,19 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
             <h2>Tienda</h2>
             <span class="pill-monedas">🪙 <strong class="saldo-monedas">0</strong></span>
           </div>
-          <p class="hint">Las monedas se ganan jugando: +2 por mano, +10 si la ganás, +5 extra en showdown y +50 con póker o escalera de color. Solo sirven para cosas lindas; no son dinero real.</p>
+          <details class="reglas-monedas">
+            <summary>¿Cómo se ganan monedas?</summary>
+            <ul class="hint">
+              <li>Empezás con 100.</li>
+              <li>+1 por mano jugada (hasta 100 por día).</li>
+              <li>+5 por ganar una mano; +10 más si la ganás en showdown con trío o mejor.</li>
+              <li>+25 por ganar una partida o torneo; +10 por el 2.º puesto.</li>
+              <li>Bono diario +50; cada día seguido suma +10 más, hasta +100.</li>
+              <li>Logros: primer póker +100, primera escalera de color +200, primer Royal Flush +500.</li>
+              <li>Jugando solo contra bots se gana la mitad.</li>
+            </ul>
+            <p class="hint">Solo sirven para cosas lindas; no son dinero real.</p>
+          </details>
           <div class="tabs-tienda" role="tablist">
             <button type="button" data-tab="avatar" class="activo">Avatar</button>
             <button type="button" data-tab="tema">Mesas</button>
@@ -4590,10 +4618,22 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 })(typeof globalThis !== "undefined" ? globalThis : this, function (Avatar) {
   "use strict";
 
-  const SALDO_INICIAL = 300;
+  const SALDO_INICIAL = 100;
   const CODIGO_TRUCO = "3174";        // +1000 monedas cada vez que se escribe (sin límite)
   const PREMIO_TRUCO = 1000;
   const MAX_SALDO = 1e9;
+
+  /* Reglas de monedas (v12.1, las de Fernando) */
+  const REGLAS = {
+    inicial: 100,
+    porMano: 1, topeManosDia: 100,        // +1 por mano jugada, hasta 100 al día por manos
+    ganarMano: 5, showdownTrioOMas: 10,   // +5 por ganar; +10 más si fue en showdown con trío o mejor
+    partida1: 25, partida2: 10,           // ganar la partida o el torneo / 2.º puesto
+    bonoDiario: 50, bonoPorDia: 10, bonoMax: 100,
+    logros: { poker: 100, "escalera-color": 200, "escalera-real": 500 }
+  };
+  const TRIO = 3, POKER = 7, ESCALERA_COLOR = 8, ESCALERA_REAL = 9;
+  const NOMBRE_LOGRO = { poker: "Primer póker", "escalera-color": "Primera escalera de color", "escalera-real": "Primer Royal Flush" };
 
   const TEMAS = [
     { id: "tema:clasico", nombre: "Paño clásico", precio: 0, pano: "#1f8a50", pano2: "#0f5a32", borde: "#5a2e14" },
@@ -4615,11 +4655,13 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   // Temas de sonido: se fabrican con Web Audio (ver sonidos.js), no hay archivos
   const SONIDOS = [
     { id: "sonido:clasico", nombre: "Clásico", precio: 0, desc: "Clics de cartas y fichas de siempre." },
-    { id: "sonido:suave", nombre: "Suave", precio: 100, desc: "Tonos redondos y bajitos, para jugar de noche." },
-    { id: "sonido:casino", nombre: "Casino", precio: 200, desc: "Campanitas brillantes con eco de salón." },
-    { id: "sonido:arcade", nombre: "Arcade 8 bits", precio: 250, desc: "Pitidos de consola retro." },
-    { id: "sonido:andino", nombre: "Andino", precio: 300, desc: "Melodías pentatónicas tipo quena." }
+    { id: "sonido:vegas", nombre: "Casino Vegas", precio: 200, desc: "Campanitas brillantes con eco de salón." },
+    { id: "sonido:retro", nombre: "Retro 8-bit", precio: 150, desc: "Pitidos de consola de los 80." },
+    { id: "sonido:fiesta", nombre: "Fiesta", precio: 250, desc: "Alegre, con silbato y matracas." },
+    { id: "sonido:minimal", nombre: "Minimal", precio: 100, desc: "Tonos suaves y bajitos, sin adornos." }
   ];
+  // Temas viejos de la v12 (por si alguien ya los compró): se pasan a los nuevos
+  const SONIDOS_VIEJOS = { "sonido:casino": "sonido:vegas", "sonido:arcade": "sonido:retro", "sonido:suave": "sonido:minimal", "sonido:andino": "sonido:fiesta" };
 
   function catalogo() {
     const lista = [];
@@ -4636,7 +4678,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   function precioDe(id) { const it = item(id); return it ? it.precio : null; }
 
   function nuevoMonedero() {
-    return { v: 1, saldo: SALDO_INICIAL, comprados: [], tema: "tema:clasico", dorso: "dorso:azul", sonido: "sonido:clasico", ganadoTotal: 0, manos: 0, racha: 0, mejorRacha: 0 };
+    return { v: 1, saldo: SALDO_INICIAL, comprados: [], tema: "tema:clasico", dorso: "dorso:azul", sonido: "sonido:clasico", ganadoTotal: 0, manos: 0, racha: 0, mejorRacha: 0,
+      dia: "", manosHoy: 0, ultimoBono: "", diasSeguidos: 0, logros: [], restoSolo: 0 };
   }
 
   /** Limpia un monedero que viene de afuera (localStorage o servidor). */
@@ -4646,11 +4689,20 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     const saldo = Math.floor(Number(m.saldo));
     base.saldo = isFinite(saldo) ? Math.max(0, Math.min(MAX_SALDO, saldo)) : SALDO_INICIAL;
     base.comprados = Array.isArray(m.comprados)
-      ? m.comprados.filter(function (id, i, arr) { return typeof id === "string" && POR_ID[id] && arr.indexOf(id) === i; })
+      ? m.comprados.map(function (id) { return SONIDOS_VIEJOS[id] || id; }).filter(function (id, i, arr) { return typeof id === "string" && POR_ID[id] && arr.indexOf(id) === i; })
       : [];
     base.tema = tiene(base, m.tema) ? m.tema : "tema:clasico";
     base.dorso = tiene(base, m.dorso) ? m.dorso : "dorso:azul";
-    base.sonido = tiene(base, m.sonido) ? m.sonido : "sonido:clasico";
+    const son = SONIDOS_VIEJOS[m.sonido] || m.sonido;
+    base.sonido = tiene(base, son) ? son : "sonido:clasico";
+    const fecha = function (x) { return typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : ""; };
+    const entero = function (x, max) { return Math.max(0, Math.min(max, Math.floor(Number(x) || 0))); };
+    base.dia = fecha(m.dia);
+    base.manosHoy = entero(m.manosHoy, REGLAS.topeManosDia);
+    base.ultimoBono = fecha(m.ultimoBono);
+    base.diasSeguidos = entero(m.diasSeguidos, 100000);
+    base.logros = Array.isArray(m.logros) ? m.logros.filter(function (l, i, arr) { return REGLAS.logros[l] && arr.indexOf(l) === i; }) : [];
+    base.restoSolo = entero(m.restoSolo, 1);
     base.ganadoTotal = Math.max(0, Math.floor(Number(m.ganadoTotal) || 0));
     base.racha = Math.max(0, Math.min(1e6, Math.floor(Number(m.racha) || 0)));
     base.mejorRacha = Math.max(base.racha, Math.min(1e6, Math.floor(Number(m.mejorRacha) || 0)));
@@ -4690,16 +4742,87 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     return m;
   }
 
+  /** Fecha local "AAAA-MM-DD" (el día cambia a medianoche del aparato). */
+  function fechaLocal(d) {
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function diaAnterior(hoy) {
+    const p = hoy.split("-").map(Number);
+    return fechaLocal(new Date(p[0], p[1] - 1, p[2] - 1));
+  }
+
   /**
-   * Monedas por una mano: +2 por jugarla, +10 por ganarla (+5 más si fue en showdown),
-   * +50 si ganaste con Póker, Escalera de color o Escalera real.
+   * En solo se gana la mitad, redondeando hacia abajo. La media moneda que sobra
+   * se guarda (restoSolo) para la próxima: dos manos solo = 1 moneda.
    */
-  function premioMano(r) {
-    if (!r || !r.jugo) return 0;
-    let n = 2;
-    if (r.gano) n += 10 + (r.showdown ? 5 : 0);
-    if (r.gano && r.fuerte) n += 50;
-    return n;
+  function mitadSolo(m, n) {
+    const total = (m.restoSolo || 0) + n;
+    m.restoSolo = total % 2;
+    return Math.floor(total / 2);
+  }
+
+  function acreditar(m, partes, solo) {
+    const bruto = partes.reduce(function (s, p) { return s + p.n; }, 0);
+    const n = solo ? mitadSolo(m, bruto) : bruto;
+    if (n > 0) ganar(m, n);
+    return { n: n, bruto: bruto, partes: partes, solo: !!solo };
+  }
+
+  /**
+   * Monedas de una mano terminada. r = {
+   *   jugo: te repartieron cartas, gano: ganaste (o repartiste) un bote,
+   *   showdown: se mostraron las cartas, categoria: tu mejor jugada (0-9) o -1 si te retiraste,
+   *   solo: partida contra bots }.  hoy: "AAAA-MM-DD".
+   * Cambia el monedero y devuelve { n, partes: [{ motivo, n }], logros: [...] }.
+   */
+  function premioMano(m, r, hoy) {
+    hoy = hoy || fechaLocal();
+    const partes = [];
+    const logros = [];
+    if (!r || !r.jugo) return { n: 0, bruto: 0, partes: partes, logros: logros };
+    if (m.dia !== hoy) { m.dia = hoy; m.manosHoy = 0; }
+    if (m.manosHoy < REGLAS.topeManosDia) {
+      m.manosHoy++;
+      partes.push({ motivo: "mano jugada", n: REGLAS.porMano });
+    }
+    const cat = typeof r.categoria === "number" ? r.categoria : -1;
+    if (r.gano) {
+      partes.push({ motivo: "ganaste la mano", n: REGLAS.ganarMano });
+      if (r.showdown && cat >= TRIO) partes.push({ motivo: "showdown con trío o mejor", n: REGLAS.showdownTrioOMas });
+    }
+    // Logros: la primera vez que llegás al final de una mano con esa jugada
+    const logro = cat === ESCALERA_REAL ? "escalera-real" : cat === ESCALERA_COLOR ? "escalera-color" : cat === POKER ? "poker" : null;
+    if (logro && m.logros.indexOf(logro) < 0) {
+      m.logros.push(logro);
+      logros.push(logro);
+      partes.push({ motivo: "logro: " + NOMBRE_LOGRO[logro], n: REGLAS.logros[logro] });
+    }
+    m.manos++;
+    const res = acreditar(m, partes, r.solo);
+    res.logros = logros;
+    return res;
+  }
+
+  /** Puesto final en una partida o torneo: 1 → +25, 2 → +10 (la mitad en solo). */
+  function premioPartida(m, puesto, solo) {
+    const n = puesto === 1 ? REGLAS.partida1 : puesto === 2 ? REGLAS.partida2 : 0;
+    if (!n) return { n: 0, bruto: 0, partes: [] };
+    return acreditar(m, [{ motivo: puesto === 1 ? "ganaste la partida" : "2.º puesto", n: n }], solo);
+  }
+
+  /**
+   * Bono diario: +50 el primer día; cada día seguido suma +10 más, hasta +100.
+   * Devuelve null si hoy ya se cobró.
+   */
+  function bonoDiario(m, hoy) {
+    hoy = hoy || fechaLocal();
+    if (m.ultimoBono === hoy) return null;
+    m.diasSeguidos = m.ultimoBono === diaAnterior(hoy) ? (m.diasSeguidos || 0) + 1 : 1;
+    m.ultimoBono = hoy;
+    const n = Math.min(REGLAS.bonoMax, REGLAS.bonoDiario + REGLAS.bonoPorDia * (m.diasSeguidos - 1));
+    ganar(m, n);
+    return { n: n, dias: m.diasSeguidos };
   }
 
   function comprar(m, id) {
@@ -4758,7 +4881,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
   return {
     SALDO_INICIAL: SALDO_INICIAL, TEMAS: TEMAS, DORSOS: DORSOS, SONIDOS: SONIDOS, CODIGO_TRUCO: CODIGO_TRUCO,
-    registrarRacha: registrarRacha,
+    registrarRacha: registrarRacha, REGLAS: REGLAS, NOMBRE_LOGRO: NOMBRE_LOGRO,
+    fechaLocal: fechaLocal, premioPartida: premioPartida, bonoDiario: bonoDiario,
     catalogo: catalogo, item: item, precioDe: precioDe,
     nuevoMonedero: nuevoMonedero, normalizar: normalizar, tiene: tiene, tienePieza: tienePieza,
     piezasBloqueadas: piezasBloqueadas, avatarPermitido: avatarPermitido,
@@ -4905,7 +5029,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
    * opciones.AudioContext: constructor del contexto (para pruebas).
    * opciones.activo:       si empiezan encendidos (por defecto sí).
    */
-  // Escala pentatónica (do re mi sol la): el tema andino "afina" todo a esas notas
+  // Escala pentatónica mayor (do re mi sol la): el tema Fiesta "afina" todo a esas notas
   const PENTA = [0, 2, 4, 7, 9];
   function afinar(f, escala) {
     if (!escala || !(f > 0)) return f;
@@ -4919,10 +5043,14 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 
   const TEMAS = {
     clasico: { tono: 1, vol: 1, largo: 1 },
-    suave: { tono: 0.75, vol: 0.6, largo: 1.4, onda: "sine" },
-    casino: { tono: 1.25, vol: 0.85, largo: 1.2, onda: "sine", armonico: 0.45, eco: 0.12 },
-    arcade: { tono: 1, vol: 0.55, largo: 0.8, onda: "square", ruidoComoTono: true },
-    andino: { tono: 1, vol: 0.9, largo: 1.5, onda: "sine", escala: true, vibrato: 0.012, eco: 0.18 }
+    // Casino Vegas: campanitas con armónico y eco de salón
+    vegas: { tono: 1.25, vol: 0.85, largo: 1.2, onda: "sine", armonico: 0.45, eco: 0.12 },
+    // Retro 8-bit: onda cuadrada, cartas como "blips"
+    retro: { tono: 1, vol: 0.55, largo: 0.8, onda: "square", ruidoComoTono: true },
+    // Fiesta: brillante, afinado a una escala mayor alegre, con eco corto
+    fiesta: { tono: 1.12, vol: 0.9, largo: 1.1, onda: "triangle", escala: true, vibrato: 0.01, eco: 0.08 },
+    // Minimal: grave, suave y corto
+    minimal: { tono: 0.75, vol: 0.5, largo: 0.9, onda: "sine" }
   };
 
   function crearSonidos(opciones) {
@@ -4984,7 +5112,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     /** Un soplido corto de ruido filtrado (sonido de carta o de tela). */
     function ruido(c, inicio, duracion, volumen, frecuenciaFiltro) {
       const T = TEMAS[tema];
-      // En arcade las cartas y el paño suenan como un "blip" de consola
+      // En retro 8-bit las cartas y el paño suenan como un "blip" de consola
       if (T.ruidoComoTono) { tonoCrudo(c, (frecuenciaFiltro || 2500) / 3, inicio, Math.min(0.06, duracion), "square", volumen * 0.25, 0); return; }
       volumen = volumen * T.vol;
       frecuenciaFiltro = (frecuenciaFiltro || 2500) * T.tono;
@@ -5006,6 +5134,19 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       ganancia.connect(c.destination);
       fuente.start(inicio);
     }
+
+    // Remate del barajado según el tema
+    const FINALES = {};
+    FINALES.vegas = function (c, t) { tono(c, 1568, t, 0.25, "sine", 0.12); tono(c, 2093, t + 0.08, 0.3, "sine", 0.1); };
+    FINALES.retro = function (c, t) { [523, 659, 784].forEach(function (f, i) { tono(c, f, t + i * 0.05, 0.06, "square", 0.12); }); };
+    FINALES.fiesta = function (c, t) {
+      // silbato que sube + matraca
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(1200, t); o.frequency.exponentialRampToValueAtTime(2600, t + 0.22);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.32);
+      for (let i = 0; i < 5; i++) ruido(c, t + 0.05 + i * 0.04, 0.02, 0.18, 4000);
+    };
 
     const SONIDOS = {
       carta: function (c, t) { ruido(c, t, 0.07, 0.35, 3200); },
@@ -5049,8 +5190,13 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       },
       // Riffle: dos mitades del mazo que se entrelazan (ráfaga de clics)
       barajar: function (c, t) {
-        for (let i = 0; i < 14; i++) ruido(c, t + i * 0.035 + (i % 2) * 0.008, 0.03, 0.22, 2600 + (i % 3) * 500);
-        ruido(c, t + 0.56, 0.09, 0.3, 1800);
+        // Dos tandas de riffle (0–0,55 s y 0,6–1,15 s) y el golpe final al cuadrar el mazo
+        for (let tanda = 0; tanda < 2; tanda++) {
+          const t0 = t + 0.08 + tanda * 0.6;
+          for (let i = 0; i < 16; i++) ruido(c, t0 + i * 0.03 + (i % 2) * 0.006, 0.025, 0.2, 2600 + (i % 3) * 450);
+        }
+        ruido(c, t + 1.3, 0.09, 0.32, 1500);
+        if (FINALES[tema]) FINALES[tema](c, t + 1.3);
       },
       ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
     };
@@ -5078,7 +5224,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
         return true;
       },
 
-      /** Tema de sonido: "clasico", "suave", "casino", "arcade" o "andino" (acepta "sonido:x"). */
+      /** Tema de sonido: "clasico", "vegas", "retro", "fiesta" o "minimal" (acepta "sonido:x"). */
       ponerTema: function (id) {
         const k = String(id || "").replace(/^sonido:/, "");
         tema = TEMAS[k] ? k : "clasico";
@@ -5897,6 +6043,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     ui.monedero = guardado ? Tienda.normalizar(guardado) : Tienda.nuevoMonedero();
     if (!guardado) guardarMonedero();
     else { pintarSaldo(); aplicarCosmeticos(); }
+    setTimeout(revisarBonoDiario, 600);
   }
 
   function guardarMonedero(sinRespaldo) {
@@ -5954,13 +6101,77 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       gratis: !!yo.retirado && (Number(yo.aportado) || 0) <= bb
     });
     pintarRacha(racha);
-    const n = Tienda.premioMano({ jugo: true, gano: !!mio, showdown: !r.sinShowdown, fuerte: !!(mio && MANO_FUERTE.test(mio.descripcion || "")) });
-    if (!n) return 0;
-    Tienda.ganar(ui.monedero, n);
-    ui.monedero.manos++;
+    revisarBonoDiario();
+    const solo = ui.modo === "solo";
+    const res = Tienda.premioMano(ui.monedero, {
+      jugo: true,
+      gano: !!mio,
+      showdown: !r.sinShowdown,
+      categoria: categoriaPropia(estado, yo),
+      solo: solo
+    });
+    res.logros.forEach(function (l) { toast("🏆 ¡Logro! " + Tienda.NOMBRE_LOGRO[l] + " (+" + Tienda.REGLAS.logros[l] + (solo ? ", la mitad en solo" : "") + ")", "ok"); });
+    revisarPuestoPartida(estado, yo);
     guardarMonedero();
+    if (res.n > 0) avisarMonedas(res.n, res.partes.map(function (p) { return p.motivo; }).join(" · ") + (solo ? " (solo: la mitad)" : ""));
+    return res.n;
+  }
+
+  /** Tu mejor jugada al final de la mano (0-9), o -1 si te retiraste o no hubo 5 cartas en la mesa. */
+  function categoriaPropia(estado, yo) {
+    if (!Ev || !yo || yo.retirado) return -1;
+    const propias = (yo.cartas || []).filter(function (c) { return c && !c.oculta && c.numero; });
+    const mesa = (estado.comunitarias || []).filter(function (c) { return c && c.numero; });
+    if (propias.length < 2 || propias.length + mesa.length < 5) return -1;
+    try { return Ev.mejorMano(propias.concat(mesa)).categoria; } catch (e) { return -1; }
+  }
+
+  /**
+   * Partida o torneo: +25 al ganarla (quedarte con todas las fichas) y +10 al 2.º puesto
+   * (quedar eliminado cuando solo queda uno). Una vez por partida.
+   */
+  function revisarPuestoPartida(estado, yo) {
+    if (ui.puestoPremiado || !yo) return;
+    const vivos = (estado.jugadores || []).filter(function (j) { return j.fichas > 0; });
+    let puesto = 0;
+    if (yo.fichas > 0 && vivos.length === 1) puesto = 1;
+    else if (yo.fichas <= 0 && vivos.length === 1) puesto = 2;
+    if (puesto) premiarPuesto(puesto);
+  }
+
+  function premiarPuesto(puesto) {
+    if (ui.puestoPremiado || !Tienda || !ui.monedero || ui.espectador) return;
+    const solo = ui.modo === "solo";
+    const res = Tienda.premioPartida(ui.monedero, puesto, solo);
+    ui.puestoPremiado = true;
+    guardarMonedero();
+    toast(puesto === 1 ? "🏆 ¡Ganaste la partida!" : "🥈 ¡Segundo puesto!", "ok");
+    if (res.n > 0) avisarMonedas(res.n, (puesto === 1 ? "ganaste la partida" : "2.º puesto") + (solo ? " (solo: la mitad)" : ""));
+  }
+
+  /** Al cerrar el anfitrión una partida online: puesto según las fichas de la mesa. */
+  function premiarFinPartidaOnline() {
+    const est = ui.estado;
+    if (!est || ui.espectador || !(est.manosJugadas > 0)) return;
+    const yo = (est.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    if (!yo) return;
+    const mas = (est.jugadores || []).filter(function (j) { return j.id !== ui.tuId && j.fichas > yo.fichas; }).length;
+    if (mas < 2) premiarPuesto(mas + 1);
+  }
+
+  /** Bono diario: se cobra al abrir la app o al jugar el primer mano del día. */
+  function revisarBonoDiario() {
+    if (!Tienda || !ui.monedero) return;
+    const b = Tienda.bonoDiario(ui.monedero);
+    if (!b) return;
+    guardarMonedero();
+    avisarMonedas(b.n, "bono diario" + (b.dias > 1 ? " · " + b.dias + " días seguidos" : ""));
+  }
+
+  /** "+N 🪙" en un aviso (y flotando sobre la mesa si estás jugando). */
+  function avisarMonedas(n, motivo) {
+    toast("+" + n + " 🪙" + (motivo ? " · " + motivo : ""), "ok");
     mostrarGanancia(n);
-    return n;
   }
 
   /** Contador de manos ganadas seguidas en la barra de la mesa. */
@@ -6133,7 +6344,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
       else boton = '<button type="button" class="btn chico" data-accion="usar" data-id="' + it.id + '">Usar</button>';
       html += '<div class="item-tienda' + (tiene ? " tiene" : "") + (enUso ? " en-uso" : "") + (it.exclusivo ? " exclusivo" : "") + '" data-id="' + it.id + '">' +
         (it.exclusivo ? '<span class="sello-exclusivo" title="Solo se consigue con monedas">★ Exclusivo</span>' : "") +
-        '<div class="muestra">' + muestra + "</div>" +
+        '<div class="muestra' + (it.tipo === "sonido" ? " muestra-alta" : "") + '">' + muestra + "</div>" +
         '<div class="nombre-item">' + escapar(it.nombre) + "</div>" +
         (it.tipo === "avatar" ? '<div class="campo-item">' + escapar(Avatar.NOMBRES_CAMPO[it.campo] || "") + "</div>" : "") +
         boton + "</div>";
@@ -6333,6 +6544,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     ui.codigo = null;
     ui.ultimaCiegaGrande = null;
     ui.recargaSoloPendiente = 0;
+    ui.puestoPremiado = false;
     if (ui.historial) ui.historial.limpiar();
 
     mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
@@ -7524,12 +7736,20 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     capa.innerHTML = "";
   }
 
+  const DURACION_BARAJADO_MS = 1500;
+  const LS_BARAJADO = "rf_barajado";
+  function barajadoActivo() {
+    try { return localStorage.getItem(LS_BARAJADO) !== "0"; } catch (e) { return true; }
+  }
+
   /**
-   * Riffle: el crupier parte el mazo en dos, las mitades se entrelazan
-   * con un arco y se juntan (≈0,7 s). Sin animación si el aparato pide menos movimiento.
+   * Riffle: el crupier parte el mazo en dos, las mitades se arquean y se entrelazan
+   * dos veces y se cuadra el mazo (≈1,5 s), con el dorso equipado y el sonido de
+   * barajar del tema. Sin animación si el aparato pide menos movimiento o si se
+   * apagó en Opciones.
    */
   async function animarBarajado(capa, origen) {
-    if (!capa || movimientoReducido()) return;
+    if (!capa || movimientoReducido() || !barajadoActivo()) return;
     const caja = document.createElement("div");
     caja.className = "riffle";
     caja.setAttribute("aria-hidden", "true");
@@ -7543,7 +7763,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     caja.innerHTML = html;
     capa.appendChild(caja);
     sonar("barajar");
-    await esperar(720);
+    await esperar(DURACION_BARAJADO_MS);
     if (caja.parentNode) caja.parentNode.removeChild(caja);
   }
 
@@ -7824,6 +8044,8 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     }
 
     if (msg.tipo === "partida-terminada") {
+      if (msg.estado) ui.estado = msg.estado;
+      premiarFinPartidaOnline();
       if (msg.estado) {
         if ($("pantalla-mesa").hidden) mostrar("pantalla-sala");
         else renderMesa(msg.estado);
@@ -7850,6 +8072,7 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     // este (y no el del principio), por si mientras tanto llegó "te toca".
     if (msg.estado) ui.estadoServidor = msg.estado;
 
+    if (msg.tipo === "partida-iniciada") ui.puestoPremiado = false;
     if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
       entrarEnMesaOnline(msg);
       if (msg.secuenciaReparto) {
@@ -8550,6 +8773,12 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
     if ($("btn-canjear")) $("btn-canjear").addEventListener("click", function () { canjearCodigo(); });
     if ($("input-codigo-monedas")) $("input-codigo-monedas").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo(); });
     if ($("btn-codigo-menu")) $("btn-codigo-menu").addEventListener("click", alternarCodigoMenu);
+    if ($("opcion-barajado")) {
+      $("opcion-barajado").checked = barajadoActivo();
+      $("opcion-barajado").addEventListener("change", function () {
+        try { localStorage.setItem(LS_BARAJADO, this.checked ? "1" : "0"); } catch (e) { /* */ }
+      });
+    }
     if ($("btn-canjear-menu")) $("btn-canjear-menu").addEventListener("click", function () { canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
     if ($("input-codigo-menu")) $("input-codigo-menu").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
     if ($("form-chat")) $("form-chat").addEventListener("submit", function (ev) { ev.preventDefault(); enviarTextoChat(); });

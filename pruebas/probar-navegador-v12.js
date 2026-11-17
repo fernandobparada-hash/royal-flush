@@ -35,6 +35,8 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     await p.goto(BASE + "/");
     await p.fill("#nombre-jugador", "Fernando");
     const saldo = function () { return p.evaluate(function () { return window.__RF.ui.monedero.saldo; }); };
+    await p.waitForFunction(function () { return /\+50 🪙/.test(document.getElementById("toasts").textContent); }, null, { timeout: 4000 }).catch(function () {});
+    ok("Primera vez: 100 de inicio + 50 de bono diario, con aviso «+50 🪙»", await saldo() === 150 && /\+50 🪙/.test(await p.textContent("#toasts")), await saldo());
     const s0 = await saldo();
     ok("Se ve el saldo de monedas en el menú (" + s0 + ")", (await p.textContent("#barra-extras-menu .saldo-monedas")).trim() === String(s0));
 
@@ -103,13 +105,14 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     ok("Comprar el dorso rojo lo equipa", await p.evaluate(function () { return document.documentElement.getAttribute("data-dorso") === "rojo"; }));
     await p.click('.tabs-tienda button[data-tab="sonido"]');
     ok("La pestaña Sonidos muestra 5 temas con «Probar»", await p.locator("#grilla-tienda .item-tienda").count() === 5 && await p.locator('#grilla-tienda button[data-accion="probar"]').count() === 5);
-    await p.click('#grilla-tienda button[data-id="sonido:arcade"][data-accion="comprar"]');
-    ok("Comprar el sonido arcade lo equipa", await p.evaluate(function () { return window.__RF.ui.monedero.sonido === "sonido:arcade"; }));
-    await p.click('#grilla-tienda button[data-id="sonido:casino"][data-accion="probar"]');
+    ok("Los temas son Clásico, Casino Vegas, Retro 8-bit, Fiesta y Minimal", (await p.locator("#grilla-tienda .nombre-item").allTextContents()).join("|") === "Clásico|Casino Vegas|Retro 8-bit|Fiesta|Minimal");
+    await p.click('#grilla-tienda button[data-id="sonido:retro"][data-accion="comprar"]');
+    ok("Comprar Retro 8-bit lo equipa", await p.evaluate(function () { return window.__RF.ui.monedero.sonido === "sonido:retro"; }));
+    await p.click('#grilla-tienda button[data-id="sonido:vegas"][data-accion="probar"]');
     await dormir(1300);
-    ok("«Probar» otro tema no cambia el equipado", await p.evaluate(function () { return window.__RF.ui.monedero.sonido === "sonido:arcade"; }));
+    ok("«Probar» otro tema no cambia el equipado", await p.evaluate(function () { return window.__RF.ui.monedero.sonido === "sonido:retro"; }));
     await p.reload();
-    ok("Al recargar la página se mantienen saldo, tema y dorso", await saldo() === despues - 1000 - 150 - 100 - 250 &&
+    ok("Al recargar la página se mantienen saldo, tema y dorso", await saldo() === despues - 1000 - 150 - 100 - 150 &&
       await p.evaluate(function () { return document.documentElement.getAttribute("data-tema") === "azul" && document.documentElement.getAttribute("data-dorso") === "rojo"; }));
     await p.fill("#nombre-jugador", "Fernando");
 
@@ -119,7 +122,14 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     await p.check('input[name="asientos-solo"][value="15"]');
     await p.click("#btn-empezar-solo");
     const vioRiffle = await p.waitForSelector(".riffle .riffle-carta", { timeout: 5000 }).then(function () { return true; }).catch(function () { return false; });
+    const tRiffle = Date.now();
     ok("Antes de repartir se ve el barajado (riffle)", vioRiffle);
+    ok("El riffle usa el dorso equipado (rojo)", await p.evaluate(function () {
+      const c = document.querySelector(".riffle .riffle-carta"); return !!c && getComputedStyle(c).borderTopColor.replace(/\s/g, "") === "rgb(244,227,178)";
+    }));
+    await p.waitForSelector(".riffle", { state: "detached", timeout: 5000 }).catch(function () {});
+    const durRiffle = Date.now() - tRiffle;
+    ok("El riffle dura entre 1,2 y 1,8 s (" + durRiffle + " ms)", durRiffle >= 1150 && durRiffle <= 1900, durRiffle);
     await p.waitForSelector(".pieza-info[data-asiento='14']", { timeout: 8000 });
     ok("La mesa tiene 15 asientos", await p.locator(".pieza-info").count() === 15);
     const tags = await p.locator(".tag-personalidad").count();
@@ -131,14 +141,16 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
       const j = window.__RF.ui.estado.jugadores.find(function (x) { return x.id === "humano"; }); return j.avatar.cabeza === 1;
     }));
     // jugar una mano: retirarse cuando toque (o esperar) y ver que suman monedas
-    const s1 = await saldo();
-    const limite = Date.now() + 90000;
-    while (Date.now() < limite && await saldo() === s1) {
+    // En solo se gana la mitad: contamos en medias monedas (saldo×2 + la media guardada)
+    const medias = function () { return p.evaluate(function () { const m = window.__RF.ui.monedero; return m.saldo * 2 + (m.restoSolo || 0); }); };
+    const s1 = await medias();
+    const limite = Date.now() + 120000;
+    while (Date.now() < limite && await medias() === s1) {
       if (await p.isVisible("#btn-retirarse") && await p.isEnabled("#btn-retirarse")) { await p.click("#btn-retirarse").catch(function () {}); }
       await dormir(400);
     }
-    const s2 = await saldo();
-    ok("Al terminar una mano jugada se ganan monedas (+" + (s2 - s1) + ")", s2 - s1 >= 2);
+    const s2 = await medias();
+    ok("Jugando solo se gana la mitad (+" + ((s2 - s1) / 2) + " monedas en la primera mano)", s2 - s1 >= 1);
     ok("La racha es un número y su contador solo se ve si es 1 o más", await p.evaluate(function () {
       const n = window.__RF.ui.monedero.racha; const el = document.getElementById("info-racha");
       return typeof n === "number" && el.hidden === (n < 1);
@@ -191,6 +203,32 @@ function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
     const conf = p.locator("#btn-confirmar-salir");
     if (await conf.count() && await conf.isVisible()) await conf.click();
     await dormir(300);
+
+    console.log("--- Opción para apagar el barajado ---");
+    await p.goto(BASE + "/");
+    await p.click("#opciones-online summary");
+    ok("En Opciones hay «Animación de barajado» (prendida)", await p.isVisible("#opcion-barajado") && await p.isChecked("#opcion-barajado"));
+    await p.uncheck("#opcion-barajado");
+    await p.fill("#nombre-jugador", "Fernando");
+    await p.click("#btn-solo");
+    await p.click("#btn-empezar-solo");
+    const hubo = await p.waitForSelector(".riffle", { timeout: 2500 }).then(function () { return true; }).catch(function () { return false; });
+    ok("Apagada, no hay barajado y se reparte directo", !hubo && await p.waitForSelector(".carta-voladora", { timeout: 4000 }).then(function () { return true; }).catch(function () { return false; }));
+    await p.click("#btn-salir-mesa");
+    if (await conf.count() && await conf.isVisible()) await conf.click();
+    await p.goto(BASE + "/");
+    await p.click("#opciones-online summary");
+    await p.check("#opcion-barajado");
+    ok("Queda guardada al volver a prenderla", await p.evaluate(function () { return localStorage.getItem("rf_barajado") === "1"; }));
+    await p.emulateMedia({ reducedMotion: "reduce" });
+    await p.fill("#nombre-jugador", "Fernando");
+    await p.click("#btn-solo");
+    await p.click("#btn-empezar-solo");
+    const conMenos = await p.waitForSelector(".riffle", { timeout: 2500 }).then(function () { return true; }).catch(function () { return false; });
+    ok("Con «menos movimiento» del aparato tampoco hay barajado (aunque esté prendido)", !conMenos);
+    await p.emulateMedia({ reducedMotion: "no-preference" });
+    await p.click("#btn-salir-mesa");
+    if (await conf.count() && await conf.isVisible()) await conf.click();
 
     console.log("--- Mesas en vivo ---");
     // una mesa pública con dos personas (por WebSocket)

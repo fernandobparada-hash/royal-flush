@@ -209,6 +209,12 @@ function autoJugar(ws) {
   ok("Un saldo negativo se guarda como 0", neg.cuerpo && neg.cuerpo.monedero.saldo === 0);
   const sinCuerpo = await api("/api/monedero/" + id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: "{}" });
   ok("Sin monedero en el cuerpo da 400", sinCuerpo.status === 400);
+  const del = await api("/api/monedero/" + id, { method: "DELETE" });
+  ok("Se puede borrar el monedero con su código", del.status === 200 && del.cuerpo.ok);
+  ok("Después de borrarlo da 404", (await api("/api/monedero/" + id)).status === 404);
+  ok("Borrar con un código inválido da 400", (await api("/api/monedero/zzz", { method: "DELETE" })).status === 400);
+  ok("Un monedero nuevo en el servidor empieza con 100", (await api("/api/monedero/" + id, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ monedero: { saldo: "x" } }) })).cuerpo.monedero.saldo === 100);
+  await api("/api/monedero/" + id, { method: "DELETE" });
 
   a.close(); b.close();
   console.log("\n" + aciertos + " aciertos, " + fallos + " fallos");

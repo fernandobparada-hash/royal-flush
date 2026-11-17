@@ -644,6 +644,7 @@
     ui.monedero = guardado ? Tienda.normalizar(guardado) : Tienda.nuevoMonedero();
     if (!guardado) guardarMonedero();
     else { pintarSaldo(); aplicarCosmeticos(); }
+    setTimeout(revisarBonoDiario, 600);
   }
 
   function guardarMonedero(sinRespaldo) {
@@ -701,13 +702,77 @@
       gratis: !!yo.retirado && (Number(yo.aportado) || 0) <= bb
     });
     pintarRacha(racha);
-    const n = Tienda.premioMano({ jugo: true, gano: !!mio, showdown: !r.sinShowdown, fuerte: !!(mio && MANO_FUERTE.test(mio.descripcion || "")) });
-    if (!n) return 0;
-    Tienda.ganar(ui.monedero, n);
-    ui.monedero.manos++;
+    revisarBonoDiario();
+    const solo = ui.modo === "solo";
+    const res = Tienda.premioMano(ui.monedero, {
+      jugo: true,
+      gano: !!mio,
+      showdown: !r.sinShowdown,
+      categoria: categoriaPropia(estado, yo),
+      solo: solo
+    });
+    res.logros.forEach(function (l) { toast("🏆 ¡Logro! " + Tienda.NOMBRE_LOGRO[l] + " (+" + Tienda.REGLAS.logros[l] + (solo ? ", la mitad en solo" : "") + ")", "ok"); });
+    revisarPuestoPartida(estado, yo);
     guardarMonedero();
+    if (res.n > 0) avisarMonedas(res.n, res.partes.map(function (p) { return p.motivo; }).join(" · ") + (solo ? " (solo: la mitad)" : ""));
+    return res.n;
+  }
+
+  /** Tu mejor jugada al final de la mano (0-9), o -1 si te retiraste o no hubo 5 cartas en la mesa. */
+  function categoriaPropia(estado, yo) {
+    if (!Ev || !yo || yo.retirado) return -1;
+    const propias = (yo.cartas || []).filter(function (c) { return c && !c.oculta && c.numero; });
+    const mesa = (estado.comunitarias || []).filter(function (c) { return c && c.numero; });
+    if (propias.length < 2 || propias.length + mesa.length < 5) return -1;
+    try { return Ev.mejorMano(propias.concat(mesa)).categoria; } catch (e) { return -1; }
+  }
+
+  /**
+   * Partida o torneo: +25 al ganarla (quedarte con todas las fichas) y +10 al 2.º puesto
+   * (quedar eliminado cuando solo queda uno). Una vez por partida.
+   */
+  function revisarPuestoPartida(estado, yo) {
+    if (ui.puestoPremiado || !yo) return;
+    const vivos = (estado.jugadores || []).filter(function (j) { return j.fichas > 0; });
+    let puesto = 0;
+    if (yo.fichas > 0 && vivos.length === 1) puesto = 1;
+    else if (yo.fichas <= 0 && vivos.length === 1) puesto = 2;
+    if (puesto) premiarPuesto(puesto);
+  }
+
+  function premiarPuesto(puesto) {
+    if (ui.puestoPremiado || !Tienda || !ui.monedero || ui.espectador) return;
+    const solo = ui.modo === "solo";
+    const res = Tienda.premioPartida(ui.monedero, puesto, solo);
+    ui.puestoPremiado = true;
+    guardarMonedero();
+    toast(puesto === 1 ? "🏆 ¡Ganaste la partida!" : "🥈 ¡Segundo puesto!", "ok");
+    if (res.n > 0) avisarMonedas(res.n, (puesto === 1 ? "ganaste la partida" : "2.º puesto") + (solo ? " (solo: la mitad)" : ""));
+  }
+
+  /** Al cerrar el anfitrión una partida online: puesto según las fichas de la mesa. */
+  function premiarFinPartidaOnline() {
+    const est = ui.estado;
+    if (!est || ui.espectador || !(est.manosJugadas > 0)) return;
+    const yo = (est.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    if (!yo) return;
+    const mas = (est.jugadores || []).filter(function (j) { return j.id !== ui.tuId && j.fichas > yo.fichas; }).length;
+    if (mas < 2) premiarPuesto(mas + 1);
+  }
+
+  /** Bono diario: se cobra al abrir la app o al jugar el primer mano del día. */
+  function revisarBonoDiario() {
+    if (!Tienda || !ui.monedero) return;
+    const b = Tienda.bonoDiario(ui.monedero);
+    if (!b) return;
+    guardarMonedero();
+    avisarMonedas(b.n, "bono diario" + (b.dias > 1 ? " · " + b.dias + " días seguidos" : ""));
+  }
+
+  /** "+N 🪙" en un aviso (y flotando sobre la mesa si estás jugando). */
+  function avisarMonedas(n, motivo) {
+    toast("+" + n + " 🪙" + (motivo ? " · " + motivo : ""), "ok");
     mostrarGanancia(n);
-    return n;
   }
 
   /** Contador de manos ganadas seguidas en la barra de la mesa. */
@@ -880,7 +945,7 @@
       else boton = '<button type="button" class="btn chico" data-accion="usar" data-id="' + it.id + '">Usar</button>';
       html += '<div class="item-tienda' + (tiene ? " tiene" : "") + (enUso ? " en-uso" : "") + (it.exclusivo ? " exclusivo" : "") + '" data-id="' + it.id + '">' +
         (it.exclusivo ? '<span class="sello-exclusivo" title="Solo se consigue con monedas">★ Exclusivo</span>' : "") +
-        '<div class="muestra">' + muestra + "</div>" +
+        '<div class="muestra' + (it.tipo === "sonido" ? " muestra-alta" : "") + '">' + muestra + "</div>" +
         '<div class="nombre-item">' + escapar(it.nombre) + "</div>" +
         (it.tipo === "avatar" ? '<div class="campo-item">' + escapar(Avatar.NOMBRES_CAMPO[it.campo] || "") + "</div>" : "") +
         boton + "</div>";
@@ -1080,6 +1145,7 @@
     ui.codigo = null;
     ui.ultimaCiegaGrande = null;
     ui.recargaSoloPendiente = 0;
+    ui.puestoPremiado = false;
     if (ui.historial) ui.historial.limpiar();
 
     mesa.sentar({ id: "humano", nombre: nombreJugador(false), tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: guardarAvatar(ui.avatar) });
@@ -2271,12 +2337,20 @@
     capa.innerHTML = "";
   }
 
+  const DURACION_BARAJADO_MS = 1500;
+  const LS_BARAJADO = "rf_barajado";
+  function barajadoActivo() {
+    try { return localStorage.getItem(LS_BARAJADO) !== "0"; } catch (e) { return true; }
+  }
+
   /**
-   * Riffle: el crupier parte el mazo en dos, las mitades se entrelazan
-   * con un arco y se juntan (≈0,7 s). Sin animación si el aparato pide menos movimiento.
+   * Riffle: el crupier parte el mazo en dos, las mitades se arquean y se entrelazan
+   * dos veces y se cuadra el mazo (≈1,5 s), con el dorso equipado y el sonido de
+   * barajar del tema. Sin animación si el aparato pide menos movimiento o si se
+   * apagó en Opciones.
    */
   async function animarBarajado(capa, origen) {
-    if (!capa || movimientoReducido()) return;
+    if (!capa || movimientoReducido() || !barajadoActivo()) return;
     const caja = document.createElement("div");
     caja.className = "riffle";
     caja.setAttribute("aria-hidden", "true");
@@ -2290,7 +2364,7 @@
     caja.innerHTML = html;
     capa.appendChild(caja);
     sonar("barajar");
-    await esperar(720);
+    await esperar(DURACION_BARAJADO_MS);
     if (caja.parentNode) caja.parentNode.removeChild(caja);
   }
 
@@ -2571,6 +2645,8 @@
     }
 
     if (msg.tipo === "partida-terminada") {
+      if (msg.estado) ui.estado = msg.estado;
+      premiarFinPartidaOnline();
       if (msg.estado) {
         if ($("pantalla-mesa").hidden) mostrar("pantalla-sala");
         else renderMesa(msg.estado);
@@ -2597,6 +2673,7 @@
     // este (y no el del principio), por si mientras tanto llegó "te toca".
     if (msg.estado) ui.estadoServidor = msg.estado;
 
+    if (msg.tipo === "partida-iniciada") ui.puestoPremiado = false;
     if (msg.tipo === "partida-iniciada" || msg.tipo === "mano-iniciada") {
       entrarEnMesaOnline(msg);
       if (msg.secuenciaReparto) {
@@ -3297,6 +3374,12 @@
     if ($("btn-canjear")) $("btn-canjear").addEventListener("click", function () { canjearCodigo(); });
     if ($("input-codigo-monedas")) $("input-codigo-monedas").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo(); });
     if ($("btn-codigo-menu")) $("btn-codigo-menu").addEventListener("click", alternarCodigoMenu);
+    if ($("opcion-barajado")) {
+      $("opcion-barajado").checked = barajadoActivo();
+      $("opcion-barajado").addEventListener("change", function () {
+        try { localStorage.setItem(LS_BARAJADO, this.checked ? "1" : "0"); } catch (e) { /* */ }
+      });
+    }
     if ($("btn-canjear-menu")) $("btn-canjear-menu").addEventListener("click", function () { canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
     if ($("input-codigo-menu")) $("input-codigo-menu").addEventListener("keydown", function (ev) { if (ev.key === "Enter") canjearCodigo("input-codigo-menu", "aviso-codigo-menu"); });
     if ($("form-chat")) $("form-chat").addEventListener("submit", function (ev) { ev.preventDefault(); enviarTextoChat(); });

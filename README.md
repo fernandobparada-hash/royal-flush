@@ -169,13 +169,13 @@ hacer tú cuando quieras jugar a distancia.
 ## Novedades v12
 
 - **Bots con personalidad** (10): Roca 🪨, Tiburón 🦈, Loco 🤪, Pagador 📞, Farolero 🎭, Agresivo ⚡, Miedoso 😰, Trampero 🕸️, Novato 🐣 y Calculador 🧮. Cada mesa mezcla personalidades distintas; se ven con una etiqueta junto al nombre y hablan en el chat con frases cortas.
-- **Monedas** (no son dinero real): +2 por mano jugada, +10 si la ganás, +5 extra si fue en showdown y +50 con póker o escalera de color/real. Se guardan en el aparato y, como respaldo, en el servidor con un código de monedero.
-- **Tienda**: piezas de avatar, mesas (paños), dorsos de cartas y temas de sonido. Exclusivos de 1000 monedas: cabeza de pez, cara con granos y orejas de mono (los bots nunca los usan).
+- **Monedas** (no son dinero real): empezás con 100; +1 por mano jugada (hasta 100 al día), +5 por ganar una mano y +10 más si fue en showdown con trío o mejor; +25 por ganar una partida o torneo y +10 por el 2.º puesto; bono diario +50 que sube +10 por cada día seguido hasta +100; logros: primer póker +100, primera escalera de color +200, primer Royal Flush +500. Jugando solo se gana la mitad (redondeando hacia abajo; la media moneda que sobra se guarda). Se guardan en el aparato y, como respaldo, en el servidor con un código de monedero.
+- **Tienda**: piezas de avatar, mesas (paños), dorsos de cartas y temas de sonido (Clásico gratis, Casino Vegas, Retro 8-bit, Fiesta y Minimal). Exclusivos de 1000 monedas: cabeza de pez, cara con granos y orejas de mono (los bots nunca los usan).
 - **Código 3174**: botón «🎁 Código» al pie del menú (y en la tienda). Suma 1000 monedas cada vez, sin límite.
 - **Editar avatar** desde el menú: 112 opciones dibujadas en SVG; en la compu la cara en el asiento es más grande.
 - **Espectadores**: «Mesas en vivo» con la lista de mesas públicas, contador 👁 de gente mirando y showdown visible, sin ver nunca cartas privadas.
 - **Recargar**: un solo «Recargar» con un campo de monto (mínimo 10 Bs, sin montos fijos). Si te quedás sin fichas aparece abajo un botón «Recargar», en solo y online.
 - **Racha** 🔥: cuenta las manos ganadas seguidas. Retirarte sin haber puesto más que una ciega grande no la corta; perder o retirarte después de meter fichas, sí.
-- **Barajado riffle** antes de cada reparto (se omite si el aparato pide menos movimiento).
+- **Barajado riffle** de ~1,5 s antes de cada reparto, con el dorso equipado y el sonido de barajar del tema. Se apaga en Opciones y se omite si el aparato pide menos movimiento.
 - **Chat escrito**: hasta 80 letras, se limpia en el servidor, siempre se muestra como texto y tiene límite (1 cada 2 s, 5 cada 20 s).
 - **Mesas de 9, 10 o 15 asientos** (la de 15 usa un diseño compacto).

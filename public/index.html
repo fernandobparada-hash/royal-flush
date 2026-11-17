@@ -79,6 +79,7 @@
                 </div>
               </fieldset>
               <label class="opcion-torneo"><input type="checkbox" id="torneo-online"> Modo torneo: las ciegas se duplican cada 10 manos</label>
+              <label class="opcion-torneo"><input type="checkbox" id="opcion-barajado" checked> Animación de barajado antes de repartir</label>
               <div class="fila-codigo" id="caja-tengo-codigo">
                 <input id="input-codigo" type="text" maxlength="80" placeholder="Código o enlace /m/ABCDE" spellcheck="false" autocomplete="off" autocapitalize="characters">
                 <button type="button" id="btn-unirse-codigo" class="btn">Unirme</button>
@@ -132,7 +133,19 @@
             <h2>Tienda</h2>
             <span class="pill-monedas">🪙 <strong class="saldo-monedas">0</strong></span>
           </div>
-          <p class="hint">Las monedas se ganan jugando: +2 por mano, +10 si la ganás, +5 extra en showdown y +50 con póker o escalera de color. Solo sirven para cosas lindas; no son dinero real.</p>
+          <details class="reglas-monedas">
+            <summary>¿Cómo se ganan monedas?</summary>
+            <ul class="hint">
+              <li>Empezás con 100.</li>
+              <li>+1 por mano jugada (hasta 100 por día).</li>
+              <li>+5 por ganar una mano; +10 más si la ganás en showdown con trío o mejor.</li>
+              <li>+25 por ganar una partida o torneo; +10 por el 2.º puesto.</li>
+              <li>Bono diario +50; cada día seguido suma +10 más, hasta +100.</li>
+              <li>Logros: primer póker +100, primera escalera de color +200, primer Royal Flush +500.</li>
+              <li>Jugando solo contra bots se gana la mitad.</li>
+            </ul>
+            <p class="hint">Solo sirven para cosas lindas; no son dinero real.</p>
+          </details>
           <div class="tabs-tienda" role="tablist">
             <button type="button" data-tab="avatar" class="activo">Avatar</button>
             <button type="button" data-tab="tema">Mesas</button>

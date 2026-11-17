@@ -17,7 +17,7 @@
    * opciones.AudioContext: constructor del contexto (para pruebas).
    * opciones.activo:       si empiezan encendidos (por defecto sí).
    */
-  // Escala pentatónica (do re mi sol la): el tema andino "afina" todo a esas notas
+  // Escala pentatónica mayor (do re mi sol la): el tema Fiesta "afina" todo a esas notas
   const PENTA = [0, 2, 4, 7, 9];
   function afinar(f, escala) {
     if (!escala || !(f > 0)) return f;
@@ -31,10 +31,14 @@
 
   const TEMAS = {
     clasico: { tono: 1, vol: 1, largo: 1 },
-    suave: { tono: 0.75, vol: 0.6, largo: 1.4, onda: "sine" },
-    casino: { tono: 1.25, vol: 0.85, largo: 1.2, onda: "sine", armonico: 0.45, eco: 0.12 },
-    arcade: { tono: 1, vol: 0.55, largo: 0.8, onda: "square", ruidoComoTono: true },
-    andino: { tono: 1, vol: 0.9, largo: 1.5, onda: "sine", escala: true, vibrato: 0.012, eco: 0.18 }
+    // Casino Vegas: campanitas con armónico y eco de salón
+    vegas: { tono: 1.25, vol: 0.85, largo: 1.2, onda: "sine", armonico: 0.45, eco: 0.12 },
+    // Retro 8-bit: onda cuadrada, cartas como "blips"
+    retro: { tono: 1, vol: 0.55, largo: 0.8, onda: "square", ruidoComoTono: true },
+    // Fiesta: brillante, afinado a una escala mayor alegre, con eco corto
+    fiesta: { tono: 1.12, vol: 0.9, largo: 1.1, onda: "triangle", escala: true, vibrato: 0.01, eco: 0.08 },
+    // Minimal: grave, suave y corto
+    minimal: { tono: 0.75, vol: 0.5, largo: 0.9, onda: "sine" }
   };
 
   function crearSonidos(opciones) {
@@ -96,7 +100,7 @@
     /** Un soplido corto de ruido filtrado (sonido de carta o de tela). */
     function ruido(c, inicio, duracion, volumen, frecuenciaFiltro) {
       const T = TEMAS[tema];
-      // En arcade las cartas y el paño suenan como un "blip" de consola
+      // En retro 8-bit las cartas y el paño suenan como un "blip" de consola
       if (T.ruidoComoTono) { tonoCrudo(c, (frecuenciaFiltro || 2500) / 3, inicio, Math.min(0.06, duracion), "square", volumen * 0.25, 0); return; }
       volumen = volumen * T.vol;
       frecuenciaFiltro = (frecuenciaFiltro || 2500) * T.tono;
@@ -118,6 +122,19 @@
       ganancia.connect(c.destination);
       fuente.start(inicio);
     }
+
+    // Remate del barajado según el tema
+    const FINALES = {};
+    FINALES.vegas = function (c, t) { tono(c, 1568, t, 0.25, "sine", 0.12); tono(c, 2093, t + 0.08, 0.3, "sine", 0.1); };
+    FINALES.retro = function (c, t) { [523, 659, 784].forEach(function (f, i) { tono(c, f, t + i * 0.05, 0.06, "square", 0.12); }); };
+    FINALES.fiesta = function (c, t) {
+      // silbato que sube + matraca
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(1200, t); o.frequency.exponentialRampToValueAtTime(2600, t + 0.22);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + 0.32);
+      for (let i = 0; i < 5; i++) ruido(c, t + 0.05 + i * 0.04, 0.02, 0.18, 4000);
+    };
 
     const SONIDOS = {
       carta: function (c, t) { ruido(c, t, 0.07, 0.35, 3200); },
@@ -161,8 +178,13 @@
       },
       // Riffle: dos mitades del mazo que se entrelazan (ráfaga de clics)
       barajar: function (c, t) {
-        for (let i = 0; i < 14; i++) ruido(c, t + i * 0.035 + (i % 2) * 0.008, 0.03, 0.22, 2600 + (i % 3) * 500);
-        ruido(c, t + 0.56, 0.09, 0.3, 1800);
+        // Dos tandas de riffle (0–0,55 s y 0,6–1,15 s) y el golpe final al cuadrar el mazo
+        for (let tanda = 0; tanda < 2; tanda++) {
+          const t0 = t + 0.08 + tanda * 0.6;
+          for (let i = 0; i < 16; i++) ruido(c, t0 + i * 0.03 + (i % 2) * 0.006, 0.025, 0.2, 2600 + (i % 3) * 450);
+        }
+        ruido(c, t + 1.3, 0.09, 0.32, 1500);
+        if (FINALES[tema]) FINALES[tema](c, t + 1.3);
       },
       ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
     };
@@ -190,7 +212,7 @@
         return true;
       },
 
-      /** Tema de sonido: "clasico", "suave", "casino", "arcade" o "andino" (acepta "sonido:x"). */
+      /** Tema de sonido: "clasico", "vegas", "retro", "fiesta" o "minimal" (acepta "sonido:x"). */
       ponerTema: function (id) {
         const k = String(id || "").replace(/^sonido:/, "");
         tema = TEMAS[k] ? k : "clasico";

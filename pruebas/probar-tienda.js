@@ -32,11 +32,58 @@ const fuente = fs.readFileSync(path.join(__dirname, "../public/js/tienda.js"), "
 ok("No existe el mensaje «Ya usaste este código»", !/ya usaste/i.test(fuente));
 
 console.log("\n--- Ganar monedas jugando ---");
-ok("No jugar la mano: 0", Tienda.premioMano({ jugo: false, gano: true }) === 0);
-ok("Jugar y perder: +2", Tienda.premioMano({ jugo: true }) === 2);
-ok("Ganar sin showdown: +12", Tienda.premioMano({ jugo: true, gano: true }) === 12);
-ok("Ganar en showdown: +17", Tienda.premioMano({ jugo: true, gano: true, showdown: true }) === 17);
-ok("Ganar con póker o escalera de color: +67", Tienda.premioMano({ jugo: true, gano: true, showdown: true, fuerte: true }) === 67);
+const H = "2026-11-17";
+function mano(r, m, hoy) { m = m || Tienda.nuevoMonedero(); return Tienda.premioMano(m, r, hoy || H).n; }
+ok("Se empieza con 100 monedas", Tienda.SALDO_INICIAL === 100 && Tienda.nuevoMonedero().saldo === 100);
+ok("No jugar la mano: 0", mano({ jugo: false, gano: true }) === 0);
+ok("Jugar y perder: +1", mano({ jugo: true }) === 1);
+ok("Ganar sin showdown: +1 +5 = 6", mano({ jugo: true, gano: true, categoria: -1 }) === 6);
+ok("Ganar en showdown con doble par: +6 (no llega a trío)", mano({ jugo: true, gano: true, showdown: true, categoria: 2 }) === 6);
+ok("Ganar en showdown con trío: +1 +5 +10 = 16", mano({ jugo: true, gano: true, showdown: true, categoria: 3 }) === 16);
+ok("Ganar con trío pero sin showdown: +6", mano({ jugo: true, gano: true, showdown: false, categoria: 3 }) === 6);
+ok("Ganar en showdown con full: +16", mano({ jugo: true, gano: true, showdown: true, categoria: 6 }) === 16);
+const mt = Tienda.nuevoMonedero();
+let totalManos = 0;
+for (let i = 0; i < 130; i++) totalManos += mano({ jugo: true }, mt, H);
+ok("Por manos jugadas, como mucho 100 al día (130 manos → " + totalManos + ")", totalManos === 100 && mt.manosHoy === 100);
+ok("El tope no frena lo de ganar (+5 igual)", mano({ jugo: true, gano: true }, mt, H) === 5);
+ok("Al día siguiente vuelve a sumar", mano({ jugo: true }, mt, "2026-11-18") === 1 && mt.manosHoy === 1);
+
+console.log("\n--- Logros (una sola vez) ---");
+const ml = Tienda.nuevoMonedero();
+ok("Primer póker: +100 (+1 por la mano)", mano({ jugo: true, categoria: 7 }, ml) === 101 && ml.logros.indexOf("poker") >= 0);
+ok("El segundo póker ya no da el logro", mano({ jugo: true, categoria: 7 }, ml) === 1);
+ok("Primera escalera de color: +200", mano({ jugo: true, categoria: 8 }, ml) === 201);
+ok("Primer Royal Flush: +500", mano({ jugo: true, categoria: 9 }, ml) === 501);
+ok("Royal Flush ganado en showdown: +1 +5 +10 y el logro ya cobrado", mano({ jugo: true, gano: true, showdown: true, categoria: 9 }, ml) === 16);
+ok("Los logros se guardan", Tienda.normalizar(ml).logros.join(",") === "poker,escalera-color,escalera-real");
+
+console.log("\n--- Partida o torneo ---");
+const mp = Tienda.nuevoMonedero();
+ok("Ganar la partida: +25", Tienda.premioPartida(mp, 1, false).n === 25);
+ok("2.º puesto: +10", Tienda.premioPartida(mp, 2, false).n === 10);
+ok("3.º puesto: nada", Tienda.premioPartida(mp, 3, false).n === 0);
+
+console.log("\n--- Solo: la mitad (redondeando hacia abajo) ---");
+const msol = Tienda.nuevoMonedero();
+ok("Ganar la partida solo: 25 → 12", Tienda.premioPartida(msol, 1, true).n === 12);
+ok("…y la media moneda queda guardada", msol.restoSolo === 1);
+const ms2 = Tienda.nuevoMonedero();
+ok("Una mano solo: 0 (media moneda guardada)", mano({ jugo: true, solo: true }, ms2) === 0 && ms2.restoSolo === 1);
+ok("La segunda mano solo completa 1", mano({ jugo: true, solo: true }, ms2) === 1 && ms2.restoSolo === 0);
+ok("Ganar en showdown con trío solo: 16 → 8", mano({ jugo: true, gano: true, showdown: true, categoria: 3, solo: true }, ms2) === 8);
+ok("2.º puesto solo: 10 → 5", Tienda.premioPartida(Tienda.nuevoMonedero(), 2, true).n === 5);
+
+console.log("\n--- Bono diario ---");
+const mb = Tienda.nuevoMonedero();
+const dias = ["2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20", "2026-11-21", "2026-11-22", "2026-11-23"];
+const bonos = dias.map(function (d) { return Tienda.bonoDiario(mb, d).n; });
+ok("Días seguidos: 50, 60, 70, 80, 90, 100, 100 (" + bonos.join(", ") + ")", bonos.join(",") === "50,60,70,80,90,100,100");
+ok("Una sola vez por día", Tienda.bonoDiario(mb, "2026-11-23") === null);
+ok("Saltear un día vuelve a +50", Tienda.bonoDiario(mb, "2026-11-25").n === 50 && mb.diasSeguidos === 1);
+ok("Cruza fin de mes (30 nov → 1 dic sigue la racha)", (function () { const x = Tienda.nuevoMonedero(); Tienda.bonoDiario(x, "2026-11-30"); return Tienda.bonoDiario(x, "2026-12-01").n === 60; })());
+ok("El bono no se reduce en solo (no depende del modo)", Tienda.bonoDiario(Tienda.nuevoMonedero(), "2026-11-17").n === 50);
+ok("fechaLocal() da AAAA-MM-DD", /^\d{4}-\d{2}-\d{2}$/.test(Tienda.fechaLocal()));
 const m2 = Tienda.nuevoMonedero();
 Tienda.ganar(m2, 17);
 ok("ganar() suma al saldo y al total ganado", m2.saldo === Tienda.SALDO_INICIAL + 17 && m2.ganadoTotal === 17);
@@ -109,15 +156,20 @@ ok("Hay 5 temas de sonido en la tienda", Tienda.SONIDOS.length === 5 && tipos.so
 ok("El clásico es gratis y los demás se compran", Tienda.SONIDOS[0].precio === 0 && Tienda.SONIDOS.slice(1).every(function (x) { return x.precio > 0; }));
 ok("Cada tema de la tienda existe en sonidos.js", Tienda.SONIDOS.every(function (x) { return Sonidos.TEMAS.indexOf(x.id.split(":")[1]) >= 0; }));
 const ms = Tienda.nuevoMonedero();
-ok("Sin comprar no se puede equipar", !Tienda.equipar(ms, "sonido:arcade") && ms.sonido === "sonido:clasico");
+ok("Sin comprar no se puede equipar", !Tienda.equipar(ms, "sonido:retro") && ms.sonido === "sonido:clasico");
 ms.saldo = 1000;
-Tienda.comprar(ms, "sonido:arcade");
-ok("Comprado se equipa", Tienda.equipar(ms, "sonido:arcade") && ms.sonido === "sonido:arcade");
+Tienda.comprar(ms, "sonido:retro");
+ok("Comprado se equipa", Tienda.equipar(ms, "sonido:retro") && ms.sonido === "sonido:retro");
 ok("normalizar() conserva el sonido comprado y rechaza uno no comprado",
-  Tienda.normalizar(ms).sonido === "sonido:arcade" && Tienda.normalizar({ sonido: "sonido:andino" }).sonido === "sonido:clasico");
+  Tienda.normalizar(ms).sonido === "sonido:retro" && Tienda.normalizar({ sonido: "sonido:fiesta" }).sonido === "sonido:clasico");
+ok("Los temas son Clásico (gratis), Casino Vegas, Retro 8-bit, Fiesta y Minimal",
+  Tienda.SONIDOS.map(function (x) { return x.nombre; }).join("|") === "Clásico|Casino Vegas|Retro 8-bit|Fiesta|Minimal" && Tienda.SONIDOS[0].precio === 0);
+ok("Un tema viejo comprado en la v12 se pasa al nuevo (arcade → retro)", (function () {
+  const v = Tienda.normalizar({ comprados: ["sonido:arcade"], sonido: "sonido:arcade" }); return v.sonido === "sonido:retro" && v.comprados.indexOf("sonido:retro") >= 0;
+})());
 const s1 = Sonidos.crearSonidos({ AudioContext: function () {} });
-ok("ponerTema() acepta 'sonido:x' y vuelve a clásico si no existe", s1.ponerTema("sonido:casino") === "casino" && s1.ponerTema("nada") === "clasico");
-ok("El tema andino afina a la escala pentatónica (La 440 → La)", Math.abs(Sonidos.afinar(440, true) - 440) < 1 && Math.abs(Sonidos.afinar(466, true) - 440) < 1);
+ok("ponerTema() acepta 'sonido:x' y vuelve a clásico si no existe", s1.ponerTema("sonido:vegas") === "vegas" && s1.ponerTema("nada") === "clasico");
+ok("El tema Fiesta afina a la escala pentatónica (La 440 → La)", Math.abs(Sonidos.afinar(440, true) - 440) < 1 && Math.abs(Sonidos.afinar(466, true) - 440) < 1);
 ok("Existe el sonido del barajado", s1.NOMBRES.indexOf("barajar") >= 0);
 
 console.log("\n--- Racha de manos ganadas ---");

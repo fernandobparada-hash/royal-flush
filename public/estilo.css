@@ -1481,18 +1481,27 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   margin: 0; left: 0; top: 0; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,.35);
   transform: translate(-50%, -50%);
 }
-.riffle-carta.izq { animation: riffle-izq 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms); }
-.riffle-carta.der { animation: riffle-der 0.7s cubic-bezier(.3,.7,.3,1) both; animation-delay: calc(var(--i) * 18ms + 9ms); }
+.riffle-carta.izq { animation: riffle-izq 1.4s cubic-bezier(.35,.6,.3,1) both; animation-delay: calc(var(--i) * 12ms); }
+.riffle-carta.der { animation: riffle-der 1.4s cubic-bezier(.35,.6,.3,1) both; animation-delay: calc(var(--i) * 12ms + 6ms); }
+/* Dos tandas de riffle: partir → arquear → entrelazar, dos veces, y cuadrar el mazo */
 @keyframes riffle-izq {
-  0% { transform: translate(-50%, -50%); }
-  30% { transform: translate(-115%, calc(-50% - var(--i) * 1px)) rotate(-14deg); }
-  60% { transform: translate(-80%, calc(-60% - var(--i) * 2px)) rotate(-24deg); }
+  0%   { transform: translate(-50%, -50%); }
+  12%  { transform: translate(-118%, calc(-50% - var(--i) * 1px)) rotate(-10deg); }
+  26%  { transform: translate(-95%, calc(-62% - var(--i) * 2px)) rotate(-26deg); }
+  40%  { transform: translate(-52%, calc(-50% - var(--i) * 2px)) rotate(-3deg); }
+  52%  { transform: translate(-118%, calc(-50% - var(--i) * 1px)) rotate(-10deg); }
+  66%  { transform: translate(-95%, calc(-62% - var(--i) * 2px)) rotate(-26deg); }
+  80%  { transform: translate(-52%, calc(-50% - var(--i) * 2px)) rotate(-3deg); }
   100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
 }
 @keyframes riffle-der {
-  0% { transform: translate(-50%, -50%); }
-  30% { transform: translate(15%, calc(-50% - var(--i) * 1px)) rotate(14deg); }
-  60% { transform: translate(-20%, calc(-60% - var(--i) * 2px)) rotate(24deg); }
+  0%   { transform: translate(-50%, -50%); }
+  12%  { transform: translate(18%, calc(-50% - var(--i) * 1px)) rotate(10deg); }
+  26%  { transform: translate(-5%, calc(-62% - var(--i) * 2px)) rotate(26deg); }
+  40%  { transform: translate(-48%, calc(-50% - var(--i) * 2px - 1px)) rotate(3deg); }
+  52%  { transform: translate(18%, calc(-50% - var(--i) * 1px)) rotate(10deg); }
+  66%  { transform: translate(-5%, calc(-62% - var(--i) * 2px)) rotate(26deg); }
+  80%  { transform: translate(-48%, calc(-50% - var(--i) * 2px - 1px)) rotate(3deg); }
   100% { transform: translate(-50%, calc(-50% - var(--i) * 1px)); }
 }
 @media (prefers-reduced-motion: reduce) { .riffle { display: none; } }
@@ -1508,3 +1517,9 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   background: linear-gradient(180deg, #ffe08a, #b8860b); color: #2a1c00; border-radius: 999px; padding: 0.1em 0.5em;
 }
 .opciones-chips button.exclusivo { border-color: #d4a72c; }
+.reglas-monedas { margin: 0.4em 0 0.6em; }
+.reglas-monedas summary { cursor: pointer; color: #ffe39a; font-weight: 700; }
+.reglas-monedas ul { margin: 0.4em 0 0.2em; padding-left: 1.2em; }
+.reglas-monedas li { margin: 0.15em 0; }
+.item-tienda .muestra.muestra-alta { height: auto; min-height: 80px; }
+.muestra-sonido .btn { width: auto; margin-top: 0.15em; }

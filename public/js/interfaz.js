@@ -197,7 +197,10 @@
       const a = ev.accion;
       if (a === "retirarse") sonar("retirarse");
       else if (a === "pasar") sonar("pasar");
-      else if (a === "igualar" || a === "apostar" || a === "subir" || a === "all-in") sonar("ficha");
+      else if (a === "igualar") sonar("igualar");
+      else if (a === "apostar") sonar("apostar");
+      else if (a === "subir") sonar("subir");
+      else if (a === "all-in") sonar("allin");
     } else if (ev.tipo === "turno") {
       if (ev.jugadorId && ev.jugadorId === ui.tuId) sonar("turno");
     } else if (ev.tipo === "calle") {
@@ -1712,6 +1715,7 @@
       clones[i].style.top = (dest.y - 8) + "px";
       clones[i].style.opacity = "0";
     }
+    sonar("bote");
     await esperar(520);
     capa.innerHTML = "";
   }
@@ -1749,6 +1753,7 @@
     let o = boteEl ? rectRelativo(boteEl, mesa) : null;
     if (!o || !o.w) { const m = mesa.getBoundingClientRect(); o = { x: m.width / 2, y: m.height / 2 }; }
     const fichas = [];
+    if (!movimientoReducido()) sonar("premio");
     for (let w = 0; w < winners.length; w++) {
       const d = rectRelativo(winners[w], mesa);
       for (let i = 0; i < 7; i++) {

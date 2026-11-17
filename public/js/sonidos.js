@@ -93,6 +93,25 @@
         tono(c, 262, t, 0.9, "sine", 0.12);
       },
       fin: function (c, t) { tono(c, 392, t, 0.18, "sine", 0.15); tono(c, 330, t + 0.12, 0.22, "sine", 0.12); },
+      apostar: function (c, t) {
+        [1250, 1650, 2100].forEach(function (f, i) { tono(c, f, t + i * 0.045, 0.10, "triangle", 0.12); });
+      },
+      igualar: function (c, t) {
+        tono(c, 1400, t, 0.09, "triangle", 0.13);
+        tono(c, 1900, t + 0.055, 0.11, "triangle", 0.11);
+      },
+      subir: function (c, t) {
+        [850, 1150, 1550, 2200].forEach(function (f, i) { tono(c, f, t + i * 0.055, 0.12, "triangle", 0.13); });
+      },
+      allin: function (c, t) {
+        [392, 523, 659, 784].forEach(function (f, i) { tono(c, f, t + i * 0.09, 0.24, "sawtooth", 0.07); });
+      },
+      bote: function (c, t) {
+        [1600, 2000, 2400].forEach(function (f, i) { tono(c, f, t + i * 0.07, 0.12, "triangle", 0.11); });
+      },
+      premio: function (c, t) {
+        [784, 988, 1175, 1568].forEach(function (f, i) { tono(c, f, t + i * 0.075, 0.23, "sine", 0.16); });
+      },
       ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
     };
 

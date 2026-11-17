@@ -157,3 +157,11 @@ hacer tú cuando quieras jugar a distancia.
 - `scripts/construir-html-unico.js` — genera `royal-flush.html`.
 - `pruebas/` — todas las pruebas (ver arriba).
 - `render.yaml` — descripción del servicio para Render.
+
+
+## Mejoras v11
+
+- Controles táctiles y tamaños adaptados para móviles estrechos, con soporte para zonas seguras.
+- Nuevos sonidos sintetizados para igualar, apostar, subir, all-in, bote y premio; respetan el botón de silencio.
+- Movimiento de fichas al bote y hacia ganadores, respetando la preferencia de movimiento reducido.
+- Caché PWA actualizado a v11.

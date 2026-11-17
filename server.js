@@ -283,7 +283,11 @@ function engancharMesa(sala) {
         luego(sala, DELAY_ENTRE_MANOS, function () { empezarMano(sala); });
       }
     } else if (ev.tipo === "accion" || ev.tipo === "turno" || ev.tipo === "jugador-sentado" || ev.tipo === "jugador-levantado" || ev.tipo === "esperando") {
-      transmitir(sala, ev.tipo, ev);
+      // El evento trae el estado público (cartas de todos tapadas); se quita para que
+      // cada jugador reciba el suyo, con sus propias cartas a la vista.
+      const extra = Object.assign({}, ev);
+      delete extra.estado;
+      transmitir(sala, ev.tipo, extra);
     }
   });
 }

@@ -11,6 +11,8 @@
   <title>Royal Flush — Texas Hold'em</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -389,6 +391,7 @@
     <div class="tabs-cuentas">
       <button type="button" id="tab-recargar" class="activo">Recargar</button>
       <button type="button" id="tab-resumen">Resumen</button>
+      <button type="button" id="tab-grupo">Grupo</button>
     </div>
     <div id="vista-recargar">
       <p id="texto-cambio" class="texto">Cambio: <strong>1 Bs = 10 fichas</strong>. El mínimo es 10 Bs (100 fichas).</p>
@@ -402,10 +405,32 @@
       <p id="nota-recarga-pendiente" class="hint centro" hidden></p>
     </div>
     <div id="vista-resumen" hidden>
+      <div id="selector-noche" class="selector-noche" hidden>
+        <button type="button" id="ver-partida" class="activo">Esta partida</button>
+        <button type="button" id="ver-noche">Toda la noche</button>
+      </div>
+      <p id="titulo-resumen" class="titulo-resumen"></p>
       <div id="lista-cuentas" class="lista-cuentas"></div>
       <div id="lista-pagos" class="lista-pagos"></div>
     </div>
+    <div id="vista-grupo" hidden>
+      <div id="grupo-actual"></div>
+      <div id="grupo-form" hidden>
+        <p class="hint">Guardá las cuentas de cada noche en un grupo (por ejemplo «Los del viernes») y vean quién va ganando en total.</p>
+        <button type="button" id="btn-grupo-guardado" class="btn block" hidden></button>
+        <label class="campo-nombre" for="input-grupo-nombre">Nombre de un grupo nuevo
+          <input id="input-grupo-nombre" type="text" maxlength="40" autocomplete="off" placeholder="Los del viernes">
+        </label>
+        <button type="button" id="btn-grupo-crear" class="btn primary block">Crear grupo</button>
+        <label class="campo-nombre" for="input-grupo-codigo">…o el código de un grupo que ya tienen
+          <input id="input-grupo-codigo" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="ABC123">
+        </label>
+        <button type="button" id="btn-grupo-usar" class="btn block">Usar ese grupo</button>
+      </div>
+      <p id="aviso-grupo" class="aviso" role="status"></p>
+    </div>
     <button type="button" id="btn-terminar-partida" class="btn block" hidden>Terminar partida y ver cuentas</button>
+    <button type="button" id="btn-otra-partida" class="btn primary block" hidden>🔁 Otra partida (mismos jugadores)</button>
     <p class="disclaimer">Solo lleva la cuenta; los pagos se hacen entre ustedes.</p>
   </div>
 

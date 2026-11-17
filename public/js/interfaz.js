@@ -781,6 +781,7 @@
       await animarComunitarias(ev.nuevas);
       ui.animando = false;
       renderMesa(ui.mesa.estadoPublico(ui.tuId), { voltear: true, voltearDesde: (ui.mesa.comunitarias.length - (ev.nuevas ? ev.nuevas.length : 0)) });
+      pintarLineaCalle(etiqueta, ui.mesa.estadoPublico(ui.tuId));
       return;
     }
 
@@ -1715,14 +1716,101 @@
     capa.innerHTML = "";
   }
 
-  function celebrar(estado) {
-    sonarResultado(estado);
-    chatBotsOcasional("win");
-    const capa = $("celebracion");
-    if (!capa || movimientoReducido()) return;
-    capa.innerHTML = "";
+  /** Línea de estado al salir el flop/turn/river (antes se quedaba en "Preflop · a hablar"). */
+  function pintarLineaCalle(etiqueta, estado) {
+    const el = $("mensaje-mesa");
+    if (!el || !estado) return;
+    if (estado.fase === "entre-manos" || estado.fase === "showdown" || estado.fase === "esperando") return;
+    el.className = "";
+    el.textContent = estado.turnoId ? etiqueta + " · a hablar." : etiqueta + ".";
+  }
+
+  const MANO_FUERTE = /^(Escalera real|Escalera de color|Póker)/;
+
+  /** Si alguien ganó con Escalera real, Escalera de color o Póker, devuelve { mano, nombre }. */
+  function jugadaFuerte(estado) {
+    const r = estado && estado.resultadoShowdown;
+    if (!r || r.sinShowdown) return null;
+    const gs = r.ganadores || [];
+    for (let i = 0; i < gs.length; i++) {
+      if (MANO_FUERTE.test(gs[i].descripcion || "")) {
+        const j = (estado.jugadores || []).find(function (x) { return x.id === gs[i].id; });
+        return { mano: gs[i].descripcion, nombre: gs[i].id === ui.tuId ? "¡Vos!" : (j ? j.nombre : gs[i].nombre || "") };
+      }
+    }
+    return null;
+  }
+
+  /** Fichas que vuelan del bote a cada ganador. */
+  function animarPremio(capa, mesa) {
+    const winners = document.querySelectorAll(".pieza-info.ganador");
+    if (!winners.length) return;
+    const boteEl = $("bote");
+    let o = boteEl ? rectRelativo(boteEl, mesa) : null;
+    if (!o || !o.w) { const m = mesa.getBoundingClientRect(); o = { x: m.width / 2, y: m.height / 2 }; }
+    const fichas = [];
+    for (let w = 0; w < winners.length; w++) {
+      const d = rectRelativo(winners[w], mesa);
+      for (let i = 0; i < 7; i++) {
+        const f = document.createElement("span");
+        f.className = "ficha-premio" + (i % 3 === 1 ? " roja" : i % 3 === 2 ? " azul" : "");
+        f.style.left = (o.x - 9 + (i - 3) * 3) + "px";
+        f.style.top = (o.y - 9) + "px";
+        f.style.transitionDelay = (i * 55) + "ms";
+        capa.appendChild(f);
+        fichas.push({ el: f, x: d.x - 9 + (i - 3) * 2, y: d.y - 9 });
+      }
+    }
+    void capa.offsetWidth;
+    fichas.forEach(function (f) {
+      f.el.style.left = f.x + "px";
+      f.el.style.top = f.y + "px";
+      f.el.classList.add("llego");
+    });
+  }
+
+  /** Cartel grande + confeti para las jugadas raras. Con movimiento reducido: solo el cartel, quieto. */
+  function mostrarJugadon(info) {
     const mesa = $("mesa-oval");
     if (!mesa) return;
+    const viejo = $("jugadon");
+    if (viejo) viejo.remove();
+    const cartel = document.createElement("div");
+    cartel.id = "jugadon";
+    cartel.setAttribute("role", "status");
+    cartel.innerHTML = '<span class="jugadon-mano">' + escapar(info.mano) + '</span><span class="jugadon-quien">' + escapar(info.nombre) + "</span>";
+    mesa.appendChild(cartel);
+    if (!movimientoReducido()) {
+      const capa = $("celebracion");
+      const colores = ["#e9c46a", "#f4f1de", "#e76f51", "#2a9d8f", "#8ecae6"];
+      for (let i = 0; i < 46; i++) {
+        const c = document.createElement("span");
+        c.className = "confeti";
+        c.style.left = (4 + Math.random() * 92) + "%";
+        c.style.background = colores[i % colores.length];
+        c.style.animationDelay = (Math.random() * 0.5) + "s";
+        c.style.setProperty("--giro", (Math.random() * 720 - 360) + "deg");
+        c.style.setProperty("--deriva", (Math.random() * 60 - 30) + "px");
+        capa.appendChild(c);
+      }
+    }
+    setTimeout(function () { cartel.remove(); }, 2900);
+  }
+
+  function celebrar(estado) {
+    const fuerte = jugadaFuerte(estado);
+    if (fuerte) sonar("jugadon");
+    else sonarResultado(estado);
+    chatBotsOcasional("win");
+    const capa = $("celebracion");
+    if (!capa) return;
+    clearTimeout(ui.timerCelebracion);
+    capa.innerHTML = "";
+    if (fuerte) mostrarJugadon(fuerte);
+    if (movimientoReducido()) return;
+    const mesa = $("mesa-oval");
+    if (!mesa) return;
+    animarPremio(capa, mesa);
     const winners = document.querySelectorAll(".pieza-info.ganador");
     for (let w = 0; w < winners.length; w++) {
       const r = rectRelativo(winners[w], mesa);
@@ -1738,7 +1826,7 @@
         capa.appendChild(s);
       }
     }
-    setTimeout(function () { if (capa) capa.innerHTML = ""; }, 1100);
+    ui.timerCelebracion = setTimeout(function () { if (capa) capa.innerHTML = ""; }, fuerte ? 3000 : 1400);
   }
 
   async function animarReparto(secuencia) {
@@ -1965,7 +2053,38 @@
 
     if (msg.tipo === "pong") return;
 
+    // La mesa volvió después de que el servidor se durmiera o reiniciara
+    if (msg.tipo === "recuperada") {
+      toast(msg.mensaje || "La mesa se recuperó.", "ok");
+      return;
+    }
+    if (msg.tipo === "grupo") {
+      recibirGrupo(msg);
+      return;
+    }
+    if (msg.tipo === "grupo-actualizado") {
+      if (!ui.grupoSala || !ui.grupo || ui.grupo.codigo !== ui.grupoSala.codigo) ui.grupo = null;
+      if ($("aviso-grupo")) $("aviso-grupo").textContent = "";
+      pintarGrupo();
+      return;
+    }
+    if (msg.tipo === "nueva-partida") {
+      ui.verNoche = false;
+      if ($("panel-cuentas")) $("panel-cuentas").hidden = true;
+      toast(msg.mensaje || "¡Otra partida!", "ok");
+      if (msg.estado) {
+        if ($("pantalla-mesa").hidden) entrarEnMesaOnline(msg);
+        else renderMesa(msg.estado);
+      }
+      return;
+    }
+
     if (msg.tipo === "error") {
+      if (msg.codigoError === "grupo-no-existe" && recuperarGrupo(msg.codigo, function () {
+        enviarWS({ tipo: "grupo", accion: "usar", codigo: msg.codigo });
+      })) return;
+      if ($("btn-otra-partida")) $("btn-otra-partida").disabled = false;
+      if ((msg.codigoError === "grupo" || msg.codigoError === "grupo-no-existe") && $("aviso-grupo")) $("aviso-grupo").textContent = msg.mensaje || "";
       if (ui.espectador && msg.codigoError === "sala-inexistente") {
         borrarSesionSala();
         irMenu();
@@ -2056,9 +2175,14 @@
 
     if (msg.tipo === "calle" && msg.nuevas) {
       ui.animando = true;
+      const etiquetaCalle = msg.calle === "flop" ? "Flop" : msg.calle === "turn" ? "Turn" : "River";
+      $("mensaje-mesa").className = "";
+      $("mensaje-mesa").textContent = etiquetaCalle + "…";
       animarFichasAlBote().then(function () { return animarComunitarias(msg.nuevas); }).then(function () {
         ui.animando = false;
-        if (msg.estado) renderMesa(ui.estadoServidor || msg.estado, { voltear: true });
+        const ultimo = ui.estadoServidor || msg.estado;
+        if (msg.estado) renderMesa(ultimo, { voltear: true });
+        pintarLineaCalle(etiquetaCalle, ultimo);
       });
       if (msg.estado) {
         // Mientras vuelan, ya podemos ir actualizando el bote
@@ -2150,12 +2274,17 @@
     const humanos = jugadores.filter(function (j) { return j.tipo !== "bot"; }).length;
     const puedeEmpezar = jugadores.filter(function (j) { return j.fichas > 0; }).length >= 2;
     if ($("btn-llenar-bots")) $("btn-llenar-bots").hidden = !anfitrion || libres === 0;
+    // Si la partida ya terminó (por ejemplo al volver a abrir la página), el botón ofrece la revancha
+    const terminada = !!(ui.cuentas && ui.cuentas.partidaTerminada);
     if ($("btn-iniciar-online")) {
       $("btn-iniciar-online").hidden = !anfitrion;
-      $("btn-iniciar-online").disabled = !puedeEmpezar;
+      $("btn-iniciar-online").textContent = terminada ? "🔁 Otra partida" : "Empezar";
+      $("btn-iniciar-online").disabled = terminada ? jugadores.length < 2 : !puedeEmpezar;
     }
     if ($("aviso-sala")) {
-      $("aviso-sala").textContent = anfitrion
+      $("aviso-sala").textContent = terminada
+        ? (anfitrion ? "La partida terminó. Mirá las cuentas o empezá otra partida con los mismos jugadores." : "La partida terminó. El anfitrión puede empezar otra.")
+        : anfitrion
         ? (puedeEmpezar ? "Cuando quieras, tocá Empezar." : "Invitá a un amigo o rellená con bots para empezar.")
         : "Esperando a que el anfitrión inicie la partida…";
     }
@@ -2311,6 +2440,11 @@
     if (!msg || !msg.cuentas) return;
     const eraTerminada = ui.cuentas && ui.cuentas.partidaTerminada;
     ui.cuentas = msg.cuentas;
+    const grupoAntes = ui.grupoSala ? ui.grupoSala.codigo : null;
+    ui.grupoSala = msg.cuentas.grupo || null;
+    if ((ui.grupoSala ? ui.grupoSala.codigo : null) !== grupoAntes) ui.grupo = null;
+    if (!msg.cuentas.partidasCerradas) ui.verNoche = false;
+    pintarGrupo();
     pintarCambio();
     pintarResumen();
     pintarNotaRecarga();
@@ -2362,7 +2496,22 @@
     const pagosCaja = $("lista-pagos");
     if (!caja) return;
     const cuentas = ui.cuentas || { jugadores: [] };
-    const js = cuentas.jugadores || [];
+    const hayNoche = (cuentas.partidasCerradas || 0) > 0 && (cuentas.noche || []).length > 0;
+    if ($("selector-noche")) $("selector-noche").hidden = !hayNoche;
+    const verNoche = hayNoche && ui.verNoche;
+    if ($("ver-partida")) $("ver-partida").classList.toggle("activo", !verNoche);
+    if ($("ver-noche")) $("ver-noche").classList.toggle("activo", verNoche);
+    const num = cuentas.partidaNum || 1;
+    if ($("titulo-resumen")) {
+      const nPartidas = (cuentas.partidasCerradas || 0) + (cuentas.partidaTerminada ? 0 : 1);
+      $("titulo-resumen").textContent = verNoche
+        ? "Cuentas de la noche · " + nPartidas + (nPartidas === 1 ? " partida" : " partidas")
+        : (num > 1 || hayNoche ? "Partida " + num + (cuentas.partidaTerminada ? " (terminada)" : " (en juego)") : "");
+      $("titulo-resumen").hidden = !$("titulo-resumen").textContent;
+    }
+    const js = verNoche ? cuentas.noche.map(function (n) {
+      return { nombre: n.nombre, resultadoBs: n.resultadoBs, partidas: n.partidas, enCurso: n.enCurso, noche: true };
+    }) : (cuentas.jugadores || []);
     caja.innerHTML = "";
     if (!js.length) {
       caja.innerHTML = '<p class="hint">Todavía no hay recargas en esta mesa.</p>';
@@ -2374,15 +2523,18 @@
       let res = '<span class="tablas">En tablas</span>';
       if (j.resultadoBs > 0.009) res = '<span class="gano">Ganó ' + formatearBs(j.resultadoBs) + "</span>";
       else if (j.resultadoBs < -0.009) res = '<span class="debe">Debe ' + formatearBs(-j.resultadoBs) + "</span>";
-      const yo = j.id === ui.tuId ? " (tú)" : "";
+      const yo = j.id && j.id === ui.tuId ? " (tú)" : "";
       const fue = j.seFue ? " · salió" : "";
+      const detalle = j.noche
+        ? j.partidas + (j.partidas === 1 ? " partida" : " partidas") + (j.enCurso ? " · incluye la que se está jugando" : "")
+        : "Recargó " + formatearBs(j.recargadoBs) + " · Tiene ahora " + formatearBs(j.tieneBs);
       div.innerHTML = "<header><span>" + escapar(j.nombre || "Jugador") + yo + fue + "</span>" + res + "</header>" +
-        '<div class="nums">Recargó ' + formatearBs(j.recargadoBs) + " · Tiene ahora " + formatearBs(j.tieneBs) + "</div>";
+        '<div class="nums">' + detalle + "</div>";
       caja.appendChild(div);
     }
     if (pagosCaja) {
       const pagos = liquidarLocal(js);
-      const avisoBote = cuentas.avisoBote
+      const avisoBote = cuentas.avisoBote && !verNoche
         ? "<p class=\"hint\">La cuenta usa las fichas que cada uno tiene ahora; lo que quedó en el bote de esta mano no está incluido.</p>"
         : "";
       if (!pagos.length) {
@@ -2401,6 +2553,128 @@
         btnFin.hidden = true;
       }
     }
+    const btnOtra = $("btn-otra-partida");
+    if (btnOtra) {
+      btnOtra.hidden = !(ui.modo === "online" && ui.esAnfitrion && !ui.espectador && cuentas.partidaTerminada);
+      btnOtra.disabled = false;
+    }
+  }
+
+  /* ---------- Grupo: cuentas que se suman entre noches ---------- */
+
+  const LS_GRUPO = "rf_grupo";
+  const LS_GRUPO_COPIA = "rf_grupo_copia_";
+
+  function leerLS(clave) {
+    try { const t = localStorage.getItem(clave); return t ? JSON.parse(t) : null; } catch (e) { return null; }
+  }
+  function guardarLS(clave, valor) {
+    try { localStorage.setItem(clave, JSON.stringify(valor)); } catch (e) { /* modo privado */ }
+  }
+
+  function recibirGrupo(msg) {
+    ui.grupo = msg.grupo || null;
+    if (msg.grupo && msg.copia) {
+      // Copia firmada en este teléfono: si el servidor perdiera los datos, se recuperan desde acá
+      guardarLS(LS_GRUPO_COPIA + msg.grupo.codigo, msg.copia);
+      guardarLS(LS_GRUPO, { codigo: msg.grupo.codigo, nombre: msg.grupo.nombre });
+    }
+    if (!msg.grupo && msg.perdido && ui.esAnfitrion) {
+      recuperarGrupo(msg.perdido.codigo, function () { enviarWS({ tipo: "grupo", accion: "ver" }); });
+    }
+    pintarGrupo();
+  }
+
+  /** Sube la copia guardada en este teléfono. Devuelve false si no hay copia (o ya se intentó). */
+  function recuperarGrupo(codigo, luego) {
+    ui.grupoRecuperando = ui.grupoRecuperando || {};
+    const copia = leerLS(LS_GRUPO_COPIA + codigo);
+    if (!copia || ui.grupoRecuperando[codigo] || typeof fetch !== "function") return false;
+    ui.grupoRecuperando[codigo] = true;
+    if ($("aviso-grupo")) $("aviso-grupo").textContent = "Recuperando el grupo desde este teléfono…";
+    fetch("/api/grupo/copia", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ copia: copia })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (x) {
+      if (x.ok) {
+        toast("Grupo recuperado desde este teléfono.", "ok");
+        if ($("aviso-grupo")) $("aviso-grupo").textContent = "";
+        if (luego) luego();
+      } else if ($("aviso-grupo")) {
+        $("aviso-grupo").textContent = x.j.error || "No se pudo recuperar el grupo.";
+      }
+    }).catch(function () {
+      if ($("aviso-grupo")) $("aviso-grupo").textContent = "Sin conexión: no se pudo recuperar el grupo.";
+    });
+    return true;
+  }
+
+  function pintarGrupo() {
+    const actual = $("grupo-actual");
+    const form = $("grupo-form");
+    if (!actual || !form) return;
+    const anfitrion = ui.modo === "online" && ui.esAnfitrion && !ui.espectador;
+    if (ui.grupoSala) {
+      form.hidden = true;
+      const g = ui.grupo && ui.grupo.codigo === ui.grupoSala.codigo ? ui.grupo : null;
+      let html = '<p class="titulo-grupo">👥 <strong>' + escapar(ui.grupoSala.nombre) + "</strong> · código <strong>" + escapar(ui.grupoSala.codigo) + "</strong></p>";
+      if (!g) {
+        html += '<p class="hint">Cargando las cuentas del grupo…</p>';
+        if (!ui.grupoPedido) { ui.grupoPedido = true; setTimeout(function () { ui.grupoPedido = false; }, 4000); enviarWS({ tipo: "grupo", accion: "ver" }); }
+      } else {
+        html += '<p class="hint">' + g.partidas + (g.partidas === 1 ? " partida" : " partidas") + " en " + g.noches + (g.noches === 1 ? " noche" : " noches") +
+          ". Cada partida que terminen se suma acá.</p>";
+        if (!g.totales.length) html += '<p class="hint">Todavía no hay partidas terminadas en este grupo.</p>';
+        html += '<div class="lista-cuentas">' + g.totales.map(function (t) {
+          let res = '<span class="tablas">En tablas</span>';
+          if (t.resultadoBs > 0.009) res = '<span class="gano">Ganó ' + formatearBs(t.resultadoBs) + "</span>";
+          else if (t.resultadoBs < -0.009) res = '<span class="debe">Debe ' + formatearBs(-t.resultadoBs) + "</span>";
+          return '<div class="fila-cuenta"><header><span>' + escapar(t.nombre) + "</span>" + res + '</header><div class="nums">' +
+            t.partidas + (t.partidas === 1 ? " partida" : " partidas") + " · " + t.noches + (t.noches === 1 ? " noche" : " noches") + "</div></div>";
+        }).join("") + "</div>";
+        if (g.ultimas && g.ultimas.length) {
+          html += '<details class="ultimas-grupo"><summary>Últimas partidas</summary>' + g.ultimas.map(function (s) {
+            const f = new Date(s.fecha);
+            const fecha = isNaN(f) ? "" : f.toLocaleDateString("es", { day: "2-digit", month: "2-digit" });
+            return "<p><strong>" + fecha + " · mesa " + escapar(s.sala) + " · partida " + s.partida + "</strong><br>" + s.jugadores.map(function (j) {
+              const r = Number(j.resultadoBs) || 0;
+              return escapar(j.nombre) + " " + (r > 0 ? "+" : "") + formatearBs(r);
+            }).join(" · ") + "</p>";
+          }).join("") + "</details>";
+        }
+      }
+      if (anfitrion) html += '<button type="button" id="btn-grupo-quitar" class="btn block btn-chico">Dejar de guardar en este grupo</button>';
+      actual.innerHTML = html;
+      const quitar = $("btn-grupo-quitar");
+      if (quitar) quitar.addEventListener("click", function () { enviarWS({ tipo: "grupo", accion: "quitar" }); });
+      return;
+    }
+    actual.innerHTML = anfitrion ? "" : '<p class="hint">El anfitrión de la mesa puede guardar las cuentas en un grupo para sumar todas las noches.</p>';
+    form.hidden = !anfitrion;
+    const guardado = leerLS(LS_GRUPO);
+    const b = $("btn-grupo-guardado");
+    if (b) {
+      b.hidden = !(anfitrion && guardado && guardado.codigo);
+      if (guardado && guardado.codigo) b.textContent = "Usar «" + guardado.nombre + "» (" + guardado.codigo + ")";
+    }
+  }
+
+  function crearGrupo() {
+    const nombre = ($("input-grupo-nombre") && $("input-grupo-nombre").value || "").trim();
+    if (nombre.length < 2) { $("aviso-grupo").textContent = "Ponele un nombre al grupo (al menos 2 letras)."; return; }
+    $("aviso-grupo").textContent = "";
+    enviarWS({ tipo: "grupo", accion: "crear", nombre: nombre });
+  }
+
+  function usarGrupo(codigo) {
+    codigo = String(codigo || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (codigo.length !== 6) { $("aviso-grupo").textContent = "El código del grupo tiene 6 letras o números."; return; }
+    $("aviso-grupo").textContent = "";
+    if (ui.grupoRecuperando) delete ui.grupoRecuperando[codigo];
+    enviarWS({ tipo: "grupo", accion: "usar", codigo: codigo });
   }
 
   function liquidarLocal(jugadores) {
@@ -2427,16 +2701,15 @@
   }
 
   function mostrarTabCuentas(tab) {
-    const rec = $("vista-recargar");
-    const res = $("vista-resumen");
-    const bRec = $("tab-recargar");
-    const bRes = $("tab-resumen");
-    const recargaOn = tab !== "resumen";
-    if (rec) rec.hidden = !recargaOn;
-    if (res) res.hidden = recargaOn;
-    if (bRec) bRec.classList.toggle("activo", recargaOn);
-    if (bRes) bRes.classList.toggle("activo", !recargaOn);
-    if ($("titulo-cuentas")) $("titulo-cuentas").textContent = recargaOn ? "Recargar" : "Resumen";
+    if (tab !== "resumen" && tab !== "grupo") tab = "recargar";
+    const vistas = { recargar: "vista-recargar", resumen: "vista-resumen", grupo: "vista-grupo" };
+    const titulos = { recargar: "Recargar", resumen: "Resumen", grupo: "Grupo" };
+    Object.keys(vistas).forEach(function (k) {
+      if ($(vistas[k])) $(vistas[k]).hidden = k !== tab;
+      if ($("tab-" + k)) $("tab-" + k).classList.toggle("activo", k === tab);
+    });
+    if ($("titulo-cuentas")) $("titulo-cuentas").textContent = titulos[tab];
+    if (tab === "grupo") pintarGrupo();
   }
 
   function abrirCuentas(tab) {
@@ -2449,7 +2722,7 @@
     pintarResumen();
     pintarNotaRecarga();
     const inp = $("input-recarga");
-    if (inp && tab !== "resumen") inp.focus();
+    if (inp && (!tab || tab === "recargar")) inp.focus();
   }
 
   function enviarRecarga() {
@@ -2474,7 +2747,16 @@
 
   /* ---------- Enlazar botones ---------- */
 
+  /** App instalable: el service worker solo guarda archivos; nunca la conexión en vivo. */
+  function registrarServiceWorker() {
+    if (!("serviceWorker" in navigator) || !/^https?:$/.test(location.protocol)) return;
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () { /* sin SW igual funciona */ });
+    });
+  }
+
   function iniciarUI() {
+    registrarServiceWorker();
     cargarPreferencias();
     iniciarSelectoresFichas();
     if ($("btn-solo")) $("btn-solo").addEventListener("click", function () {
@@ -2500,7 +2782,9 @@
     if ($("btn-mirar-codigo")) $("btn-mirar-codigo").addEventListener("click", mirarCodigo);
     if ($("btn-sala-publica")) $("btn-sala-publica").addEventListener("click", jugarPublica);
     if ($("btn-llenar-bots")) $("btn-llenar-bots").addEventListener("click", function () { enviarWS({ tipo: "llenar-bots" }); });
-    if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () { enviarWS({ tipo: "iniciar" }); });
+    if ($("btn-iniciar-online")) $("btn-iniciar-online").addEventListener("click", function () {
+      enviarWS({ tipo: ui.cuentas && ui.cuentas.partidaTerminada ? "otra-partida" : "iniciar" });
+    });
     if ($("btn-salir-sala")) $("btn-salir-sala").addEventListener("click", function () {
       enviarWS({ tipo: "salir" });
       cerrarWS(true);
@@ -2537,6 +2821,19 @@
     if ($("btn-cerrar-cuentas")) $("btn-cerrar-cuentas").addEventListener("click", function () { $("panel-cuentas").hidden = true; });
     if ($("tab-recargar")) $("tab-recargar").addEventListener("click", function () { mostrarTabCuentas("recargar"); });
     if ($("tab-resumen")) $("tab-resumen").addEventListener("click", function () { mostrarTabCuentas("resumen"); });
+    if ($("tab-grupo")) $("tab-grupo").addEventListener("click", function () { mostrarTabCuentas("grupo"); });
+    if ($("ver-partida")) $("ver-partida").addEventListener("click", function () { ui.verNoche = false; pintarResumen(); });
+    if ($("ver-noche")) $("ver-noche").addEventListener("click", function () { ui.verNoche = true; pintarResumen(); });
+    if ($("btn-otra-partida")) $("btn-otra-partida").addEventListener("click", function () {
+      this.disabled = true;
+      enviarWS({ tipo: "otra-partida" });
+    });
+    if ($("btn-grupo-crear")) $("btn-grupo-crear").addEventListener("click", crearGrupo);
+    if ($("btn-grupo-usar")) $("btn-grupo-usar").addEventListener("click", function () { usarGrupo($("input-grupo-codigo").value); });
+    if ($("btn-grupo-guardado")) $("btn-grupo-guardado").addEventListener("click", function () {
+      const g = leerLS(LS_GRUPO);
+      if (g) usarGrupo(g.codigo);
+    });
     if ($("btn-recargar")) $("btn-recargar").addEventListener("click", enviarRecarga);
     if ($("input-recarga")) {
       $("input-recarga").addEventListener("input", actualizarPreviewRecarga);

@@ -34,6 +34,10 @@ function construir() {
   // En el archivo suelto no hay servidor que sirva el manifiesto ni los iconos
   html = reemplazar(html, '  <link rel="manifest" href="/manifest.json">\n', "", "el manifiesto");
   html = reemplazar(html, '  <link rel="apple-touch-icon" href="/apple-touch-icon.png">\n', "", "el icono de Apple");
+  // El icono de la pestaña va dentro del propio archivo
+  const favicon = "data:image/png;base64," + fs.readFileSync(path.join(publico, "favicon-32.png")).toString("base64");
+  html = reemplazar(html, '  <link rel="icon" href="/favicon.ico" sizes="any">\n', "", "el favicon .ico");
+  html = reemplazar(html, '  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">\n', '  <link rel="icon" type="image/png" sizes="32x32" href="' + favicon + '">\n', "el favicon");
 
   const bloqueScripts = "\n" + SCRIPTS.map(function (n) { return '  <script src="/js/' + n + '"></script>\n'; }).join("");
   html = reemplazar(html, bloqueScripts, "\n  <script>\n" + scripts.join("\n") + "\n  </script>\n", "la lista de <script>");

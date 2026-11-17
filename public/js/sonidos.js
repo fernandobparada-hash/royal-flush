@@ -87,6 +87,11 @@
       ganar: function (c, t) {
         [523, 659, 784, 1047].forEach(function (f, i) { tono(c, f, t + i * 0.09, 0.28, "triangle", 0.2); });
       },
+      // Escalera real / de color / póker: fanfarria más larga
+      jugadon: function (c, t) {
+        [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tono(c, f, t + i * 0.11, i === 6 ? 0.6 : 0.22, "triangle", 0.22); });
+        tono(c, 262, t, 0.9, "sine", 0.12);
+      },
       fin: function (c, t) { tono(c, 392, t, 0.18, "sine", 0.15); tono(c, 330, t + 0.12, 0.22, "sine", 0.12); },
       ciegas: function (c, t) { [660, 660, 990].forEach(function (f, i) { tono(c, f, t + i * 0.12, 0.14, "square", 0.08); }); }
     };

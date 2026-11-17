@@ -1,24 +1,20 @@
 {
+  "id": "/",
   "name": "Royal Flush",
   "short_name": "Royal Flush",
-  "description": "Texas Hold'em No Limit. Juega solo o en línea.",
+  "description": "Texas Hold'em No Limit. Juega solo o en línea con amigos.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
   "background_color": "#052616",
   "theme_color": "#052616",
   "lang": "es",
+  "categories": ["games"],
   "icons": [
-    {
-      "src": "icono-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icono-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

@@ -1186,3 +1186,63 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
   .barra-mesa .icon-btn { min-width: 34px; font-size: 1rem; }
   .barra-mesa .code-pill { padding: 0.1em 0.45em; font-size: 0.78rem; letter-spacing: 0.02em; }
 }
+
+/* ---------- v10: otra partida, noche, grupo ---------- */
+.selector-noche { display: flex; gap: 0.35em; margin: 0 0 0.6em; }
+.selector-noche button {
+  flex: 1; min-height: 36px; border-radius: 999px; border: 1px solid var(--linea);
+  background: transparent; color: var(--texto); font-weight: 700; font-size: 0.85rem; cursor: pointer;
+}
+.selector-noche button.activo { background: #1d3a2c; border-color: var(--oro); color: var(--oro); }
+.titulo-resumen { margin: 0 0 0.5em; font-weight: 700; color: var(--oro); font-size: 0.9rem; }
+#btn-otra-partida { margin-top: 0.5em; }
+.titulo-grupo { margin: 0 0 0.3em; overflow-wrap: anywhere; }
+.ultimas-grupo { margin: 0.2em 0 0.8em; font-size: 0.85rem; }
+.ultimas-grupo summary { cursor: pointer; font-weight: 700; min-height: 32px; line-height: 32px; }
+.ultimas-grupo p { margin: 0.35em 0; color: var(--muted); overflow-wrap: anywhere; }
+.ultimas-grupo strong { color: var(--texto); }
+#vista-grupo .campo-nombre { margin-top: 0.7em; }
+#btn-grupo-guardado { margin-bottom: 0.4em; }
+.btn-chico { font-size: 0.85rem; min-height: 38px; }
+
+/* ---------- v10: animaciones de premio ---------- */
+.ficha-premio {
+  position: absolute; width: 18px; height: 18px; border-radius: 50%; z-index: 23;
+  background: radial-gradient(circle at 50% 50%, #fff6d8 0 22%, #e9c46a 24% 60%, #a8801f 62%);
+  border: 2px dashed #fff3c4; box-shadow: 0 2px 4px rgba(0,0,0,.5);
+  transition: left 0.6s cubic-bezier(0.25, 0.8, 0.3, 1), top 0.6s cubic-bezier(0.25, 0.8, 0.3, 1), opacity 0.35s ease 0.75s, transform 0.6s ease;
+  pointer-events: none;
+}
+.ficha-premio.roja { background: radial-gradient(circle, #fff 0 22%, #d9534f 24% 60%, #8f2a27 62%); border-color: #ffd9d6; }
+.ficha-premio.azul { background: radial-gradient(circle, #fff 0 22%, #3d7fd6 24% 60%, #1f4b86 62%); border-color: #d6e6ff; }
+.ficha-premio.llego { opacity: 0; transform: scale(0.7); }
+#jugadon {
+  position: absolute; left: 50%; top: 38%; z-index: 30; pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 22px; max-width: 86%; text-align: center;
+  background: rgba(10, 20, 15, 0.88); border: 2px solid var(--oro); border-radius: 16px;
+  box-shadow: 0 0 30px rgba(233, 196, 106, 0.55);
+  animation: jugadon-entra 2.9s ease forwards;
+}
+.jugadon-mano { font-family: var(--fuente-titulo); color: var(--oro); font-size: clamp(18px, 4.6vw, 32px); font-weight: 700; line-height: 1.1; }
+.jugadon-quien { color: var(--texto); font-weight: 700; font-size: clamp(12px, 2.8vw, 16px); }
+@keyframes jugadon-entra {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  20% { transform: translate(-50%, -50%) scale(1); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+.confeti {
+  position: absolute; top: -12px; width: 8px; height: 13px; border-radius: 2px; opacity: 0.95; pointer-events: none;
+  animation: confeti-cae 2.3s cubic-bezier(0.3, 0.6, 0.5, 1) forwards;
+}
+@keyframes confeti-cae {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  100% { transform: translate(var(--deriva), 105%) rotate(var(--giro)); top: 100%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #jugadon { animation: none; }
+  .confeti, .ficha-premio { display: none; }
+}

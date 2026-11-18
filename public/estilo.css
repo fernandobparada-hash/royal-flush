@@ -619,11 +619,13 @@ html.en-mesa, html.en-mesa body, html.en-mesa #app {
 .pieza-cartas.propio .cartas-asiento .carta-dorso {
   width: var(--carta-p, 64px);
   height: var(--carta-p-h, 90px);
-  margin: 0 -6px;
+  /* se pisan poco: de la primera se ve siempre el número y el palo */
+  margin: 0 calc(var(--carta-p, 64px) * -0.1);
 }
 .pieza-info.propio { width: var(--ancho-propio, 110px); z-index: 7; }
 .pieza-info.propio .nombre-jugador { font-size: 13px; }
-.pieza-cartas.propio { z-index: 7; }
+/* tus cartas siempre por encima de todo lo de la mesa (fichas, globos de otros, cartas ajenas) */
+.pieza-cartas.propio { z-index: 13; }
 
 .pieza-propio-grupo {
   z-index: 7;
@@ -1523,3 +1525,13 @@ button.btn[disabled], #btn-iniciar-online[disabled] { opacity: 0.45; cursor: not
 .reglas-monedas li { margin: 0.15em 0; }
 .item-tienda .muestra.muestra-alta { height: auto; min-height: 80px; }
 .muestra-sonido .btn { width: auto; margin-top: 0.15em; }
+
+/* v12.2: mesa de 15 en pantallas bajas (compu con zoom, celular acostado): apuestas más chicas
+   para dejar lugar a tus cartas, que ahora siempre se ven grandes y junto a tu asiento */
+@media (max-height: 430px) {
+  #mesa-oval.asientos-15 .apuesta-frente { padding: 1px 4px 2px; min-width: 0; }
+  #mesa-oval.asientos-15 .apuesta-frente .pila-fichas { min-width: 0; height: 12px; }
+  #mesa-oval.asientos-15 .apuesta-frente .disco-ficha { width: 10px; height: 10px; border-width: 1px; }
+  #mesa-oval.asientos-15 .apuesta-frente .disco-ficha:nth-child(n+2) { display: none; }
+  #mesa-oval.asientos-15 .apuesta-frente .pila-valor { font-size: 10px; margin-left: 1px; }
+}

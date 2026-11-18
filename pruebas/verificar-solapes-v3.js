@@ -28,7 +28,9 @@ const PHONES = [
 const FASES = [
   { fase: "preflop", todasApuestas: true, forzarAcciones: true, tag: "preflop-apuestas" },
   { fase: "river", forzarAcciones: true, tag: "river" },
-  { fase: "showdown", tag: "showdown" }
+  { fase: "showdown", tag: "showdown" },
+  // como en una mesa online: tú no estás en el asiento 0 (la vista gira para dejarte abajo)
+  { fase: "turn", forzarAcciones: true, asientoHumano: 4, tag: "turn-asiento4" }
 ];
 
 async function medir(page) {
@@ -36,7 +38,9 @@ async function medir(page) {
     if (window.__RF && window.__RF.ui && window.__RF.ui.estado && window.__RF.aplicarLayout) {
       window.__RF.aplicarLayout(window.__RF.ui.estado);
     }
-    return window.__RF.medirSolapes();
+    const r = window.__RF.medirSolapes();
+    r.propias = window.__RF.medirCartasPropias();
+    return r;
   });
 }
 
@@ -47,7 +51,8 @@ async function montar(page, asientos, faseOpt) {
       fase: faseOpt.fase,
       todasApuestas: !!faseOpt.todasApuestas,
       forzarAcciones: !!faseOpt.forzarAcciones,
-      nombresLargos: false
+      nombresLargos: false,
+      asientoHumano: faseOpt.asientoHumano || 0
     });
   }, { asientos, faseOpt });
   await page.waitForTimeout(250);
@@ -85,6 +90,8 @@ async function montar(page, asientos, faseOpt) {
             if (r.fuera && r.fuera.length) problems.push("fuera: " + r.fuera.join(", "));
             if (r.overflowX) problems.push("overflowX " + r.sw + ">" + r.iw);
             if (r.overflowY) problems.push("overflowY " + r.sh + ">" + r.ih);
+            // tus dos cartas: visibles, legibles, sin nada encima y junto a tu asiento
+            if (!r.propias || !r.propias.ok) problems.push("tus cartas: " + (r.propias ? r.propias.problemas.join("; ") : "sin medir"));
             if (problems.length) {
               fallos.push({ label, problems, r });
               console.log("FALLO " + label);

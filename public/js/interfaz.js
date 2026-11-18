@@ -1377,11 +1377,13 @@
     const nFactor = (total >= 15 ? 0.74 : (total >= 10 ? 0.88 : 1)) * (compacto ? 0.82 : 1) * (H < 340 || W < 640 ? 0.86 : 1);
     const cardW = clamp(Math.round(s * 56 * nFactor), 12, 52);
     const cardH = Math.round(cardW * 1.38);
-    const ownW = clamp(Math.round(cardW * 1.18), 14, 62);
+    // Tus cartas tienen que leerse siempre: su tamaño depende de la pantalla, no de
+    // cuántos asientos hay (en la mesa de 15 del teléfono antes quedaban de 18 px).
+    const ownW = clamp(Math.max(Math.round(cardW * 1.18), Math.round(vertical ? W * 0.09 : H * 0.08)), 28, 62);
     const ownH = Math.round(ownW * 1.38);
     const commW = clamp(Math.round(s * 62 * (compacto ? 0.9 : 1)), 14, 68);
     const commH = Math.round(commW * 1.4);
-    const infoW = clamp(Math.round(s * (total >= 15 ? 118 : (total >= 10 ? 112 : 126)) * nFactor), total >= 15 ? 42 : 46, 138);
+    const infoW = clamp(Math.round(s * (total >= 15 ? 118 : (total >= 10 ? 112 : 126)) * nFactor), total >= 15 ? (H < 400 ? 38 : 42) : 46, 138);
     // Avatar del asiento: más grande en la compu (v12), chico en el teléfono y en mesas de 15
     const tamAvatar = clamp(Math.round(s * (total >= 15 ? 36 : 48) * (compacto ? 0.78 : 1)), total >= 15 ? 16 : 20, 50);
     const infoH = clamp(Math.round(s * (compacto ? 44 : 52) * (total >= 15 ? 0.86 : 1)), 22, 54) + Math.round(tamAvatar / 2);
@@ -1412,8 +1414,16 @@
     mesa.style.setProperty("--tam-avatar", m.tamAvatar + "px");
   }
 
+  /** Asiento que se dibuja abajo: el tuyo si estás sentado (así tus cartas siempre van abajo y grandes). */
+  function asientoAbajo(estado) {
+    if (ui.espectador || !estado) return 0;
+    const yo = (estado.jugadores || []).find(function (j) { return j.id === ui.tuId; });
+    return yo && typeof yo.asiento === "number" ? yo.asiento : 0;
+  }
+
   function calcularLayout(estado, mesa) {
     const total = estado.asientosTotales;
+    const base = asientoAbajo(estado);
     const m = medidasFicha(mesa, total);
     const W = m.W, H = m.H;
     const cx = W / 2, cy = H / 2;
@@ -1447,21 +1457,24 @@
     const gap = vertical ? (total >= 15 ? 0.9 : 1.05) : (total >= 15 ? 0.62 : (total >= 10 ? 0.92 : 0.82));
 
     const seats = [];
-    for (let i = 0; i < total; i++) {
-      const ang = anguloAsiento(i, total, gap);
+    for (let v = 0; v < total; v++) {
+      // v = lugar en pantalla (0 = abajo, el tuyo); i = asiento real
+      const i = (v + base) % total;
+      const propio = v === 0;
+      const ang = anguloAsiento(v, total, gap);
       const ux = Math.sin(ang);
       const uy = Math.cos(ang);
-      const zona = zonaDeAngulo(ang, i);
+      const zona = zonaDeAngulo(ang, v);
       let ix = cx + ux * infoRx;
       let iy = cy + uy * infoRy;
-      const iW = (i === 0 ? m.infoW0 : m.infoW);
+      const iW = (propio ? m.infoW0 : m.infoW);
       ix = clamp(ix, iW / 2 + pad, W - iW / 2 - pad);
       iy = clamp(iy, m.infoH / 2 + pad, H - m.infoH / 2 - pad);
       const info = caja(ix, iy, iW, m.infoH);
       const rSeat = Math.hypot(ix - cx, iy - cy);
 
-      const cW = (i === 0 ? m.ownW * 1.7 : m.cardW * 1.7);
-      const cH = (i === 0 ? m.ownH : m.cardH);
+      const cW = (propio ? m.ownW * 1.7 : m.cardW * 1.7);
+      const cH = (propio ? m.ownH : m.cardH);
       const dAng = (m.infoW / 2 + 10 + cW / 2) / Math.max(36, rSeat);
 
       function cardsEn(angC) {
@@ -1486,16 +1499,11 @@
         return p;
       }
       let cards, angCards;
-      const huecoAbajo = (H - iy - m.infoH / 2);
-      const anchoLibre = W - m.infoW - pad * 2;
-      if (i === 0 && (vertical || anchoLibre < cW + m.infoW + 16 || huecoAbajo < 8)) {
-        const cyC = clamp(iy - (m.infoH / 2 + 5 + cH / 2), cH / 2 + pad, H - cH / 2 - pad);
-        const cxC = clamp(ix, cW / 2 + pad, W - cW / 2 - pad);
-        cards = caja(cxC, cyC, cW, cH);
+      // Tus cartas van siempre justo encima de tu nombre (antes, en la compu, se iban al costado
+      // y en la mesa de 15 terminaban tapando o pegadas a otro jugador).
+      if (propio) {
+        cards = elegirCartasPropias(info, cW, cH, W, H, pad, centro, dealer, m.betH, [], null);
         angCards = ang;
-        if (sePisan(cards, info, 2) || sePisan(cards, centro, 2)) {
-          cards = caja(clamp(ix - (m.infoW / 2 + 6 + cW / 2), cW / 2 + pad, W - cW / 2 - pad), iy, cW, cH);
-        }
       } else {
         const cand = [];
         const offs = [dAng, -dAng, dAng * 1.2, -dAng * 1.2, dAng * 1.45, -dAng * 1.45];
@@ -1522,7 +1530,7 @@
       const rBet = rOuter >= rInner ? rOuter - 2 : (rInner + rOuter) / 2;
 
       seats.push({
-        i: i, ang: ang, ux: ux, uy: uy, zona: zona, rSeat: rSeat, angCards: angCards,
+        i: i, v: v, propio: propio, ang: ang, ux: ux, uy: uy, zona: zona, rSeat: rSeat, angCards: angCards,
         info: info, cards: cards,
         rLo: rOuter, rHi: rInner, rBet: rBet,
         bet: caja(cx + ux * rBet, cy + uy * rBet, m.betW, m.betH)
@@ -1645,6 +1653,7 @@
       let movio = false;
       for (let i = 0; i < L.seats.length; i++) {
         const S = L.seats[i];
+        if (S.propio) continue; // tus cartas no se mueven: se corren las de los demás
         const others = [L.centro, L.dealer, S.info];
         for (let j = 0; j < L.seats.length; j++) {
           if (j === i) continue;
@@ -1680,6 +1689,44 @@
     }
   }
 
+  /**
+   * Dónde van tus cartas: encima de tu nombre si queda lugar para tu apuesta, si no al costado
+   * (izquierda o derecha, donde molesten menos). Siempre pegadas a tu asiento.
+   */
+  function elegirCartasPropias(info, w, h, W, H, pad, centro, dealer, betH, seats, yo) {
+    function en(x, y) {
+      return caja(clamp(x, w / 2 + pad, W - w / 2 - pad), clamp(y, h / 2 + pad, H - h / 2 - pad), w, h);
+    }
+    const cands = [
+      { c: en(info.x, info.top - 5 - h / 2), extra: 0, arriba: true },
+      { c: en(info.left - 6 - w / 2, info.y), extra: 6 },
+      { c: en(info.right + 6 + w / 2, info.y), extra: 6 }
+    ];
+    let mejor = null;
+    for (let k = 0; k < cands.length; k++) {
+      const o = cands[k];
+      let p = o.extra;
+      if (sePisan(o.c, info, 2)) p += 400;
+      if (centro && sePisan(o.c, centro, 3)) p += 300;
+      if (dealer && sePisan(o.c, dealer, 3)) p += 300;
+      if (o.arriba && centro) p += Math.max(0, (betH + 10) - (o.c.top - centro.bottom)) * 0.5;
+      for (let q = 0; q < seats.length; q++) {
+        const T = seats[q];
+        if (T === yo) continue;
+        if (T.info && sePisan(o.c, T.info, 3)) p += 60;
+        if (T.cards && sePisan(o.c, T.cards, 3)) p += 40;
+      }
+      if (!mejor || p < mejor.p) mejor = { c: o.c, p: p };
+    }
+    return mejor.c;
+  }
+
+  function unirCajas(a, b) {
+    const l = Math.min(a.left, b.left), t = Math.min(a.top, b.top);
+    const r = Math.max(a.right, b.right), d = Math.max(a.bottom, b.bottom);
+    return caja((l + r) / 2, (t + d) / 2, r - l, d - t);
+  }
+
   function separarTodo(L) {
     const pad = L.pad;
     function apply(obj, sx, sy) {
@@ -1688,6 +1735,12 @@
       const nx = clamp(obj.b.x + sx, w / 2 + pad, L.W - w / 2 - pad);
       const ny = clamp(obj.b.y + sy, h / 2 + pad, L.H - h / 2 - pad);
       const moved = Math.abs(nx - obj.b.x) + Math.abs(ny - obj.b.y);
+      if (obj.k === "grupo") {
+        // tu nombre y tus cartas se mueven juntos: nunca se separan
+        const dx = nx - obj.b.x, dy = ny - obj.b.y;
+        obj.s.info = caja(obj.s.info.x + dx, obj.s.info.y + dy, obj.s.info.w, obj.s.info.h);
+        obj.s.cards = caja(obj.s.cards.x + dx, obj.s.cards.y + dy, obj.s.cards.w, obj.s.cards.h);
+      }
       obj.b = caja(nx, ny, w, h);
       if (obj.k === "info") obj.s.info = obj.b;
       if (obj.k === "cards") obj.s.cards = obj.b;
@@ -1698,8 +1751,15 @@
       const arr = [{ k: "centro", b: L.centro, fixed: true }, { k: "dealer", b: L.dealer, fixed: true }];
       for (let i = 0; i < L.seats.length; i++) {
         const s = L.seats[i];
-        arr.push({ k: "info", s: s, b: s.info, fixed: false });
-        arr.push({ k: "cards", s: s, b: s.cards, fixed: false });
+        if (s.propio && s.cards) {
+          // Tu nombre y tus cartas son un solo bloque (antes las cartas se iban solas a otro asiento)
+          // con un margen alrededor, para que nadie quede pegado y se note de quién son las cartas
+          const u = unirCajas(s.info, s.cards);
+          arr.push({ k: "grupo", s: s, b: caja(u.x, u.y, u.w + 16, u.h + 4), fixed: false });
+        } else {
+          arr.push({ k: "info", s: s, b: s.info, fixed: false });
+          arr.push({ k: "cards", s: s, b: s.cards, fixed: false });
+        }
         if (s.tieneApuesta && s.bet) arr.push({ k: "bet", s: s, b: s.bet, fixed: false });
       }
       let hits = 0;
@@ -1816,6 +1876,28 @@
     return { x: (left + right) / 2, y: (top + bottom) / 2, w: right - left, h: bottom - top, left: left, right: right, top: top, bottom: bottom };
   }
 
+  /** Caja que cubre las cartas de verdad (con margen negativo se salen un poco del contenedor). */
+  function cajaCartasReal(cont, mr) {
+    const hijos = cont.querySelectorAll(".carta, .carta-dorso");
+    let l = Infinity, t = Infinity, r = -Infinity, b = -Infinity;
+    for (let k = 0; k < hijos.length; k++) {
+      const q = hijos[k].getBoundingClientRect();
+      if (!q.width || !q.height) continue;
+      l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom);
+    }
+    if (!isFinite(l)) return cajaDesdeEl(cont, mr);
+    return caja((l + r) / 2 - mr.left, (t + b) / 2 - mr.top, r - l, b - t);
+  }
+
+  /** Tus cartas quedan pegadas a tu asiento (encima del nombre, o al costado si no entran). */
+  function anclarCartasPropias(L) {
+    for (let i = 0; i < L.seats.length; i++) {
+      const S = L.seats[i];
+      if (!S.propio || !S.cards || !S.info) continue;
+      S.cards = elegirCartasPropias(S.info, S.cards.w, S.cards.h, L.W, L.H, L.pad, L.centro, L.dealer, L.m.betH, L.seats, S);
+    }
+  }
+
   function ajustarDesdeMedidas(L, estado) {
     const mesa = $("mesa-oval");
     if (!mesa) return;
@@ -1840,7 +1922,7 @@
       const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
       const ap = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"]');
       if (info) S.info = cajaInfoConAvatar(info, mr);
-      if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
+      if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaCartasReal(cartasInner, mr);
       else if (cartas && cartas.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartas, mr);
       if (apInner || ap) {
         const box = cajaDesdeEl(apInner || ap, mr);
@@ -1858,6 +1940,7 @@
         )
       );
     }
+    anclarCartasPropias(L);
     resolverApuestas(L, estado);
     separarTodo(L);
 
@@ -1897,9 +1980,10 @@
         const cartasInner = document.querySelector('.pieza-cartas[data-asiento="' + S.i + '"] .cartas-asiento');
         const apInner = document.querySelector('.pieza-apuesta[data-asiento="' + S.i + '"] .apuesta-frente');
         if (info) S.info = cajaInfoConAvatar(info, mr);
-        if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaDesdeEl(cartasInner, mr);
+        if (cartasInner && cartasInner.querySelector(".carta, .carta-dorso")) S.cards = cajaCartasReal(cartasInner, mr);
         if (apInner) { S.bet = cajaDesdeEl(apInner, mr); S.mBetW = S.bet.w; S.mBetH = S.bet.h; }
       }
+      anclarCartasPropias(L);
       separarTodo(L);
       escribirL();
     })();
@@ -3544,7 +3628,9 @@
       ciegaGrande: ciegas.ciegaGrande
     });
     const nombre = opt.nombre || "Fernando";
-    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: 0, fichas: ciegas.fichasIniciales, avatar: (ui.avatar || (Avatar && Avatar.aleatorio(nombre))) });
+    // asientoHumano: para probar mesas online donde no estás en el asiento 0
+    const asH = Math.max(0, Math.min(n - 1, opt.asientoHumano | 0));
+    mesa.sentar({ id: "humano", nombre: nombre, tipo: "humano", asiento: asH, fichas: ciegas.fichasIniciales, avatar: (ui.avatar || (Avatar && Avatar.aleatorio(nombre))) });
     const usados = [nombre];
     const largos = ["Maximiliano", "Juan Esteban", "Valentina M.", "Ana-Sofía", "Roberto Carlos", "Isabel María", "Diego Armando", "Chris"];
     const pers = Bots.repartirPersonalidades(n - 1);
@@ -3552,7 +3638,7 @@
       const bot = Bots.crearBot(usados, pers[i - 1]);
       const nom = opt.nombresLargos ? (largos[i - 1] || bot.nombre) : bot.nombre;
       usados.push(nom);
-      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", personalidad: bot.personalidad, asiento: i, fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
+      mesa.sentar({ id: "bot-" + i, nombre: nom, tipo: "bot", personalidad: bot.personalidad, asiento: (i <= asH ? i - 1 : i), fichas: ciegas.fichasIniciales, avatar: Avatar ? Avatar.aleatorio(nom) : null });
     }
     ui.mesa = mesa;
     ui.tuId = "humano";
@@ -3617,7 +3703,81 @@
     return mesa;
   }
 
+  /**
+   * Revisa que tus dos cartas se vean bien: visibles, de tamaño legible, dentro de la pantalla,
+   * sin nada encima y pegadas a tu asiento. Lo usan las pruebas de navegador y el chequeo de solapes.
+   */
+  function medirCartasPropias() {
+    const problemas = [];
+    const pieza = document.querySelector("#asientos .pieza-cartas.propio");
+    const infoEl = document.querySelector("#asientos .pieza-info.propio .info-jugador") ||
+      document.querySelector("#asientos .pieza-info.propio");
+    if (!pieza) return { ok: false, problemas: ["no hay asiento propio"], cartas: [] };
+    const cartas = Array.prototype.slice.call(pieza.querySelectorAll(".carta, .carta-dorso"));
+    if (cartas.length !== 2) problemas.push("se esperaban 2 cartas y hay " + cartas.length);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const grande = vw >= 1000 && vh >= 700;
+    const minW = grande ? 40 : 28;
+    const minH = Math.round(minW * 1.3);
+    const prevPE = pieza.style.pointerEvents;
+    pieza.style.pointerEvents = "auto";
+    const salida = [];
+    for (let k = 0; k < cartas.length; k++) {
+      const c = cartas[k];
+      const r = c.getBoundingClientRect();
+      salida.push([Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]);
+      let el = c;
+      while (el && el !== document.body) {
+        const cs = getComputedStyle(el);
+        if (cs.display === "none" || cs.visibility === "hidden" || parseFloat(cs.opacity) < 0.9) {
+          problemas.push("carta " + (k + 1) + " oculta por " + (el.className || el.tagName));
+          break;
+        }
+        el = el.parentElement;
+      }
+      if (r.width < minW || r.height < minH) problemas.push("carta " + (k + 1) + " muy chica " + Math.round(r.width) + "x" + Math.round(r.height) + " (mín " + minW + "x" + minH + ")");
+      if (r.left < 0 || r.top < 0 || r.right > vw || r.bottom > vh) problemas.push("carta " + (k + 1) + " fuera de la pantalla");
+      // la primera queda tapada a la derecha por la segunda: se mira su esquina (número y palo)
+      const puntos = k === cartas.length - 1
+        ? [[0.2, 0.15], [0.5, 0.5], [0.8, 0.85], [0.2, 0.85], [0.8, 0.15]]
+        : [[0.15, 0.12], [0.15, 0.3], [0.15, 0.85]];
+      for (let q = 0; q < puntos.length; q++) {
+        const x = r.left + r.width * puntos[q][0], y = r.top + r.height * puntos[q][1];
+        const hit = document.elementFromPoint(x, y);
+        if (!hit || !(c === hit || c.contains(hit))) {
+          problemas.push("carta " + (k + 1) + " tapada en (" + Math.round(x) + "," + Math.round(y) + ") por " +
+            (hit ? (hit.className && hit.className.baseVal !== undefined ? hit.tagName : (hit.id || hit.className || hit.tagName)) : "nada"));
+          break;
+        }
+      }
+    }
+    pieza.style.pointerEvents = prevPE;
+    if (infoEl && cartas.length) {
+      const ri = infoEl.getBoundingClientRect();
+      let l = Infinity, t = Infinity, rr = -Infinity, b = -Infinity;
+      cartas.forEach(function (c) { const q = c.getBoundingClientRect(); l = Math.min(l, q.left); t = Math.min(t, q.top); rr = Math.max(rr, q.right); b = Math.max(b, q.bottom); });
+      const dx = Math.max(0, ri.left - rr, l - ri.right);
+      const dy = Math.max(0, ri.top - b, t - ri.bottom);
+      const dist = Math.round(Math.hypot(dx, dy));
+      if (dist > 30) problemas.push("cartas lejos de tu asiento (" + dist + " px)");
+      // y tienen que estar más cerca de tu nombre que del de cualquier otro (que se note que son tuyas)
+      const otros = document.querySelectorAll("#asientos .pieza-info:not(.propio) .info-jugador");
+      for (let k = 0; k < otros.length; k++) {
+        const ro = otros[k].getBoundingClientRect();
+        if (!ro.width) continue;
+        const ox = Math.max(0, ro.left - rr, l - ro.right), oy = Math.max(0, ro.top - b, t - ro.bottom);
+        const d2 = Math.hypot(ox, oy);
+        if (d2 < 4 || d2 + 2 < dist) {
+          problemas.push("cartas pegadas a otro jugador (" + Math.round(d2) + " px de " + ((otros[k].querySelector(".nombre-jugador") || {}).textContent || "?") + ", " + dist + " px de ti)");
+          break;
+        }
+      }
+    }
+    return { ok: problemas.length === 0, problemas: problemas, cartas: salida };
+  }
+
   window.__RF = {
+    medirCartasPropias: medirCartasPropias,
     montarDemo: montarDemo,
     renderMesa: renderMesa,
     aplicarLayout: aplicarLayout,

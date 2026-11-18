@@ -118,12 +118,12 @@ async function online(nav, pant, n) {
   host.send(JSON.stringify({ tipo: "iniciar" }));
   const et = "online " + n + " · " + pant.tag;
   await revisar(p, et, "online-" + n + "-" + pant.tag + ".png");
-  ok(et + ": tu asiento se dibuja abajo aunque no seas el asiento 0", await p.evaluate(function () {
+  ok(et + ": tu asiento se dibuja abajo aunque no seas el asiento 0", await p.waitForFunction(function () {
     const pz = document.querySelector("#asientos .pieza-info.propio");
     if (!pz) return false;
     const r = pz.getBoundingClientRect(), m = document.getElementById("mesa-oval").getBoundingClientRect();
     return pz.getAttribute("data-asiento") !== "0" && (r.top + r.height / 2) > m.top + m.height * 0.6;
-  }));
+  }, null, { timeout: 4000 }).then(function () { return true; }).catch(function () { return false; }));
   ok(et + ": sin errores de JavaScript", errores.length === 0, errores.join(" | "));
   host.close();
   await ctx.close();

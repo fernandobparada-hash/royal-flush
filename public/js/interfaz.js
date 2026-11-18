@@ -2185,6 +2185,9 @@
 
     actualizarPanelAcciones(estado);
     instalarObservadorMesa();
+    // Acomodar ya mismo: si se espera al próximo cuadro, por un instante todas las piezas
+    // (también tus cartas) quedaban arriba a la izquierda, encimadas.
+    aplicarLayout(estado);
     requestAnimationFrame(function () {
       aplicarLayout(estado);
       requestAnimationFrame(function () { aplicarLayout(estado); });
